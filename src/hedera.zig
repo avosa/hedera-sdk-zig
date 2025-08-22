@@ -45,14 +45,13 @@ pub const Network = @import("network/network.zig").Network;
 // These will be replaced by the more complete versions below
 
 // Factory functions matching Hedera SDK patterns
-pub const client_for_name = @import("network/client.zig").Client.client_for_name;
-pub const account_id_from_string = @import("core/id.zig").AccountId.fromString;
-pub const private_key_from_string = @import("crypto/private_key.zig").PrivateKey.fromString;
-pub const generate_private_key = @import("crypto/private_key.zig").PrivateKey.generate_private_key;
+pub const clientForName = @import("network/client.zig").Client.clientForName;
+pub const accountIdFromString = @import("core/id.zig").AccountId.accountIdFromString;
+pub const privateKeyFromString = @import("crypto/private_key.zig").PrivateKey.privateKeyFromString;
+pub const generatePrivateKey = @import("crypto/private_key.zig").PrivateKey.generatePrivateKey;
 
 // Transaction factory functions - matching Hedera SDK naming patterns
-pub const new_account_create_transaction = @import("account/account_create.zig").new_account_create_transaction;
-pub const newAccountCreateTransaction = @import("account/account_create.zig").new_account_create_transaction;
+pub const newAccountCreateTransaction = @import("account/account_create.zig").newAccountCreateTransaction;
 pub const newAccountDeleteTransaction = @import("account/account_delete.zig").newAccountDeleteTransaction;
 pub const newTokenCreateTransaction = @import("token/token_create.zig").newTokenCreateTransaction;
 pub const newTokenUpdateTransaction = @import("token/token_update.zig").newTokenUpdateTransaction;

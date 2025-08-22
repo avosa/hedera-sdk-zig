@@ -47,7 +47,7 @@ pub const PrivateKey = struct {
     }
     
     // Match Go SDK's GeneratePrivateKey (defaults to Ed25519)
-    pub fn generate_private_key(allocator: std.mem.Allocator) !PrivateKey {
+    pub fn generatePrivateKey(allocator: std.mem.Allocator) !PrivateKey {
         return generateEd25519(allocator);
     }
     
@@ -77,7 +77,7 @@ pub const PrivateKey = struct {
     }
     
     // Match Go SDK's PrivateKeyFromString naming pattern
-    pub fn private_key_from_string(allocator: std.mem.Allocator, key_str: []const u8) !PrivateKey {
+    pub fn privateKeyFromString(allocator: std.mem.Allocator, key_str: []const u8) !PrivateKey {
         return fromString(allocator, key_str);
     }
     

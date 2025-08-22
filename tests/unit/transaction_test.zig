@@ -124,10 +124,11 @@ test "Transaction freeze and sign" {
     
     // Set operator
     const operator_id = hedera.AccountId.init(0, 0, 1001);
-    var operator_key = try hedera.generate_private_key(allocator);
+    var operator_key = try hedera.generatePrivateKey(allocator);
     defer operator_key.deinit();
     
-    _ = try client.set_operator(operator_id, operator_key);
+    const op_key = try operator_key.toOperatorKey();
+    _ = client.setOperator(operator_id, op_key);
     
     // Create transaction
     var tx = hedera.TransferTransaction.init(allocator);
@@ -166,13 +167,13 @@ test "Transaction signature map" {
     _ = try tx.addHbarTransfer(account2, try hedera.Hbar.from(10));
     
     // Generate multiple signers
-    var key1 = try hedera.generate_private_key(allocator);
+    var key1 = try hedera.generatePrivateKey(allocator);
     defer key1.deinit();
     
-    var key2 = try hedera.generate_private_key(allocator);
+    var key2 = try hedera.generatePrivateKey(allocator);
     defer key2.deinit();
     
-    var key3 = try hedera.generate_private_key(allocator);
+    var key3 = try hedera.generatePrivateKey(allocator);
     defer key3.deinit();
     
     // Freeze transaction before signing
@@ -461,14 +462,14 @@ test "Transaction builder pattern" {
     const allocator = arena.allocator();
     
     // Test method chaining with account create transaction
-    var tx = hedera.new_account_create_transaction(allocator);
+    var tx = hedera.newAccountCreateTransaction(allocator);
     defer tx.deinit();
     
-    var key = try hedera.generate_private_key(allocator);
+    var key = try hedera.generatePrivateKey(allocator);
     defer key.deinit();
     
     // Chain methods
-    _ = try tx.set_key_without_alias(hedera.Key.fromPublicKey(key.getPublicKey()));
+    _ = tx.setKey(hedera.Key.fromPublicKey(key.getPublicKey()));
     _ = tx.setInitialBalance(try hedera.Hbar.from(100));
     _ = tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
     _ = tx.setAccountMemo("Test account");

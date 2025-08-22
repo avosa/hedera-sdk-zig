@@ -18,25 +18,25 @@ test "Token create transaction" {
     _ = tx.setTreasuryAccountId(hedera.AccountId.init(0, 0, 100));
     
     // Generate keys
-    var admin_key = try hedera.generate_private_key(allocator);
+    var admin_key = try hedera.generatePrivateKey(allocator);
     defer admin_key.deinit();
     
-    var supply_key = try hedera.generate_private_key(allocator);
+    var supply_key = try hedera.generatePrivateKey(allocator);
     defer supply_key.deinit();
     
-    var freeze_key = try hedera.generate_private_key(allocator);
+    var freeze_key = try hedera.generatePrivateKey(allocator);
     defer freeze_key.deinit();
     
-    var wipe_key = try hedera.generate_private_key(allocator);
+    var wipe_key = try hedera.generatePrivateKey(allocator);
     defer wipe_key.deinit();
     
-    var kyc_key = try hedera.generate_private_key(allocator);
+    var kyc_key = try hedera.generatePrivateKey(allocator);
     defer kyc_key.deinit();
     
-    var pause_key = try hedera.generate_private_key(allocator);
+    var pause_key = try hedera.generatePrivateKey(allocator);
     defer pause_key.deinit();
     
-    var fee_schedule_key = try hedera.generate_private_key(allocator);
+    var fee_schedule_key = try hedera.generatePrivateKey(allocator);
     defer fee_schedule_key.deinit();
     
     // Set keys
@@ -115,7 +115,7 @@ test "Token update transaction" {
     _ = tx.setTreasury(hedera.AccountId.init(0, 0, 500));
     
     // Generate new admin key
-    var new_admin_key = try hedera.generate_private_key(allocator);
+    var new_admin_key = try hedera.generatePrivateKey(allocator);
     defer new_admin_key.deinit();
     _ = tx.setAdminKey(hedera.Key.fromPublicKey(new_admin_key.getPublicKey()));
     
@@ -386,7 +386,7 @@ test "Token info structure" {
     info.treasury = hedera.AccountId.init(0, 0, 1400);
     
     // Set keys
-    var admin_key = try hedera.generate_private_key(allocator);
+    var admin_key = try hedera.generatePrivateKey(allocator);
     defer admin_key.deinit();
     info.admin_key = hedera.Key.fromPublicKey(admin_key.getPublicKey());
     

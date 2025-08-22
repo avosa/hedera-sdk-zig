@@ -13,12 +13,25 @@ The **FIRST** and **ONLY** Hedera SDK implementation in Zig, providing 100% feat
 
 ## 📦 Installation
 
+### Option 1: Using `zig fetch` (Recommended)
+
+Run this command in your project directory:
+```bash
+zig fetch --save https://github.com/avosa/hedera-sdk-zig/archive/refs/heads/main.tar.gz
+```
+
+This will automatically add the dependency to your `build.zig.zon` with the correct hash.
+
+### Option 2: Manual Configuration
+
 Add to your `build.zig.zon`:
 
 ```zig
 .dependencies = .{
     .hedera = .{
-        .path = "path/to/hedera-sdk-zig",
+        .url = "https://github.com/avosa/hedera-sdk-zig/archive/refs/heads/main.tar.gz",
+        // Replace with actual hash from zig fetch command
+        .hash = "12200000000000000000000000000000000000000000000000000000000000000000",
     },
 },
 ```

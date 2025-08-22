@@ -15,10 +15,10 @@ test "File create transaction" {
     _ = tx.setContents(contents);
     
     // Generate keys
-    var key1 = try hedera.generate_private_key(allocator);
+    var key1 = try hedera.generatePrivateKey(allocator);
     defer key1.deinit();
     
-    var key2 = try hedera.generate_private_key(allocator);
+    var key2 = try hedera.generatePrivateKey(allocator);
     defer key2.deinit();
     
     // Create key list
@@ -91,7 +91,7 @@ test "File update transaction" {
     _ = try tx.setContents(new_contents);
     
     // Update keys
-    var new_key = try hedera.generate_private_key(allocator);
+    var new_key = try hedera.generatePrivateKey(allocator);
     defer new_key.deinit();
     _ = try tx.setKeys(hedera.Key.fromPublicKey(new_key.getPublicKey()));
     
@@ -139,10 +139,10 @@ test "File info structure" {
     info.deleted = false;
     
     // Set keys
-    var key1 = try hedera.generate_private_key(allocator);
+    var key1 = try hedera.generatePrivateKey(allocator);
     defer key1.deinit();
     
-    var key2 = try hedera.generate_private_key(allocator);
+    var key2 = try hedera.generatePrivateKey(allocator);
     defer key2.deinit();
     
     var key_list = hedera.KeyList.init(allocator);
@@ -295,10 +295,10 @@ test "File key requirements" {
     _ = tx.setFileId(file_id);
     
     // Create complex key structure
-    var admin_key = try hedera.generate_private_key(allocator);
+    var admin_key = try hedera.generatePrivateKey(allocator);
     defer admin_key.deinit();
     
-    var wipe_key = try hedera.generate_private_key(allocator);
+    var wipe_key = try hedera.generatePrivateKey(allocator);
     defer wipe_key.deinit();
     
     // Create threshold key
@@ -310,7 +310,7 @@ test "File key requirements" {
     try threshold_key.add(hedera.Key.fromPublicKey(wipe_key.getPublicKey()));
     
     // Add third key
-    var third_key = try hedera.generate_private_key(allocator);
+    var third_key = try hedera.generatePrivateKey(allocator);
     defer third_key.deinit();
     try threshold_key.add(hedera.Key.fromPublicKey(third_key.getPublicKey()));
     

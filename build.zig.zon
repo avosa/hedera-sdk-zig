@@ -1,0 +1,14 @@
+.{
+    .name = .hedera,
+    .version = "0.1.0",
+    .fingerprint = 0xd953f78c46b2c325,
+    .minimum_zig_version = "0.14.0",
+    .dependencies = .{},
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "README.md",
+        "LICENSE",
+    },
+}

@@ -8,7 +8,7 @@ test "Ed25519 private key generation" {
     const allocator = arena.allocator();
     
     // Generate new key
-    var key = try hedera.generate_private_key(allocator);
+    var key = try hedera.generatePrivateKey(allocator);
     defer key.deinit();
     
     // Verify key length
@@ -26,7 +26,7 @@ test "Ed25519 private key generation" {
     try testing.expect(key_str.len > 0);
     
     // Test parsing from string
-    var parsed_key = try hedera.private_key_from_string(allocator, key_str);
+    var parsed_key = try hedera.privateKeyFromString(allocator, key_str);
     defer parsed_key.deinit();
     
     const parsed_bytes = parsed_key.toBytes();
@@ -39,7 +39,7 @@ test "Ed25519 key signing and verification" {
     const allocator = arena.allocator();
     
     // Generate key pair
-    var private_key = try hedera.generate_private_key(allocator);
+    var private_key = try hedera.generatePrivateKey(allocator);
     defer private_key.deinit();
     
     const public_key = private_key.getPublicKey();
@@ -153,7 +153,7 @@ test "Key derivation with index" {
     defer arena.deinit();
     const allocator = arena.allocator();
     
-    var root_key = try hedera.generate_private_key(allocator);
+    var root_key = try hedera.generatePrivateKey(allocator);
     defer root_key.deinit();
     
     // Derive child keys
@@ -201,15 +201,15 @@ test "Key list creation and management" {
     key_list.threshold = 2;
     
     // Add keys
-    var key1 = try hedera.generate_private_key(allocator);
+    var key1 = try hedera.generatePrivateKey(allocator);
     defer key1.deinit();
     try key_list.add(hedera.Key.fromPublicKey(key1.getPublicKey()));
     
-    var key2 = try hedera.generate_private_key(allocator);
+    var key2 = try hedera.generatePrivateKey(allocator);
     defer key2.deinit();
     try key_list.add(hedera.Key.fromPublicKey(key2.getPublicKey()));
     
-    var key3 = try hedera.generate_private_key(allocator);
+    var key3 = try hedera.generatePrivateKey(allocator);
     defer key3.deinit();
     try key_list.add(hedera.Key.fromPublicKey(key3.getPublicKey()));
     
@@ -247,7 +247,7 @@ test "Key serialization to protobuf" {
     const allocator = arena.allocator();
     
     // Generate a key
-    var private_key = try hedera.generate_private_key(allocator);
+    var private_key = try hedera.generatePrivateKey(allocator);
     defer private_key.deinit();
     
     const public_key = private_key.getPublicKey();
@@ -282,10 +282,10 @@ test "Transaction signing with multiple keys" {
     _ = try tx.addHbarTransfer(account2, try hedera.Hbar.from(10));
     
     // Generate multiple signers
-    var signer1 = try hedera.generate_private_key(allocator);
+    var signer1 = try hedera.generatePrivateKey(allocator);
     defer signer1.deinit();
     
-    var signer2 = try hedera.generate_private_key(allocator);
+    var signer2 = try hedera.generatePrivateKey(allocator);
     defer signer2.deinit();
     
     // Freeze transaction before signing
@@ -325,10 +325,10 @@ test "Key equality comparison" {
     const allocator = arena.allocator();
     
     // Generate two keys
-    var key1 = try hedera.generate_private_key(allocator);
+    var key1 = try hedera.generatePrivateKey(allocator);
     defer key1.deinit();
     
-    var key2 = try hedera.generate_private_key(allocator);
+    var key2 = try hedera.generatePrivateKey(allocator);
     defer key2.deinit();
     
     const public1 = key1.getPublicKey();
@@ -361,7 +361,7 @@ test "Freeze transaction with key" {
     _ = freeze_tx.setFreezeType(.freeze_only);
     
     // Generate freeze key
-    var freeze_key = try hedera.generate_private_key(allocator);
+    var freeze_key = try hedera.generatePrivateKey(allocator);
     defer freeze_key.deinit();
     
     // Freeze transaction before signing

@@ -68,11 +68,6 @@ pub const TransactionResponse = struct {
         return try self.getReceiptQuery(client).execute(client);
     }
     
-    // Match Go SDK's GetReceipt naming
-    pub fn get_receipt(self: *const Self, client: *Client) !TransactionReceipt {
-        return self.getReceipt(client);
-    }
-    
     pub fn getReceiptAsync(self: *const Self, client: *Client) !TransactionReceipt {
         return try self.getReceiptQuery(client)
             .setValidateStatus(self.validate_status)

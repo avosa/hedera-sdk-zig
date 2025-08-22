@@ -159,7 +159,7 @@ pub const AccountId = struct {
     }
     
     // Match Go SDK's AccountIDFromString naming pattern
-    pub fn account_id_from_string(allocator: std.mem.Allocator, str: []const u8) !AccountId {
+    pub fn accountIdFromString(allocator: std.mem.Allocator, str: []const u8) !AccountId {
         return fromString(allocator, str);
     }
     
