@@ -174,9 +174,9 @@ pub const AccountAllowanceApproveTransaction = struct {
             if (hbar.owner) |owner| {
                 var owner_writer = ProtoWriter.init(self.base.allocator);
                 defer owner_writer.deinit();
-                try owner_writer.writeInt64(1, @intCast(owner.entity.shard));
-                try owner_writer.writeInt64(2, @intCast(owner.entity.realm));
-                try owner_writer.writeInt64(3, @intCast(owner.entity.num));
+                try owner_writer.writeInt64(1, @intCast(owner.shard));
+                try owner_writer.writeInt64(2, @intCast(owner.realm));
+                try owner_writer.writeInt64(3, @intCast(owner.account));
                 const owner_bytes = try owner_writer.toOwnedSlice();
                 defer self.base.allocator.free(owner_bytes);
                 try hbar_writer.writeMessage(1, owner_bytes);
@@ -185,9 +185,9 @@ pub const AccountAllowanceApproveTransaction = struct {
             // spender = 2
             var spender_writer = ProtoWriter.init(self.base.allocator);
             defer spender_writer.deinit();
-            try spender_writer.writeInt64(1, @intCast(hbar.spender.entity.shard));
-            try spender_writer.writeInt64(2, @intCast(hbar.spender.entity.realm));
-            try spender_writer.writeInt64(3, @intCast(hbar.spender.entity.num));
+            try spender_writer.writeInt64(1, @intCast(hbar.spender.shard));
+            try spender_writer.writeInt64(2, @intCast(hbar.spender.realm));
+            try spender_writer.writeInt64(3, @intCast(hbar.spender.account));
             const spender_bytes = try spender_writer.toOwnedSlice();
             defer self.base.allocator.free(spender_bytes);
             try hbar_writer.writeMessage(2, spender_bytes);
@@ -208,9 +208,9 @@ pub const AccountAllowanceApproveTransaction = struct {
             // tokenId = 1
             var token_id_writer = ProtoWriter.init(self.base.allocator);
             defer token_id_writer.deinit();
-            try token_id_writer.writeInt64(1, @intCast(token.token_id.entity.shard));
-            try token_id_writer.writeInt64(2, @intCast(token.token_id.entity.realm));
-            try token_id_writer.writeInt64(3, @intCast(token.token_id.entity.num));
+            try token_id_writer.writeInt64(1, @intCast(token.token_id.shard));
+            try token_id_writer.writeInt64(2, @intCast(token.token_id.realm));
+            try token_id_writer.writeInt64(3, @intCast(token.token_id.num));
             const token_id_bytes = try token_id_writer.toOwnedSlice();
             defer self.base.allocator.free(token_id_bytes);
             try token_writer.writeMessage(1, token_id_bytes);
@@ -219,9 +219,9 @@ pub const AccountAllowanceApproveTransaction = struct {
             if (token.owner) |owner| {
                 var owner_writer = ProtoWriter.init(self.base.allocator);
                 defer owner_writer.deinit();
-                try owner_writer.writeInt64(1, @intCast(owner.entity.shard));
-                try owner_writer.writeInt64(2, @intCast(owner.entity.realm));
-                try owner_writer.writeInt64(3, @intCast(owner.entity.num));
+                try owner_writer.writeInt64(1, @intCast(owner.shard));
+                try owner_writer.writeInt64(2, @intCast(owner.realm));
+                try owner_writer.writeInt64(3, @intCast(owner.account));
                 const owner_bytes = try owner_writer.toOwnedSlice();
                 defer self.base.allocator.free(owner_bytes);
                 try token_writer.writeMessage(2, owner_bytes);
@@ -230,9 +230,9 @@ pub const AccountAllowanceApproveTransaction = struct {
             // spender = 3
             var spender_writer = ProtoWriter.init(self.base.allocator);
             defer spender_writer.deinit();
-            try spender_writer.writeInt64(1, @intCast(token.spender.entity.shard));
-            try spender_writer.writeInt64(2, @intCast(token.spender.entity.realm));
-            try spender_writer.writeInt64(3, @intCast(token.spender.entity.num));
+            try spender_writer.writeInt64(1, @intCast(token.spender.shard));
+            try spender_writer.writeInt64(2, @intCast(token.spender.realm));
+            try spender_writer.writeInt64(3, @intCast(token.spender.account));
             const spender_bytes = try spender_writer.toOwnedSlice();
             defer self.base.allocator.free(spender_bytes);
             try token_writer.writeMessage(3, spender_bytes);
@@ -253,9 +253,9 @@ pub const AccountAllowanceApproveTransaction = struct {
             // tokenId = 1
             var token_id_writer = ProtoWriter.init(self.base.allocator);
             defer token_id_writer.deinit();
-            try token_id_writer.writeInt64(1, @intCast(nft.token_id.entity.shard));
-            try token_id_writer.writeInt64(2, @intCast(nft.token_id.entity.realm));
-            try token_id_writer.writeInt64(3, @intCast(nft.token_id.entity.num));
+            try token_id_writer.writeInt64(1, @intCast(nft.token_id.shard));
+            try token_id_writer.writeInt64(2, @intCast(nft.token_id.realm));
+            try token_id_writer.writeInt64(3, @intCast(nft.token_id.num));
             const token_id_bytes = try token_id_writer.toOwnedSlice();
             defer self.base.allocator.free(token_id_bytes);
             try nft_writer.writeMessage(1, token_id_bytes);
@@ -264,9 +264,9 @@ pub const AccountAllowanceApproveTransaction = struct {
             if (nft.owner) |owner| {
                 var owner_writer = ProtoWriter.init(self.base.allocator);
                 defer owner_writer.deinit();
-                try owner_writer.writeInt64(1, @intCast(owner.entity.shard));
-                try owner_writer.writeInt64(2, @intCast(owner.entity.realm));
-                try owner_writer.writeInt64(3, @intCast(owner.entity.num));
+                try owner_writer.writeInt64(1, @intCast(owner.shard));
+                try owner_writer.writeInt64(2, @intCast(owner.realm));
+                try owner_writer.writeInt64(3, @intCast(owner.account));
                 const owner_bytes = try owner_writer.toOwnedSlice();
                 defer self.base.allocator.free(owner_bytes);
                 try nft_writer.writeMessage(2, owner_bytes);
@@ -276,9 +276,9 @@ pub const AccountAllowanceApproveTransaction = struct {
             if (nft.spender) |spender| {
                 var spender_writer = ProtoWriter.init(self.base.allocator);
                 defer spender_writer.deinit();
-                try spender_writer.writeInt64(1, @intCast(spender.entity.shard));
-                try spender_writer.writeInt64(2, @intCast(spender.entity.realm));
-                try spender_writer.writeInt64(3, @intCast(spender.entity.num));
+                try spender_writer.writeInt64(1, @intCast(spender.shard));
+                try spender_writer.writeInt64(2, @intCast(spender.realm));
+                try spender_writer.writeInt64(3, @intCast(spender.account));
                 const spender_bytes = try spender_writer.toOwnedSlice();
                 defer self.base.allocator.free(spender_bytes);
                 try nft_writer.writeMessage(3, spender_bytes);
@@ -293,9 +293,9 @@ pub const AccountAllowanceApproveTransaction = struct {
             if (nft.approved_for_all) |approved| {
                 var approved_writer = ProtoWriter.init(self.base.allocator);
                 defer approved_writer.deinit();
-                try approved_writer.writeInt64(1, @intCast(approved.entity.shard));
-                try approved_writer.writeInt64(2, @intCast(approved.entity.realm));
-                try approved_writer.writeInt64(3, @intCast(approved.entity.num));
+                try approved_writer.writeInt64(1, @intCast(approved.shard));
+                try approved_writer.writeInt64(2, @intCast(approved.realm));
+                try approved_writer.writeInt64(3, @intCast(approved.account));
                 const approved_bytes = try approved_writer.toOwnedSlice();
                 defer self.base.allocator.free(approved_bytes);
                 try nft_writer.writeMessage(5, approved_bytes);
@@ -305,9 +305,9 @@ pub const AccountAllowanceApproveTransaction = struct {
             if (nft.delegating_spender) |delegating| {
                 var delegating_writer = ProtoWriter.init(self.base.allocator);
                 defer delegating_writer.deinit();
-                try delegating_writer.writeInt64(1, @intCast(delegating.entity.shard));
-                try delegating_writer.writeInt64(2, @intCast(delegating.entity.realm));
-                try delegating_writer.writeInt64(3, @intCast(delegating.entity.num));
+                try delegating_writer.writeInt64(1, @intCast(delegating.shard));
+                try delegating_writer.writeInt64(2, @intCast(delegating.realm));
+                try delegating_writer.writeInt64(3, @intCast(delegating.account));
                 const delegating_bytes = try delegating_writer.toOwnedSlice();
                 defer self.base.allocator.free(delegating_bytes);
                 try nft_writer.writeMessage(6, delegating_bytes);

@@ -11,23 +11,23 @@ test "Transaction base functionality" {
     // Test initial state
     try testing.expect(!transaction.frozen);
     try testing.expect(transaction.transaction_id == null);
-    try testing.expect(transaction.node_account_ids.items.len == 0);
+    try testing.expect(transaction.node_delete_account_ids.items.len == 0);
     try testing.expect(transaction.max_transaction_fee == null);
     
     // Test setting transaction memo
-    try transaction.setTransactionMemo("Test transaction memo");
+    _ = transaction.setTransactionMemo("Test transaction memo");
     try testing.expectEqualStrings("Test transaction memo", transaction.transaction_memo);
     
     // Test setting node account IDs
-    try transaction.addNodeAccountId(hedera.AccountId.init(0, 0, 3));
-    try transaction.addNodeAccountId(hedera.AccountId.init(0, 0, 4));
+    _ = transaction.addNodeAccountId(hedera.AccountId.init(0, 0, 3));
+    _ = transaction.addNodeAccountId(hedera.AccountId.init(0, 0, 4));
     
-    try testing.expectEqual(@as(usize, 2), transaction.node_account_ids.items.len);
-    try testing.expect(transaction.node_account_ids.items[0].equals(hedera.AccountId.init(0, 0, 3)));
-    try testing.expect(transaction.node_account_ids.items[1].equals(hedera.AccountId.init(0, 0, 4)));
+    try testing.expectEqual(@as(usize, 2), transaction.node_delete_account_ids.items.len);
+    try testing.expect(transaction.node_delete_account_ids.items[0].equals(hedera.AccountId.init(0, 0, 3)));
+    try testing.expect(transaction.node_delete_account_ids.items[1].equals(hedera.AccountId.init(0, 0, 4)));
     
     // Test setting max transaction fee
-    try transaction.setMaxTransactionFee(hedera.Hbar.from(1));
+    _ = transaction.setMaxTransactionFee(hedera.Hbar.from(1));
     try testing.expect(transaction.max_transaction_fee != null);
     try testing.expectEqual(@as(f64, 1.0), transaction.max_transaction_fee.?.toHbars());
     
@@ -45,11 +45,11 @@ test "Transaction ID generation and setting" {
     const account_id = hedera.AccountId.init(0, 0, 123);
     
     // Test setting transaction ID
-    const tx_id = hedera.TransactionId.generate(account_id);
-    try transaction.setTransactionId(tx_id);
+    const tx_id = hedera.TransactionId.generate(delete_account_id);
+    _ = transaction.setTransactionId(tx_id);
     
     try testing.expect(transaction.transaction_id != null);
-    try testing.expect(transaction.transaction_id.?.account_id.equals(account_id));
+    try testing.expect(transaction.transaction_id.?.account_id.equals(delete_account_id));
     try testing.expect(transaction.transaction_id.?.isValid());
     
     // Test that frozen transactions cannot be modified
@@ -72,9 +72,9 @@ test "Transaction signing" {
     
     // Set up transaction
     const account_id = hedera.AccountId.init(0, 0, 123);
-    const tx_id = hedera.TransactionId.generate(account_id);
-    try transaction.setTransactionId(tx_id);
-    try transaction.addNodeAccountId(hedera.AccountId.init(0, 0, 3));
+    const tx_id = hedera.TransactionId.generate(delete_account_id);
+    _ = transaction.setTransactionId(tx_id);
+    _ = transaction.addNodeAccountId(hedera.AccountId.init(0, 0, 3));
     
     var client = try hedera.Client.forTestnet(allocator);
     defer client.deinit();
@@ -102,8 +102,8 @@ test "Transaction signing" {
     var unsigned_tx = hedera.Transaction.init(allocator);
     defer unsigned_tx.deinit();
     
-    try unsigned_tx.setTransactionId(tx_id);
-    try unsigned_tx.addNodeAccountId(hedera.AccountId.init(0, 0, 3));
+    _ = unsigned_tx.setTransactionId(tx_id);
+    _ = unsigned_tx.addNodeAccountId(hedera.AccountId.init(0, 0, 3));
     unsigned_tx.freezeWith(&client);
     
     // Should have no signatures
@@ -120,12 +120,12 @@ test "AccountCreateTransaction" {
     var key = try hedera.PrivateKey.generateEd25519(allocator);
     defer key.deinit();
     
-    try account_create.setKey(key.getPublicKey());
-    try account_create.setInitialBalance(hedera.Hbar.from(10));
-    try account_create.setAccountMemo("Test account memo");
-    try account_create.setMaxAutomaticTokenAssociations(100);
-    try account_create.setReceiverSignatureRequired(true);
-    try account_create.setAutoRenewPeriod(hedera.Duration.fromDays(90));
+    _ = account_create.setKey(key.getPublicKey());
+    _ = account_create.setInitialBalance(hedera.Hbar.from(10));
+    _ = account_create.setAccountMemo("Test account memo");
+    _ = account_create.setMaxAutomaticTokenAssociations(100);
+    _ = account_create.setReceiverSignatureRequired(true);
+    _ = account_create.setAutoRenewPeriod(hedera.Duration.fromDays(90));
     
     // Verify properties were set
     try testing.expect(account_create.key != null);
@@ -133,7 +133,7 @@ test "AccountCreateTransaction" {
     try testing.expectEqual(@as(f64, 10.0), account_create.initial_balance.?.toHbars());
     try testing.expectEqualStrings("Test account memo", account_create.account_memo);
     try testing.expectEqual(@as(u32, 100), account_create.max_automatic_token_associations.?);
-    try testing.expectEqual(true, account_create.receiver_signature_required.?);
+    try testing.expectEqual(true, account_create.is_receiver_signature_required.?);
     try testing.expectEqual(@as(i64, 7776000), account_create.auto_renew_period.?.seconds); // 90 days
     
     // Test that transaction can be built
@@ -153,8 +153,8 @@ test "TransferTransaction" {
     const account1 = hedera.AccountId.init(0, 0, 123);
     const account2 = hedera.AccountId.init(0, 0, 456);
     
-    try transfer.addHbarTransfer(account1, hedera.Hbar.from(-10));
-    try transfer.addHbarTransfer(account2, hedera.Hbar.from(10));
+    _ = transfer.addHbarTransfer(account1, hedera.Hbar.from(-10));
+    _ = transfer.addHbarTransfer(account2, hedera.Hbar.from(10));
     
     // Verify transfers were added
     try testing.expectEqual(@as(usize, 2), transfer.hbar_transfers.items.len);
@@ -192,8 +192,8 @@ test "TransferTransaction" {
     // Verify NFT transfer was added
     try testing.expectEqual(@as(usize, 1), transfer.nft_transfers.items.len);
     try testing.expect(transfer.nft_transfers.items[0].nft_id.equals(nft_id));
-    try testing.expect(transfer.nft_transfers.items[0].sender_account_id.equals(account1));
-    try testing.expect(transfer.nft_transfers.items[0].receiver_account_id.equals(account2));
+    try testing.expect(transfer.nft_transfers.items[0].sender_delete_account_id.equals(account1));
+    try testing.expect(transfer.nft_transfers.items[0].receiver_delete_account_id.equals(account2));
     
     // Test transaction body building
     const tx_body = try transfer.buildTransactionBody();
@@ -209,37 +209,37 @@ test "TokenCreateTransaction" {
     defer token_create.deinit();
     
     // Test setting token properties
-    try token_create.setTokenName("Test Token");
-    try token_create.setTokenSymbol("TEST");
-    try token_create.setDecimals(8);
-    try token_create.setInitialSupply(1000000);
-    try token_create.setTreasuryAccountId(hedera.AccountId.init(0, 0, 123));
-    try token_create.setTokenType(hedera.TokenType.FungibleCommon);
-    try token_create.setSupplyType(hedera.TokenSupplyType.Finite);
-    try token_create.setMaxSupply(10000000);
-    try token_create.setFreezeDefault(false);
-    try token_create.setTokenMemo("Test token memo");
+    _ = token_create.setTokenName("Test Token");
+    _ = token_create.setTokenSymbol("TEST");
+    _ = token_create.setDecimals(8);
+    _ = token_create.setInitialSupply(1000000);
+    _ = token_create.setTreasuryAccountId(hedera.AccountId.init(0, 0, 123));
+    _ = token_create.setTokenType(hedera.TokenType.FungibleCommon);
+    _ = token_create.setSupplyType(hedera.TokenSupplyType.Finite);
+    _ = token_create.setMaxSupply(10000000);
+    _ = token_create.setFreezeDefault(false);
+    _ = token_create.setTokenMemo("Test token memo");
     
     var admin_key = try hedera.PrivateKey.generateEd25519(allocator);
     defer admin_key.deinit();
     
-    try token_create.setAdminKey(admin_key.getPublicKey());
-    try token_create.setSupplyKey(admin_key.getPublicKey());
-    try token_create.setFreezeKey(admin_key.getPublicKey());
-    try token_create.setWipeKey(admin_key.getPublicKey());
-    try token_create.setKycKey(admin_key.getPublicKey());
-    try token_create.setPauseKey(admin_key.getPublicKey());
+    _ = token_create.setAdminKey(admin_key.getPublicKey());
+    _ = token_create.setSupplyKey(admin_key.getPublicKey());
+    _ = token_create.setFreezeKey(admin_key.getPublicKey());
+    _ = token_create.setWipeKey(admin_key.getPublicKey());
+    _ = token_create.setKycKey(admin_key.getPublicKey());
+    _ = token_create.setPauseKey(admin_key.getPublicKey());
     
-    try token_create.setAutoRenewAccountId(hedera.AccountId.init(0, 0, 123));
-    try token_create.setAutoRenewPeriod(hedera.Duration.fromDays(90));
-    try token_create.setExpirationTime(hedera.Timestamp.fromUnixSeconds(std.time.timestamp() + 7776000));
+    _ = token_create.setAutoRenewAccountId(hedera.AccountId.init(0, 0, 123));
+    _ = token_create.setAutoRenewPeriod(hedera.Duration.fromDays(90));
+    _ = token_create.setExpirationTime(hedera.Timestamp.fromUnixSeconds(std.time.timestamp() + 7776000));
     
     // Verify properties were set
     try testing.expectEqualStrings("Test Token", token_create.token_name);
     try testing.expectEqualStrings("TEST", token_create.token_symbol);
     try testing.expectEqual(@as(u32, 8), token_create.decimals.?);
     try testing.expectEqual(@as(u64, 1000000), token_create.initial_supply.?);
-    try testing.expect(token_create.treasury_account_id != null);
+    try testing.expect(token_create.treasury_delete_account_id != null);
     try testing.expectEqual(hedera.TokenType.FungibleCommon, token_create.token_type.?);
     try testing.expectEqual(hedera.TokenSupplyType.Finite, token_create.supply_type.?);
     try testing.expectEqual(@as(u64, 10000000), token_create.max_supply.?);
@@ -262,18 +262,18 @@ test "ContractCreateTransaction" {
     // Test setting contract properties
     const bytecode = [_]u8{ 0x60, 0x80, 0x60, 0x40, 0x52, 0x34, 0x80, 0x15, 0x61, 0x00, 0x10 };
     
-    try contract_create.setBytecode(&bytecode);
-    try contract_create.setGas(100000);
-    try contract_create.setInitialBalance(hedera.Hbar.from(5));
-    try contract_create.setConstructorParameters(&[_]u8{ 0x00, 0x01, 0x02 });
-    try contract_create.setContractMemo("Test contract memo");
-    try contract_create.setMaxAutomaticTokenAssociations(50);
-    try contract_create.setAutoRenewPeriod(hedera.Duration.fromDays(90));
+    _ = contract_create.setBytecode(&bytecode);
+    _ = contract_create.setGas(100000);
+    _ = contract_create.setInitialBalance(hedera.Hbar.from(5));
+    _ = contract_create.setConstructorParameters(&[_]u8{ 0x00, 0x01, 0x02 });
+    _ = contract_create.setContractMemo("Test contract memo");
+    _ = contract_create.setMaxAutomaticTokenAssociations(50);
+    _ = contract_create.setAutoRenewPeriod(hedera.Duration.fromDays(90));
     
     var admin_key = try hedera.PrivateKey.generateEd25519(allocator);
     defer admin_key.deinit();
     
-    try contract_create.setAdminKey(admin_key.getPublicKey());
+    _ = contract_create.setAdminKey(admin_key.getPublicKey());
     
     // Verify properties were set
     try testing.expectEqualSlices(u8, &bytecode, contract_create.bytecode);
@@ -299,7 +299,7 @@ test "TopicCreateTransaction" {
     defer topic_create.deinit();
     
     // Test setting topic properties
-    try topic_create.setTopicMemo("Test topic memo");
+    _ = topic_create.setTopicMemo("Test topic memo");
     
     var admin_key = try hedera.PrivateKey.generateEd25519(allocator);
     defer admin_key.deinit();
@@ -307,10 +307,10 @@ test "TopicCreateTransaction" {
     var submit_key = try hedera.PrivateKey.generateEcdsa(allocator);
     defer submit_key.deinit();
     
-    try topic_create.setAdminKey(admin_key.getPublicKey());
-    try topic_create.setSubmitKey(submit_key.getPublicKey());
-    try topic_create.setAutoRenewAccountId(hedera.AccountId.init(0, 0, 123));
-    try topic_create.setAutoRenewPeriod(hedera.Duration.fromDays(90));
+    _ = topic_create.setAdminKey(admin_key.getPublicKey());
+    _ = topic_create.setSubmitKey(submit_key.getPublicKey());
+    _ = topic_create.setAutoRenewAccountId(hedera.AccountId.init(0, 0, 123));
+    _ = topic_create.setAutoRenewPeriod(hedera.Duration.fromDays(90));
     
     // Verify properties were set
     try testing.expectEqualStrings("Test topic memo", topic_create.topic_memo);
@@ -337,8 +337,8 @@ test "TopicMessageSubmitTransaction" {
     const topic_id = hedera.TopicId.init(0, 0, 1000);
     const message = "Hello, Hedera Consensus Service! This is a test message.";
     
-    try message_submit.setTopicId(topic_id);
-    try message_submit.setMessage(message);
+    _ = message_submit.setTopicId(topic_id);
+    _ = message_submit.setMessage(message);
     
     // Verify properties were set
     try testing.expect(message_submit.topic_id != null);
@@ -356,8 +356,8 @@ test "TopicMessageSubmitTransaction" {
     var large_message_submit = hedera.TopicMessageSubmitTransaction.init(allocator);
     defer large_message_submit.deinit();
     
-    try large_message_submit.setTopicId(topic_id);
-    try large_message_submit.setMessage(large_message);
+    _ = large_message_submit.setTopicId(topic_id);
+    _ = large_message_submit.setMessage(large_message);
     
     // Should automatically handle chunking
     try testing.expectEqual(@as(usize, 2048), large_message_submit.message.len);
@@ -386,7 +386,7 @@ test "Transaction validation and error handling" {
     var key = try hedera.PrivateKey.generateEd25519(allocator);
     defer key.deinit();
     
-    try account_create.setKey(key.getPublicKey());
+    _ = account_create.setKey(key.getPublicKey());
     
     // Should still fail without operator set on client
     try testing.expectError(error.OperatorRequired, account_create.execute(&client));
@@ -402,8 +402,8 @@ test "Transaction validation and error handling" {
     const account1 = hedera.AccountId.init(0, 0, 123);
     const account2 = hedera.AccountId.init(0, 0, 456);
     
-    try transfer.addHbarTransfer(account1, hedera.Hbar.from(-10));
-    try transfer.addHbarTransfer(account2, hedera.Hbar.from(5)); // Doesn't balance
+    _ = transfer.addHbarTransfer(account1, hedera.Hbar.from(-10));
+    _ = transfer.addHbarTransfer(account2, hedera.Hbar.from(5)); // Doesn't balance
     
     try testing.expectError(error.UnbalancedTransfers, transfer.execute(&client));
     
@@ -428,8 +428,8 @@ test "Transaction fee calculation and estimation" {
     const account1 = hedera.AccountId.init(0, 0, 123);
     const account2 = hedera.AccountId.init(0, 0, 456);
     
-    try transfer.addHbarTransfer(account1, hedera.Hbar.from(-1));
-    try transfer.addHbarTransfer(account2, hedera.Hbar.from(1));
+    _ = transfer.addHbarTransfer(account1, hedera.Hbar.from(-1));
+    _ = transfer.addHbarTransfer(account2, hedera.Hbar.from(1));
     
     // Test fee estimation (basic implementation)
     const estimated_fee = transfer.estimateFee();
@@ -452,7 +452,7 @@ test "Transaction fee calculation and estimation" {
     try testing.expect(complex_estimated_fee.greaterThan(estimated_fee));
     
     // Test setting explicit fee
-    try transfer.setMaxTransactionFee(hedera.Hbar.from(0.1));
+    _ = transfer.setMaxTransactionFee(hedera.Hbar.from(0.1));
     try testing.expect(transfer.base.max_transaction_fee != null);
     try testing.expectEqual(@as(f64, 0.1), transfer.base.max_transaction_fee.?.toHbars());
 }

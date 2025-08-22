@@ -11,11 +11,11 @@ test "Token create transaction" {
     defer tx.deinit();
     
     // Set token properties
-    try tx.setTokenName("Test Token");
-    try tx.setTokenSymbol("TST");
-    try tx.setDecimals(2);
-    try tx.setInitialSupply(1000000);
-    try tx.setTreasuryAccountId(hedera.AccountId.init(0, 0, 100));
+    _ = tx.setTokenName("Test Token");
+    _ = tx.setTokenSymbol("TST");
+    _ = tx.setDecimals(2);
+    _ = tx.setInitialSupply(1000000);
+    _ = tx.setTreasuryAccountId(hedera.AccountId.init(0, 0, 100));
     
     // Generate keys
     var admin_key = try hedera.generate_private_key(allocator);
@@ -40,23 +40,23 @@ test "Token create transaction" {
     defer fee_schedule_key.deinit();
     
     // Set keys
-    try tx.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
-    try tx.setSupplyKey(hedera.Key.fromPublicKey(supply_key.getPublicKey()));
-    try tx.setFreezeKey(hedera.Key.fromPublicKey(freeze_key.getPublicKey()));
-    try tx.setWipeKey(hedera.Key.fromPublicKey(wipe_key.getPublicKey()));
-    try tx.setKycKey(hedera.Key.fromPublicKey(kyc_key.getPublicKey()));
-    try tx.setPauseKey(hedera.Key.fromPublicKey(pause_key.getPublicKey()));
-    try tx.setFeeScheduleKey(hedera.Key.fromPublicKey(fee_schedule_key.getPublicKey()));
+    _ = tx.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
+    _ = tx.setSupplyKey(hedera.Key.fromPublicKey(supply_key.getPublicKey()));
+    _ = tx.setFreezeKey(hedera.Key.fromPublicKey(freeze_key.getPublicKey()));
+    _ = tx.setWipeKey(hedera.Key.fromPublicKey(wipe_key.getPublicKey()));
+    _ = tx.setKycKey(hedera.Key.fromPublicKey(kyc_key.getPublicKey()));
+    _ = tx.setPauseKey(hedera.Key.fromPublicKey(pause_key.getPublicKey()));
+    _ = tx.setFeeScheduleKey(hedera.Key.fromPublicKey(fee_schedule_key.getPublicKey()));
     
     // Set other properties
-    try tx.setTokenMemo("Test token memo");
-    try tx.setTokenType(.fungible_common);
-    try tx.setSupplyType(.infinite);
-    try tx.setMaxSupply(0);
-    try tx.setFreezeDefault(false);
-    try tx.setExpirationTime(hedera.Timestamp.fromSeconds(1234567890));
-    try tx.setAutoRenewAccount(hedera.AccountId.init(0, 0, 200));
-    try tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
+    _ = tx.setTokenMemo("Test token memo");
+    _ = tx.setTokenType(.fungible_common);
+    _ = tx.setSupplyType(.infinite);
+    _ = tx.setMaxSupply(0);
+    _ = tx.setFreezeDefault(false);
+    _ = tx.setExpirationTime(hedera.Timestamp.fromSeconds(1234567890));
+    _ = tx.setAutoRenewAccount(hedera.AccountId.init(0, 0, 200));
+    _ = tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
     
     // Add custom fees
     const fixed_fee = hedera.CustomFee{
@@ -67,7 +67,7 @@ test "Token create transaction" {
         }},
         .all_collectors_are_exempt = false,
     };
-    try tx.addCustomFee(fixed_fee);
+    _ = tx.addCustomFee(fixed_fee);
     
     const fractional_fee = hedera.CustomFee{
         .fee_collector_account_id = hedera.AccountId.init(0, 0, 400),
@@ -82,14 +82,14 @@ test "Token create transaction" {
         }},
         .all_collectors_are_exempt = true,
     };
-    try tx.addCustomFee(fractional_fee);
+    _ = tx.addCustomFee(fractional_fee);
     
     // Verify settings
     try testing.expectEqualStrings("Test Token", tx.name);
     try testing.expectEqualStrings("TST", tx.symbol);
     try testing.expectEqual(@as(u32, 2), tx.decimals);
     try testing.expectEqual(@as(u64, 1000000), tx.initial_supply);
-    try testing.expectEqual(@as(u64, 100), tx.treasury.?.entity.num);
+    try testing.expectEqual(@as(u64, 100), tx.treasury.?.account);
     try testing.expectEqualStrings("Test token memo", tx.memo);
     try testing.expectEqual(hedera.TokenType.fungible_common, tx.token_type);
     try testing.expectEqual(hedera.TokenSupplyType.infinite, tx.supply_type);
@@ -107,29 +107,29 @@ test "Token update transaction" {
     
     // Set token to update
     const token_id = hedera.TokenId.init(0, 0, 1000);
-    try tx.setTokenId(token_id);
+    _ = tx.setTokenId(token_id);
     
     // Update properties
-    try tx.setTokenName("Updated Token");
-    try tx.setTokenSymbol("UPD");
-    try tx.setTreasury(hedera.AccountId.init(0, 0, 500));
+    _ = tx.setTokenName("Updated Token");
+    _ = tx.setTokenSymbol("UPD");
+    _ = tx.setTreasury(hedera.AccountId.init(0, 0, 500));
     
     // Generate new admin key
     var new_admin_key = try hedera.generate_private_key(allocator);
     defer new_admin_key.deinit();
-    try tx.setAdminKey(hedera.Key.fromPublicKey(new_admin_key.getPublicKey()));
+    _ = tx.setAdminKey(hedera.Key.fromPublicKey(new_admin_key.getPublicKey()));
     
     // Update other properties
-    try tx.setTokenMemo("Updated memo");
-    try tx.setExpirationTime(hedera.Timestamp.fromSeconds(2345678901));
-    try tx.setAutoRenewAccount(hedera.AccountId.init(0, 0, 600));
-    try tx.setAutoRenewPeriod(hedera.Duration.fromDays(120));
+    _ = tx.setTokenMemo("Updated memo");
+    _ = tx.setExpirationTime(hedera.Timestamp.fromSeconds(2345678901));
+    _ = tx.setAutoRenewAccount(hedera.AccountId.init(0, 0, 600));
+    _ = tx.setAutoRenewPeriod(hedera.Duration.fromDays(120));
     
     // Verify settings
-    try testing.expectEqual(@as(u64, 1000), tx.token_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 1000), tx.token_id.?.num());
     try testing.expectEqualStrings("Updated Token", tx.name.?);
     try testing.expectEqualStrings("UPD", tx.symbol.?);
-    try testing.expectEqual(@as(u64, 500), tx.treasury.?.entity.num);
+    try testing.expectEqual(@as(u64, 500), tx.treasury.?.account);
     try testing.expectEqualStrings("Updated memo", tx.memo.?);
 }
 
@@ -143,9 +143,9 @@ test "Token delete transaction" {
     
     // Set token to delete
     const token_id = hedera.TokenId.init(0, 0, 2000);
-    try tx.setTokenId(token_id);
+    _ = tx.setTokenId(token_id);
     
-    try testing.expectEqual(@as(u64, 2000), tx.token_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 2000), tx.token_id.?.num());
 }
 
 test "Token mint transaction" {
@@ -158,13 +158,13 @@ test "Token mint transaction" {
     
     // Set token ID
     const token_id = hedera.TokenId.init(0, 0, 3000);
-    try tx.setTokenId(token_id);
+    _ = tx.setTokenId(token_id);
     
     // Either mint fungible tokens OR NFTs, not both
     // Test with fungible token
-    try tx.setAmount(50000);
+    _ = tx.setAmount(50000);
     
-    try testing.expectEqual(@as(u64, 3000), tx.token_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 3000), tx.token_id.?.num());
     try testing.expectEqual(@as(u64, 50000), tx.amount);
 }
 
@@ -178,13 +178,13 @@ test "Token burn transaction" {
     
     // Set token ID
     const token_id = hedera.TokenId.init(0, 0, 4000);
-    try tx.setTokenId(token_id);
+    _ = tx.setTokenId(token_id);
     
     // Either burn fungible tokens OR NFTs, not both
     // Test with fungible token
-    try tx.setAmount(10000);
+    _ = tx.setAmount(10000);
     
-    try testing.expectEqual(@as(u64, 4000), tx.token_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 4000), tx.token_id.?.num());
     try testing.expectEqual(@as(u64, 10000), tx.amount);
 }
 
@@ -200,15 +200,15 @@ test "Token wipe transaction" {
     const token_id = hedera.TokenId.init(0, 0, 5000);
     const account_id = hedera.AccountId.init(0, 0, 700);
     
-    try tx.setTokenId(token_id);
-    try tx.setAccountId(account_id);
+    _ = tx.setTokenId(token_id);
+    _ = tx.setAccountId(account_id);
     
     // Either wipe fungible tokens OR NFTs, not both  
     // Test with fungible token
-    try tx.setAmount(5000);
+    _ = tx.setAmount(5000);
     
-    try testing.expectEqual(@as(u64, 5000), tx.token_id.?.entity.num);
-    try testing.expectEqual(@as(u64, 700), tx.account_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 5000), tx.token_id.?.num());
+    try testing.expectEqual(@as(u64, 700), tx.account_id.?.account);
     try testing.expectEqual(@as(u64, 5000), tx.amount);
 }
 
@@ -224,21 +224,21 @@ test "Token freeze and unfreeze transactions" {
     const token_id = hedera.TokenId.init(0, 0, 6000);
     const account_id = hedera.AccountId.init(0, 0, 800);
     
-    try freeze_tx.setTokenId(token_id);
-    try freeze_tx.setAccountId(account_id);
+    _ = freeze_tx.setTokenId(token_id);
+    _ = freeze_tx.setAccountId(account_id);
     
-    try testing.expectEqual(@as(u64, 6000), freeze_tx.token_id.?.entity.num);
-    try testing.expectEqual(@as(u64, 800), freeze_tx.account_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 6000), freeze_tx.token_id.?.num());
+    try testing.expectEqual(@as(u64, 800), freeze_tx.account_id.?.account);
     
     // Unfreeze transaction
     var unfreeze_tx = hedera.TokenUnfreezeTransaction.init(allocator);
     defer unfreeze_tx.deinit();
     
-    try unfreeze_tx.setTokenId(token_id);
-    try unfreeze_tx.setAccountId(account_id);
+    _ = unfreeze_tx.setTokenId(token_id);
+    _ = unfreeze_tx.setAccountId(account_id);
     
-    try testing.expectEqual(@as(u64, 6000), unfreeze_tx.token_id.?.entity.num);
-    try testing.expectEqual(@as(u64, 800), unfreeze_tx.account_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 6000), unfreeze_tx.token_id.?.num());
+    try testing.expectEqual(@as(u64, 800), unfreeze_tx.account_id.?.account);
 }
 
 test "Token grant and revoke KYC transactions" {
@@ -253,21 +253,21 @@ test "Token grant and revoke KYC transactions" {
     const token_id = hedera.TokenId.init(0, 0, 7000);
     const account_id = hedera.AccountId.init(0, 0, 900);
     
-    try grant_tx.setTokenId(token_id);
-    try grant_tx.setAccountId(account_id);
+    _ = grant_tx.setTokenId(token_id);
+    _ = grant_tx.setAccountId(account_id);
     
-    try testing.expectEqual(@as(u64, 7000), grant_tx.token_id.?.entity.num);
-    try testing.expectEqual(@as(u64, 900), grant_tx.account_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 7000), grant_tx.token_id.?.num());
+    try testing.expectEqual(@as(u64, 900), grant_tx.account_id.?.account);
     
     // Revoke KYC transaction
     var revoke_tx = hedera.TokenRevokeKycTransaction.init(allocator);
     defer revoke_tx.deinit();
     
-    try revoke_tx.setTokenId(token_id);
-    try revoke_tx.setAccountId(account_id);
+    _ = revoke_tx.setTokenId(token_id);
+    _ = revoke_tx.setAccountId(account_id);
     
-    try testing.expectEqual(@as(u64, 7000), revoke_tx.token_id.?.entity.num);
-    try testing.expectEqual(@as(u64, 900), revoke_tx.account_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 7000), revoke_tx.token_id.?.num());
+    try testing.expectEqual(@as(u64, 900), revoke_tx.account_id.?.account);
 }
 
 test "Token associate and dissociate transactions" {
@@ -284,23 +284,23 @@ test "Token associate and dissociate transactions" {
     const token2 = hedera.TokenId.init(0, 0, 8001);
     const token3 = hedera.TokenId.init(0, 0, 8002);
     
-    try associate_tx.setAccountId(account_id);
-    try associate_tx.addTokenId(token1);
-    try associate_tx.addTokenId(token2);
-    try associate_tx.addTokenId(token3);
+    _ = associate_tx.setAccountId(account_id);
+    _ = associate_tx.addTokenId(token1);
+    _ = associate_tx.addTokenId(token2);
+    _ = associate_tx.addTokenId(token3);
     
-    try testing.expectEqual(@as(u64, 1100), associate_tx.account_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 1100), associate_tx.account_id.?.account);
     try testing.expectEqual(@as(usize, 3), associate_tx.token_ids.items.len);
     
     // Dissociate transaction
     var dissociate_tx = hedera.TokenDissociateTransaction.init(allocator);
     defer dissociate_tx.deinit();
     
-    try dissociate_tx.setAccountId(account_id);
-    try dissociate_tx.addTokenId(token1);
-    try dissociate_tx.addTokenId(token2);
+    _ = dissociate_tx.setAccountId(account_id);
+    _ = dissociate_tx.addTokenId(token1);
+    _ = dissociate_tx.addTokenId(token2);
     
-    try testing.expectEqual(@as(u64, 1100), dissociate_tx.account_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 1100), dissociate_tx.account_id.?.account);
     try testing.expectEqual(@as(usize, 2), dissociate_tx.token_ids.items.len);
 }
 
@@ -314,17 +314,17 @@ test "Token pause and unpause transactions" {
     defer pause_tx.deinit();
     
     const token_id = hedera.TokenId.init(0, 0, 9000);
-    try pause_tx.setTokenId(token_id);
+    _ = pause_tx.setTokenId(token_id);
     
-    try testing.expectEqual(@as(u64, 9000), pause_tx.token_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 9000), pause_tx.token_id.?.num());
     
     // Unpause transaction
     var unpause_tx = hedera.TokenUnpauseTransaction.init(allocator);
     defer unpause_tx.deinit();
     
-    try unpause_tx.setTokenId(token_id);
+    _ = unpause_tx.setTokenId(token_id);
     
-    try testing.expectEqual(@as(u64, 9000), unpause_tx.token_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 9000), unpause_tx.token_id.?.num());
 }
 
 test "Token fee schedule update transaction" {
@@ -337,7 +337,7 @@ test "Token fee schedule update transaction" {
     
     // Set token ID
     const token_id = hedera.TokenId.init(0, 0, 10000);
-    try tx.setTokenId(token_id);
+    _ = tx.setTokenId(token_id);
     
     // Add custom fees
     const fixed_fee = hedera.CustomFee{
@@ -348,7 +348,7 @@ test "Token fee schedule update transaction" {
         }},
         .all_collectors_are_exempt = false,
     };
-    try tx.addCustomFee(fixed_fee);
+    _ = tx.addCustomFee(fixed_fee);
     
     var fallback = hedera.CustomFee.FixedFee{
         .amount = 10,
@@ -363,9 +363,9 @@ test "Token fee schedule update transaction" {
         }},
         .all_collectors_are_exempt = false,
     };
-    try tx.addCustomFee(royalty_fee);
+    _ = tx.addCustomFee(royalty_fee);
     
-    try testing.expectEqual(@as(u64, 10000), tx.token_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 10000), tx.token_id.?.num());
     try testing.expectEqual(@as(usize, 2), tx.custom_fees.items.len);
 }
 
@@ -408,12 +408,12 @@ test "Token info structure" {
     info.ledger_id = try allocator.dupe(u8, "mainnet");
     
     // Verify fields
-    try testing.expectEqual(@as(u64, 11000), info.token_id.entity.num);
+    try testing.expectEqual(@as(u64, 11000), info.token_id.num());
     try testing.expectEqualStrings("Test Token", info.name);
     try testing.expectEqualStrings("TST", info.symbol);
     try testing.expectEqual(@as(u32, 8), info.decimals);
     try testing.expectEqual(@as(u64, 1000000000), info.total_supply);
-    try testing.expectEqual(@as(u64, 1400), info.treasury.entity.num);
+    try testing.expectEqual(@as(u64, 1400), info.treasury.num());
     try testing.expectEqual(hedera.TokenType.fungible_common, info.token_type);
     try testing.expectEqual(hedera.TokenSupplyType.finite, info.supply_type);
     try testing.expectEqual(@as(i64, 10000000000), info.max_supply);
@@ -442,12 +442,12 @@ test "NFT info structure" {
     nft_info.spender = hedera.AccountId.init(0, 0, 1700);
     
     // Verify fields
-    try testing.expectEqual(@as(u64, 12000), nft_info.nft_id.token_id.entity.num);
+    try testing.expectEqual(@as(u64, 12000), nft_info.nft_id.token_id.num());
     try testing.expectEqual(@as(u64, 42), nft_info.nft_id.serial_number);
-    try testing.expectEqual(@as(u64, 1600), nft_info.account_id.entity.num);
+    try testing.expectEqual(@as(u64, 1600), nft_info.account_id.account);
     try testing.expectEqualStrings("NFT metadata", nft_info.metadata);
     try testing.expectEqualStrings("mainnet", nft_info.ledger_id);
-    try testing.expectEqual(@as(u64, 1700), nft_info.spender.?.entity.num);
+    try testing.expectEqual(@as(u64, 1700), nft_info.spender.?.num());
 }
 
 test "Token relationship structure" {
@@ -466,7 +466,7 @@ test "Token relationship structure" {
         .allocator = allocator,
     };
     
-    try testing.expectEqual(@as(u64, 13000), relationship.token_id.entity.num);
+    try testing.expectEqual(@as(u64, 13000), relationship.token_id.num());
     try testing.expectEqualStrings("REL", relationship.symbol);
     try testing.expectEqual(@as(u64, 75000), relationship.balance);
     try testing.expectEqual(hedera.TokenKycStatus.granted, relationship.kyc_status);
@@ -474,3 +474,4 @@ test "Token relationship structure" {
     try testing.expectEqual(@as(u32, 6), relationship.decimals);
     try testing.expect(relationship.automatic_association);
 }
+

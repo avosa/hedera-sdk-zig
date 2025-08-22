@@ -85,9 +85,9 @@ pub const TopicMessageQuery = struct {
             "{s}/api/v1/topics/{d}.{d}.{d}/messages?limit={d}&order={s}",
             .{
                 mirror_client.base_url,
-                topic_id.entity.shard,
-                topic_id.entity.realm,
-                topic_id.entity.num,
+                topic_id.shard,
+                topic_id.realm,
+                topic_id.num,
                 self.limit,
                 self.order.toString(),
             }
@@ -103,6 +103,7 @@ pub const TopicMessageQuery = struct {
             );
             self.allocator.free(url);
             url = new_url;
+            return self;
         }
         
         if (self.end_time) |end| {

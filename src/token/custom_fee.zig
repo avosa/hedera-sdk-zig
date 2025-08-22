@@ -42,20 +42,22 @@ pub const CustomFee = union(enum) {
         };
     }
 
-    pub fn setFeeCollectorAccountId(self: *CustomFee, account_id: AccountId) void {
+    pub fn setFeeCollectorAccountId(self: *CustomFee, account_id: AccountId) *CustomFee {
         switch (self.*) {
             .fixed => |*fee| _ = fee.setFeeCollectorAccountId(account_id),
             .fractional => |*fee| _ = fee.setFeeCollectorAccountId(account_id),
             .royalty => |*fee| _ = fee.setFeeCollectorAccountId(account_id),
         }
+        return self;
     }
 
-    pub fn setAllCollectorsAreExempt(self: *CustomFee, exempt: bool) void {
+    pub fn setAllCollectorsAreExempt(self: *CustomFee, exempt: bool) *CustomFee {
         switch (self.*) {
             .fixed => |*fee| _ = fee.setAllCollectorsAreExempt(exempt),
             .fractional => |*fee| _ = fee.setAllCollectorsAreExempt(exempt),
             .royalty => |*fee| _ = fee.setAllCollectorsAreExempt(exempt),
         }
+        return self;
     }
 
     pub fn calculateFee(self: *const CustomFee, transfer_amount: u64, sale_price: ?u64) u64 {

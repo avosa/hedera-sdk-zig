@@ -127,9 +127,9 @@ test "ProtoReader basic operations" {
     defer found_fields.deinit();
     
     while (try reader.nextField()) |field| {
-        try found_fields.put(field.number, true);
+        try found_fields.put(field.num()ber, true);
         
-        switch (field.number) {
+        switch (field.num()ber) {
             1 => {
                 const value = try reader.readInt32();
                 try testing.expectEqual(@as(i32, 42), value);
@@ -189,7 +189,7 @@ test "ProtoReader nested messages" {
     var found_nested = false;
     
     while (try outer_reader.nextField()) |field| {
-        switch (field.number) {
+        switch (field.num()ber) {
             1 => {
                 outer_int = try outer_reader.readInt32();
             },
@@ -200,7 +200,7 @@ test "ProtoReader nested messages" {
                 var inner_reader = hedera.ProtoReader.init(nested_data);
                 
                 while (try inner_reader.nextField()) |inner_field| {
-                    switch (inner_field.number) {
+                    switch (inner_field.num()ber) {
                         1 => {
                             const nested_string = try inner_reader.readString(allocator);
                             defer allocator.free(nested_string);
@@ -267,9 +267,9 @@ test "ProtoWriter/ProtoReader round-trip tests" {
     defer read_fields.deinit();
     
     while (try reader.nextField()) |field| {
-        try read_fields.put(field.number, true);
+        try read_fields.put(field.num()ber, true);
         
-        switch (field.number) {
+        switch (field.num()ber) {
             1 => {
                 const value = try reader.readInt32();
                 try testing.expectEqual(cases.int32_val, value);
@@ -447,7 +447,7 @@ test "Complex protobuf message encoding" {
     var found_memo = false;
     
     while (try transaction_reader.nextField()) |field| {
-        switch (field.number) {
+        switch (field.num()ber) {
             1 => {
                 found_tx_id = true;
                 const tx_id_data = try transaction_reader.readBytes(allocator);

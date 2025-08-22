@@ -87,7 +87,9 @@ pub const Key = union(enum) {
     pub fn fromContractId(contract_id: ContractId) Key {
         return Key{ 
             .contract_id = ContractIdKey{ 
-                .entity = contract_id.entity,
+                .shard = @intCast(contract_id.shard()),
+                .realm = @intCast(contract_id.realm()),
+                .num = @intCast(contract_id.num()),
             },
         };
     }
@@ -95,7 +97,9 @@ pub const Key = union(enum) {
     pub fn fromDelegatableContractId(contract_id: ContractId) Key {
         return Key{ 
             .delegatable_contract_id = DelegatableContractIdKey{ 
-                .entity = contract_id.entity,
+                .shard = @intCast(contract_id.shard()),
+                .realm = @intCast(contract_id.realm()),
+                .num = @intCast(contract_id.num()),
             },
         };
     }
@@ -813,13 +817,15 @@ pub const ThresholdKey = struct {
 
 // ContractId key - contract controls the account
 pub const ContractIdKey = struct {
-    entity: EntityId,
+    shard: i64,
+    realm: i64,
+    num: i64,
     
     pub fn toBytes(self: ContractIdKey, allocator: std.mem.Allocator) ![]u8 {
         const id_str = try std.fmt.allocPrint(allocator, "{d}.{d}.{d}", .{
-            self.entity.shard,
-            self.entity.realm,
-            self.entity.num,
+            self.shard,
+            self.realm,
+            self.num,
         });
         defer allocator.free(id_str);
         
@@ -835,28 +841,30 @@ pub const ContractIdKey = struct {
         // Parse the contract ID from bytes
         // For now, return a default
         return ContractIdKey{
-            .entity = EntityId{ .shard = 0, .realm = 0, .num = 0 },
+            .shard = 0, .realm = 0, .num = 0,
         };
     }
     
     pub fn toString(self: ContractIdKey, allocator: std.mem.Allocator) ![]u8 {
         return std.fmt.allocPrint(allocator, "ContractId({d}.{d}.{d})", .{
-            self.entity.shard,
-            self.entity.realm,
-            self.entity.num,
+            self.shard,
+            self.realm,
+            self.num,
         });
     }
 };
 
 // DelegatableContractId key
 pub const DelegatableContractIdKey = struct {
-    entity: EntityId,
+    shard: i64,
+    realm: i64,
+    num: i64,
     
     pub fn toBytes(self: DelegatableContractIdKey, allocator: std.mem.Allocator) ![]u8 {
         const id_str = try std.fmt.allocPrint(allocator, "{d}.{d}.{d}", .{
-            self.entity.shard,
-            self.entity.realm,
-            self.entity.num,
+            self.shard,
+            self.realm,
+            self.num,
         });
         defer allocator.free(id_str);
         
@@ -872,15 +880,15 @@ pub const DelegatableContractIdKey = struct {
         // Parse the contract ID from bytes
         // For now, return a default
         return DelegatableContractIdKey{
-            .entity = EntityId{ .shard = 0, .realm = 0, .num = 0 },
+            .shard = 0, .realm = 0, .num = 0,
         };
     }
     
     pub fn toString(self: DelegatableContractIdKey, allocator: std.mem.Allocator) ![]u8 {
         return std.fmt.allocPrint(allocator, "DelegatableContractId({d}.{d}.{d})", .{
-            self.entity.shard,
-            self.entity.realm,
-            self.entity.num,
+            self.shard,
+            self.realm,
+            self.num,
         });
     }
 };

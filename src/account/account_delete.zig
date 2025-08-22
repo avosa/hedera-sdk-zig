@@ -6,16 +6,18 @@ const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 
-// AccountDeleteTransaction deletes an account and transfers its balance
+// AccountDeleteTransaction marks an account as deleted, moving all its current hbars to another account.
+// It will remain in the ledger, marked as deleted, until it expires. Transfers into a deleted account fail.
+// But a deleted account can still have its expiration extended in the normal way.
 pub const AccountDeleteTransaction = struct {
     base: Transaction,
-    account_id: ?AccountId,
+    delete_account_id: ?AccountId, // Match Go SDK field name
     transfer_account_id: ?AccountId,
     
     pub fn init(allocator: std.mem.Allocator) AccountDeleteTransaction {
         return AccountDeleteTransaction{
             .base = Transaction.init(allocator),
-            .account_id = null,
+            .delete_account_id = null,
             .transfer_account_id = null,
         };
     }
@@ -24,22 +26,40 @@ pub const AccountDeleteTransaction = struct {
         self.base.deinit();
     }
     
-    // Set the account ID to delete
-    pub fn setAccountId(self: *AccountDeleteTransaction, account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        self.account_id = account_id;
+    // SetAccountID sets the account to delete - matches Go SDK
+    pub fn setAccountId(self: *AccountDeleteTransaction, account_id: AccountId) *AccountDeleteTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        self.delete_account_id = account_id;
+        return self;
     }
     
-    // Set the account to transfer remaining balance to
-    pub fn setTransferAccountId(self: *AccountDeleteTransaction, transfer_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    // GetAccountID returns the account ID which will be deleted
+    pub fn getAccountId(self: *const AccountDeleteTransaction) AccountId {
+        if (self.delete_account_id) |id| {
+            return id;
+        }
+        return AccountId{};
+    }
+    
+    // SetTransferAccountID sets the account to transfer remaining balance to
+    pub fn setTransferAccountId(self: *AccountDeleteTransaction, transfer_id: AccountId) *AccountDeleteTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.transfer_account_id = transfer_id;
+        return self;
+    }
+    
+    // GetTransferAccountID returns the account ID which will receive all remaining hbars
+    pub fn getTransferAccountID(self: *const AccountDeleteTransaction) AccountId {
+        if (self.transfer_account_id) |id| {
+            return id;
+        }
+        return AccountId{};
     }
     
     // Execute the transaction
     pub fn execute(self: *AccountDeleteTransaction, client: *Client) !TransactionResponse {
-        if (self.account_id == null) {
-            return error.AccountIdRequired;
+        if (self.delete_account_id == null) {
+            return error.DeleteAccountIdRequired;
         }
         
         if (self.transfer_account_id == null) {
@@ -62,12 +82,12 @@ pub const AccountDeleteTransaction = struct {
         defer delete_writer.deinit();
         
         // deleteAccountID = 1
-        if (self.account_id) |account| {
+        if (self.delete_account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(account.entity.shard));
-            try account_writer.writeInt64(2, @intCast(account.entity.realm));
-            try account_writer.writeInt64(3, @intCast(account.entity.num));
+            try account_writer.writeInt64(1, @intCast(account.shard));
+            try account_writer.writeInt64(2, @intCast(account.realm));
+            try account_writer.writeInt64(3, @intCast(account.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try delete_writer.writeMessage(1, account_bytes);
@@ -77,9 +97,9 @@ pub const AccountDeleteTransaction = struct {
         if (self.transfer_account_id) |transfer| {
             var transfer_writer = ProtoWriter.init(self.base.allocator);
             defer transfer_writer.deinit();
-            try transfer_writer.writeInt64(1, @intCast(transfer.entity.shard));
-            try transfer_writer.writeInt64(2, @intCast(transfer.entity.realm));
-            try transfer_writer.writeInt64(3, @intCast(transfer.entity.num));
+            try transfer_writer.writeInt64(1, @intCast(transfer.shard));
+            try transfer_writer.writeInt64(2, @intCast(transfer.realm));
+            try transfer_writer.writeInt64(3, @intCast(transfer.account));
             const transfer_bytes = try transfer_writer.toOwnedSlice();
             defer self.base.allocator.free(transfer_bytes);
             try delete_writer.writeMessage(2, transfer_bytes);
@@ -108,9 +128,9 @@ pub const AccountDeleteTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -129,9 +149,9 @@ pub const AccountDeleteTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

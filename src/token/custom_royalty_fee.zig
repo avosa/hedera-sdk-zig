@@ -34,6 +34,7 @@ pub const CustomRoyaltyFee = struct {
             self.denominator = 1;
         } else {
             self.denominator = denominator;
+            return self;
         }
         return self;
     }
@@ -132,9 +133,9 @@ pub const CustomRoyaltyFee = struct {
             var collector_writer = ProtoWriter.init(allocator);
             defer collector_writer.deinit();
             
-            try collector_writer.writeInt64(1, @intCast(collector_id.entity.shard));
-            try collector_writer.writeInt64(2, @intCast(collector_id.entity.realm));
-            try collector_writer.writeInt64(3, @intCast(collector_id.entity.num));
+            try collector_writer.writeInt64(1, @intCast(collector_id.shard));
+            try collector_writer.writeInt64(2, @intCast(collector_id.realm));
+            try collector_writer.writeInt64(3, @intCast(collector_id.account));
             
             const collector_bytes = try collector_writer.toOwnedSlice();
             defer allocator.free(collector_bytes);
@@ -180,13 +181,7 @@ pub const CustomRoyaltyFee = struct {
                         }
                     }
 
-                    fee.fee_collector_account_id = AccountId{
-                        .entity = .{
-                            .shard = shard,
-                            .realm = realm,
-                            .num = num,
-                        },
-                    };
+                    fee.fee_collector_account_id = AccountId.init(@intCast(shard), @intCast(realm), @intCast(num));
                 },
                 4 => fee.all_collectors_are_exempt = try reader.readBool(field.data),
                 else => {},
@@ -257,9 +252,9 @@ pub const CustomRoyaltyFee = struct {
         if (self.fee_collector_account_id != null and other.fee_collector_account_id != null) {
             const self_collector = self.fee_collector_account_id.?;
             const other_collector = other.fee_collector_account_id.?;
-            if (self_collector.entity.shard != other_collector.entity.shard or
-                self_collector.entity.realm != other_collector.entity.realm or
-                self_collector.entity.num != other_collector.entity.num) {
+            if (self_collector.shard != other_collector.shard or
+                self_collector.realm != other_collector.realm or
+                self_collector.account != other_collector.account) {
                 return false;
             }
         }

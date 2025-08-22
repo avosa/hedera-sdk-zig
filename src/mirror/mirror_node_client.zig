@@ -28,7 +28,7 @@ pub const MirrorNodeClient = struct {
         const url = try std.fmt.allocPrint(
             self.allocator,
             "{s}/api/v1/accounts/{d}.{d}.{d}",
-            .{ self.base_url, account_id.entity.shard, account_id.entity.realm, account_id.entity.num }
+            .{ self.base_url, account_id.shard, account_id.realm, account_id.account }
         );
         defer self.allocator.free(url);
         
@@ -43,7 +43,7 @@ pub const MirrorNodeClient = struct {
         const url = try std.fmt.allocPrint(
             self.allocator,
             "{s}/api/v1/balances?account.id={d}.{d}.{d}",
-            .{ self.base_url, account_id.entity.shard, account_id.entity.realm, account_id.entity.num }
+            .{ self.base_url, account_id.shard, account_id.realm, account_id.account }
         );
         defer self.allocator.free(url);
         
@@ -58,7 +58,7 @@ pub const MirrorNodeClient = struct {
         const url = try std.fmt.allocPrint(
             self.allocator,
             "{s}/api/v1/transactions?account.id={d}.{d}.{d}&limit={d}",
-            .{ self.base_url, account_id.entity.shard, account_id.entity.realm, account_id.entity.num, limit orelse 100 }
+            .{ self.base_url, account_id.shard, account_id.realm, account_id.account, limit orelse 100 }
         );
         defer self.allocator.free(url);
         
@@ -75,9 +75,9 @@ pub const MirrorNodeClient = struct {
             "{s}/api/v1/transactions/{d}.{d}.{d}-{d}-{d}",
             .{ 
                 self.base_url,
-                transaction_id.account_id.entity.shard,
-                transaction_id.account_id.entity.realm,
-                transaction_id.account_id.entity.num,
+                transaction_id.account_id.shard,
+                transaction_id.account_id.realm,
+                transaction_id.account_id.account,
                 transaction_id.valid_start.seconds,
                 transaction_id.valid_start.nanos,
             }
@@ -95,7 +95,7 @@ pub const MirrorNodeClient = struct {
         const url = try std.fmt.allocPrint(
             self.allocator,
             "{s}/api/v1/tokens/{d}.{d}.{d}",
-            .{ self.base_url, token_id.entity.shard, token_id.entity.realm, token_id.entity.num }
+            .{ self.base_url, token_id.shard, token_id.realm, token_id.num }
         );
         defer self.allocator.free(url);
         
@@ -110,7 +110,7 @@ pub const MirrorNodeClient = struct {
         const url = try std.fmt.allocPrint(
             self.allocator,
             "{s}/api/v1/tokens/{d}.{d}.{d}/nfts/{d}",
-            .{ self.base_url, token_id.entity.shard, token_id.entity.realm, token_id.entity.num, serial_number }
+            .{ self.base_url, token_id.shard, token_id.realm, token_id.num, serial_number }
         );
         defer self.allocator.free(url);
         

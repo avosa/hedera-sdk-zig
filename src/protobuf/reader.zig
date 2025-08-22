@@ -60,7 +60,6 @@ pub const ProtobufReader = struct {
 
     pub fn readFixed32(self: *Self) !u32 {
         if (self.pos + 4 > self.data.len) return error.UnexpectedEndOfData;
-
         const result = std.mem.readIntLittle(u32, self.data[self.pos..][0..4]);
         self.pos += 4;
         return result;
@@ -68,7 +67,6 @@ pub const ProtobufReader = struct {
 
     pub fn readFixed64(self: *Self) !u64 {
         if (self.pos + 8 > self.data.len) return error.UnexpectedEndOfData;
-
         const result = std.mem.readIntLittle(u64, self.data[self.pos..][0..8]);
         self.pos += 8;
         return result;
@@ -76,7 +74,6 @@ pub const ProtobufReader = struct {
 
     pub fn readBytes(self: *Self, len: usize) ![]const u8 {
         if (self.pos + len > self.data.len) return error.UnexpectedEndOfData;
-
         const result = self.data[self.pos .. self.pos + len];
         self.pos += len;
         return result;
@@ -137,7 +134,7 @@ pub const ProtobufReader = struct {
         return self.pos;
     }
 
-    pub fn setPosition(self: *Self, pos: usize) !void {
+    pub fn setPosition(self: *Self, pos: usize) *Self {
         if (pos > self.data.len) return error.InvalidPosition;
         self.pos = pos;
     }
@@ -212,14 +209,12 @@ pub const ProtobufReader = struct {
 
         pub fn readBytes(self: *FieldSelf, allocator: Allocator) ![]u8 {
             if (self.wire_type != 2) return error.WireTypeMismatch;
-
             const data = try self.reader.readLengthDelimited();
             return try allocator.dupe(u8, data);
         }
 
         pub fn readString(self: *FieldSelf, allocator: Allocator) ![]u8 {
             if (self.wire_type != 2) return error.WireTypeMismatch;
-
             const str = try self.reader.readString();
             return try allocator.dupe(u8, str);
         }

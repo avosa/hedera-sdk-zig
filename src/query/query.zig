@@ -103,31 +103,36 @@ pub const Query = struct {
     }
     
     // Set node account IDs
-    pub fn setNodeAccountIds(self: *Query, node_ids: []const AccountId) !void {
+    pub fn setNodeAccountIds(self: *Query, node_ids: []const AccountId) !*Query {
         self.node_account_ids.clearRetainingCapacity();
         for (node_ids) |id| {
             try self.node_account_ids.append(id);
         }
+        return self;
     }
     
     // Set max query payment
-    pub fn setMaxQueryPayment(self: *Query, amount: Hbar) void {
+    pub fn setMaxQueryPayment(self: *Query, amount: Hbar) *Query {
         self.max_payment_amount = amount;
+        return self;
     }
     
     // Set query payment
-    pub fn setQueryPayment(self: *Query, amount: Hbar) void {
+    pub fn setQueryPayment(self: *Query, amount: Hbar) *Query {
         self.payment_amount = amount;
+        return self;
     }
     
     // Set max retry attempts
-    pub fn setMaxRetry(self: *Query, max_retry: u32) void {
+    pub fn setMaxRetry(self: *Query, max_retry: u32) *Query {
         self.max_attempts = max_retry;
+        return self;
     }
     
     // Set request timeout
-    pub fn setRequestTimeout(self: *Query, timeout_ms: i64) void {
+    pub fn setRequestTimeout(self: *Query, timeout_ms: i64) *Query {
         self.grpc_deadline = timeout_ms;
+        return self;
     }
     
     // Get cost of query
@@ -250,41 +255,47 @@ pub const Query = struct {
     }
     
     // Set response type
-    pub fn setIncludeCostAnswer(self: *Query, include: bool) void {
+    pub fn setIncludeCostAnswer(self: *Query, include: bool) *Query {
         if (include) {
             self.response_type = .CostAnswer;
         } else {
             self.response_type = .AnswerOnly;
         }
+        return self;
     }
     
     // Set state proof requirement
-    pub fn setIncludeStateProof(self: *Query, include: bool) void {
+    pub fn setIncludeStateProof(self: *Query, include: bool) *Query {
         if (include) {
             self.response_type = switch (self.response_type) {
                 .AnswerOnly, .AnswerStateProof => .AnswerStateProof,
                 .CostAnswer, .CostAnswerStateProof => .CostAnswerStateProof,
             };
         }
+        return self;
     }
     
     // Set gRPC deadline
-    pub fn setGrpcDeadline(self: *Query, deadline_ns: i64) void {
+    pub fn setGrpcDeadline(self: *Query, deadline_ns: i64) *Query {
         self.grpc_deadline = deadline_ns;
+        return self;
     }
     
     // Set max attempts
-    pub fn setMaxAttempts(self: *Query, attempts: u32) void {
+    pub fn setMaxAttempts(self: *Query, attempts: u32) *Query {
         self.max_attempts = attempts;
+        return self;
     }
     
     // Set backoff parameters
-    pub fn setMaxBackoff(self: *Query, backoff_ns: i64) void {
+    pub fn setMaxBackoff(self: *Query, backoff_ns: i64) *Query {
         self.max_backoff = backoff_ns;
+        return self;
     }
     
-    pub fn setMinBackoff(self: *Query, backoff_ns: i64) void {
+    pub fn setMinBackoff(self: *Query, backoff_ns: i64) *Query {
         self.min_backoff = backoff_ns;
+        return self;
     }
 };
 

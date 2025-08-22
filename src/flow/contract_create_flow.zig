@@ -56,13 +56,13 @@ pub const ContractCreateFlow = struct {
     }
     
     // Set the bytecode
-    pub fn setBytecode(self: *ContractCreateFlow, bytecode: []const u8) !void {
+    pub fn setBytecode(self: *ContractCreateFlow, bytecode: []const u8) *ContractCreateFlow {
         if (self.bytecode.len > 0) self.allocator.free(self.bytecode);
         self.bytecode = try self.allocator.dupe(u8, bytecode);
     }
     
     // Set bytecode from hex string
-    pub fn setBytecodeWithString(self: *ContractCreateFlow, hex_string: []const u8) !void {
+    pub fn setBytecodeWithString(self: *ContractCreateFlow, hex_string: []const u8) *ContractCreateFlow {
         if (self.bytecode.len > 0) self.allocator.free(self.bytecode);
         
         // Allocate for decoded bytes (half the size of hex string)
@@ -75,6 +75,7 @@ pub const ContractCreateFlow = struct {
             const high = try charToHex(hex_string[i]);
             const low = try charToHex(hex_string[i + 1]);
             decoded[i / 2] = (high << 4) | low;
+            return self;
         }
         
         self.bytecode = decoded;
@@ -90,65 +91,65 @@ pub const ContractCreateFlow = struct {
     }
     
     // Set admin key
-    pub fn setAdminKey(self: *ContractCreateFlow, admin_key: Key) void {
+    pub fn setAdminKey(self: *ContractCreateFlow, admin_key: Key) *ContractCreateFlow {
         self.admin_key = admin_key;
     }
     
     // Set gas
-    pub fn setGas(self: *ContractCreateFlow, gas: i64) void {
+    pub fn setGas(self: *ContractCreateFlow, gas: i64) *ContractCreateFlow {
         self.gas = gas;
     }
     
     // Set initial balance
-    pub fn setInitialBalance(self: *ContractCreateFlow, initial_balance: Hbar) void {
+    pub fn setInitialBalance(self: *ContractCreateFlow, initial_balance: Hbar) *ContractCreateFlow {
         self.initial_balance = initial_balance;
     }
     
     // Set auto renew period
-    pub fn setAutoRenewPeriod(self: *ContractCreateFlow, period: Duration) void {
+    pub fn setAutoRenewPeriod(self: *ContractCreateFlow, period: Duration) *ContractCreateFlow {
         self.auto_renew_period = period;
     }
     
     // Set proxy account ID (deprecated)
-    pub fn setProxyAccountId(self: *ContractCreateFlow, proxy_account_id: AccountId) void {
+    pub fn setProxyAccountId(self: *ContractCreateFlow, proxy_account_id: AccountId) *ContractCreateFlow {
         self.proxy_account_id = proxy_account_id;
     }
     
     // Set constructor parameters
-    pub fn setConstructorParameters(self: *ContractCreateFlow, params: *ContractFunctionParameters) !void {
+    pub fn setConstructorParameters(self: *ContractCreateFlow, params: *ContractFunctionParameters) *ContractCreateFlow {
         if (self.parameters.len > 0) self.allocator.free(self.parameters);
         self.parameters = try params.build(self.allocator);
     }
     
     // Set raw constructor parameters
-    pub fn setConstructorParametersRaw(self: *ContractCreateFlow, params: []const u8) !void {
+    pub fn setConstructorParametersRaw(self: *ContractCreateFlow, params: []const u8) *ContractCreateFlow {
         if (self.parameters.len > 0) self.allocator.free(self.parameters);
         self.parameters = try self.allocator.dupe(u8, params);
     }
     
     // Set contract memo
-    pub fn setContractMemo(self: *ContractCreateFlow, memo: []const u8) !void {
+    pub fn setContractMemo(self: *ContractCreateFlow, memo: []const u8) *ContractCreateFlow {
         if (self.memo.len > 0) self.allocator.free(self.memo);
         self.memo = try self.allocator.dupe(u8, memo);
     }
     
     // Set max chunks
-    pub fn setMaxChunks(self: *ContractCreateFlow, max: u64) void {
+    pub fn setMaxChunks(self: *ContractCreateFlow, max: u64) *ContractCreateFlow {
         self.max_chunks = max;
     }
     
     // Set auto renew account ID
-    pub fn setAutoRenewAccountId(self: *ContractCreateFlow, id: AccountId) void {
+    pub fn setAutoRenewAccountId(self: *ContractCreateFlow, id: AccountId) *ContractCreateFlow {
         self.auto_renew_account_id = id;
     }
     
     // Set max automatic token associations
-    pub fn setMaxAutomaticTokenAssociations(self: *ContractCreateFlow, max: i32) void {
+    pub fn setMaxAutomaticTokenAssociations(self: *ContractCreateFlow, max: i32) *ContractCreateFlow {
         self.max_automatic_token_associations = max;
     }
     
     // Set node account IDs
-    pub fn setNodeAccountIds(self: *ContractCreateFlow, node_ids: []const AccountId) !void {
+    pub fn setNodeAccountIds(self: *ContractCreateFlow, node_ids: []const AccountId) *ContractCreateFlow {
         self.node_account_ids.clearRetainingCapacity();
         try self.node_account_ids.appendSlice(node_ids);
     }
@@ -164,6 +165,7 @@ pub const ContractCreateFlow = struct {
         } else {
             self.create_bytecode = try self.allocator.dupe(u8, self.bytecode);
             self.append_bytecode = &[_]u8{};
+            return self;
         }
     }
     

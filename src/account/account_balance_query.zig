@@ -20,9 +20,9 @@ pub const TokenBalance = struct {
         // tokenId = 1
         var token_writer = ProtoWriter.init(writer.buffer.allocator);
         defer token_writer.deinit();
-        try token_writer.writeInt64(1, @intCast(self.token_id.entity.shard));
-        try token_writer.writeInt64(2, @intCast(self.token_id.entity.realm));
-        try token_writer.writeInt64(3, @intCast(self.token_id.entity.num));
+        try token_writer.writeInt64(1, @intCast(self.token_id.shard));
+        try token_writer.writeInt64(2, @intCast(self.token_id.realm));
+        try token_writer.writeInt64(3, @intCast(self.token_id.num));
         const token_bytes = try token_writer.toOwnedSlice();
         defer writer.buffer.allocator.free(token_bytes);
         try writer.writeMessage(1, token_bytes);
@@ -136,15 +136,17 @@ pub const AccountBalanceQuery = struct {
     }
     
     // Set the account ID to query
-    pub fn setAccountId(self: *AccountBalanceQuery, account_id: AccountId) !void {
+    pub fn setAccountId(self: *AccountBalanceQuery, account_id: AccountId) *AccountBalanceQuery {
         self.contract_id = null; // Clear contract ID when setting account ID
         self.account_id = account_id;
         self.base.is_payment_required = false; // Balance queries are free
+        return self;
     }
     
     // Set max retry attempts (Go SDK compatibility)
-    pub fn setMaxRetry(self: *AccountBalanceQuery, retry_count: u32) void {
+    pub fn setMaxRetry(self: *AccountBalanceQuery, retry_count: u32) *AccountBalanceQuery {
         self.base.max_attempts = retry_count;
+        return self;
     }
     
     // Get max retry attempts (Go SDK compatibility)
@@ -153,15 +155,17 @@ pub const AccountBalanceQuery = struct {
     }
     
     // Set the contract ID to query
-    pub fn setContractId(self: *AccountBalanceQuery, contract_id: ContractId) !void {
+    pub fn setContractId(self: *AccountBalanceQuery, contract_id: ContractId) *AccountBalanceQuery {
         self.account_id = null; // Clear account ID when setting contract ID
         self.contract_id = contract_id;
         self.base.is_payment_required = false; // Balance queries are free
+        return self;
     }
     
     // Set query payment
-    pub fn setQueryPayment(self: *AccountBalanceQuery, amount: Hbar) void {
-        self.base.setQueryPayment(amount);
+    pub fn setQueryPayment(self: *AccountBalanceQuery, amount: Hbar) *AccountBalanceQuery {
+        _ = self.base.setQueryPayment(amount);
+        return self;
     }
     
     // Get query payment (Go SDK compatibility)
@@ -170,19 +174,22 @@ pub const AccountBalanceQuery = struct {
     }
     
     // Set request timeout
-    pub fn setRequestTimeout(self: *AccountBalanceQuery, timeout: Duration) void {
+    pub fn setRequestTimeout(self: *AccountBalanceQuery, timeout: Duration) *AccountBalanceQuery {
         self.request_timeout = timeout;
-        self.base.setRequestTimeout(timeout.toMilliseconds());
+        _ = self.base.setRequestTimeout(timeout.toMilliseconds());
+        return self;
     }
     
     // Set max backoff
-    pub fn setMaxBackoff(self: *AccountBalanceQuery, backoff: Duration) void {
+    pub fn setMaxBackoff(self: *AccountBalanceQuery, backoff: Duration) *AccountBalanceQuery {
         self.max_backoff = backoff;
+        return self;
     }
     
     // Set min backoff
-    pub fn setMinBackoff(self: *AccountBalanceQuery, backoff: Duration) void {
+    pub fn setMinBackoff(self: *AccountBalanceQuery, backoff: Duration) *AccountBalanceQuery {
         self.min_backoff = backoff;
+        return self;
     }
     
     // Execute the query
@@ -228,9 +235,9 @@ pub const AccountBalanceQuery = struct {
             // accountID = 1
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(account.entity.shard));
-            try account_writer.writeInt64(2, @intCast(account.entity.realm));
-            try account_writer.writeInt64(3, @intCast(account.entity.num));
+            try account_writer.writeInt64(1, @intCast(account.shard));
+            try account_writer.writeInt64(2, @intCast(account.realm));
+            try account_writer.writeInt64(3, @intCast(account.account));
             
             if (account.alias_key) |alias| {
                 try account_writer.writeString(4, alias);
@@ -245,9 +252,9 @@ pub const AccountBalanceQuery = struct {
             // contractID = 2
             var contract_writer = ProtoWriter.init(self.base.allocator);
             defer contract_writer.deinit();
-            try contract_writer.writeInt64(1, @intCast(contract.entity.shard));
-            try contract_writer.writeInt64(2, @intCast(contract.entity.realm));
-            try contract_writer.writeInt64(3, @intCast(contract.entity.num));
+            try contract_writer.writeInt64(1, @intCast(contract.shard));
+            try contract_writer.writeInt64(2, @intCast(contract.realm));
+            try contract_writer.writeInt64(3, @intCast(contract.num));
             
             if (contract.evm_address) |evm| {
                 try contract_writer.writeString(4, evm);

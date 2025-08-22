@@ -38,13 +38,13 @@ pub const BatchTransaction = struct {
     
     // Add a transaction to the batch
     pub fn addTransaction(self: *BatchTransaction, transaction: *Transaction) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         try self.transactions.append(transaction);
     }
     
     // Set all transactions in the batch
-    pub fn setTransactions(self: *BatchTransaction, transactions: []*Transaction) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTransactions(self: *BatchTransaction, transactions: []*Transaction) *BatchTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.transactions.clearAndFree();
         try self.transactions.appendSlice(transactions);
     }
@@ -53,6 +53,7 @@ pub const BatchTransaction = struct {
     pub fn sign(self: *BatchTransaction, private_key: Ed25519PrivateKey) !void {
         for (self.transactions.items) |tx| {
             try tx.sign(private_key);
+            return self;
         }
     }
     
@@ -152,9 +153,9 @@ pub const BatchTransaction = struct {
                 // pubKeyPrefix = 1
                 const account_id = entry.key_ptr.*;
                 var prefix: [6]u8 = undefined;
-                std.mem.writeInt(u16, prefix[0..2], @intCast(account_id.entity.shard), .big);
-                std.mem.writeInt(u16, prefix[2..4], @intCast(account_id.entity.realm), .big);
-                std.mem.writeInt(u16, prefix[4..6], @intCast(account_id.entity.num), .big);
+                std.mem.writeInt(u16, prefix[0..2], @intCast(account_id.shard), .big);
+                std.mem.writeInt(u16, prefix[2..4], @intCast(account_id.realm), .big);
+                std.mem.writeInt(u16, prefix[4..6], @intCast(account_id.account), .big);
                 try sig_pair_writer.writeBytes(1, &prefix);
                 
                 // signature = 2

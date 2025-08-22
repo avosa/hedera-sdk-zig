@@ -56,14 +56,14 @@ pub const NodeCreateTransaction = struct {
     }
     
     // Set the account ID for the node
-    pub fn setAccountId(self: *NodeCreateTransaction, account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAccountId(self: *NodeCreateTransaction, account_id: AccountId) *NodeCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.account_id = account_id;
     }
     
     // Set the description
-    pub fn setDescription(self: *NodeCreateTransaction, description: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setDescription(self: *NodeCreateTransaction, description: []const u8) *NodeCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         if (self.description) |old| {
             self.base.allocator.free(old);
         }
@@ -89,8 +89,8 @@ pub const NodeCreateTransaction = struct {
     }
     
     // Set the gossip CA certificate
-    pub fn setGossipCaCertificate(self: *NodeCreateTransaction, certificate: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setGossipCaCertificate(self: *NodeCreateTransaction, certificate: []const u8) *NodeCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         if (self.gossip_ca_certificate) |old| {
             self.base.allocator.free(old);
         }
@@ -98,8 +98,8 @@ pub const NodeCreateTransaction = struct {
     }
     
     // Set the gRPC certificate hash
-    pub fn setGrpcCertificateHash(self: *NodeCreateTransaction, hash: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setGrpcCertificateHash(self: *NodeCreateTransaction, hash: []const u8) *NodeCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         if (self.grpc_certificate_hash) |old| {
             self.base.allocator.free(old);
         }
@@ -107,8 +107,8 @@ pub const NodeCreateTransaction = struct {
     }
     
     // Set the admin key
-    pub fn setAdminKey(self: *NodeCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAdminKey(self: *NodeCreateTransaction, key: Key) *NodeCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.admin_key = key;
     }
     
@@ -133,9 +133,9 @@ pub const NodeCreateTransaction = struct {
         if (self.account_id) |account_id| {
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(account_id.shard));
+            try account_writer.writeInt64(2, @intCast(account_id.realm));
+            try account_writer.writeInt64(3, @intCast(account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try node_writer.writeMessage(1, account_bytes);

@@ -55,12 +55,12 @@ pub const AccountIDProto = struct {
     
     pub fn fromAccountId(id: AccountId) AccountIDProto {
         return AccountIDProto{
-            .shard = @as(i64, @intCast(id.entity.shard)),
-            .realm = @as(i64, @intCast(id.entity.realm)),
+            .shard = @as(i64, @intCast(id.shard)),
+            .realm = @as(i64, @intCast(id.realm)),
             .account = if (id.alias_key) |alias|
                 .{ .alias = alias }
             else
-                .{ .account_num = @as(i64, @intCast(id.entity.num)) },
+                .{ .account_num = @as(i64, @intCast(id.account)) },
         };
     }
     

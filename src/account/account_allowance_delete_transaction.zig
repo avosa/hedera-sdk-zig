@@ -44,8 +44,8 @@ pub const AccountAllowanceDeleteTransaction = struct {
     pub fn deleteNftAllowance(self: *AccountAllowanceDeleteTransaction, nft_id: NftId, owner: AccountId) !void {
         // Check if we already have an entry for this token and owner
         for (self.nft_allowances.items) |*nft| {
-            if (nft.token_id.entity.num == nft_id.token_id.entity.num and
-                nft.owner.entity.num == owner.entity.num) {
+            if (nft.token_id.num == nft_id.token_id.num and
+                nft.owner.account == owner.account) {
                 try nft.serials.append(nft_id.serial_number);
                 return;
             }
@@ -96,9 +96,9 @@ pub const AccountAllowanceDeleteTransaction = struct {
             // tokenId = 1
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(nft.token_id.entity.shard));
-            try token_writer.writeInt64(2, @intCast(nft.token_id.entity.realm));
-            try token_writer.writeInt64(3, @intCast(nft.token_id.entity.num));
+            try token_writer.writeInt64(1, @intCast(nft.token_id.shard));
+            try token_writer.writeInt64(2, @intCast(nft.token_id.realm));
+            try token_writer.writeInt64(3, @intCast(nft.token_id.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try nft_writer.writeMessage(1, token_bytes);
@@ -106,9 +106,9 @@ pub const AccountAllowanceDeleteTransaction = struct {
             // owner = 2
             var owner_writer = ProtoWriter.init(self.base.allocator);
             defer owner_writer.deinit();
-            try owner_writer.writeInt64(1, @intCast(nft.owner.entity.shard));
-            try owner_writer.writeInt64(2, @intCast(nft.owner.entity.realm));
-            try owner_writer.writeInt64(3, @intCast(nft.owner.entity.num));
+            try owner_writer.writeInt64(1, @intCast(nft.owner.shard));
+            try owner_writer.writeInt64(2, @intCast(nft.owner.realm));
+            try owner_writer.writeInt64(3, @intCast(nft.owner.account));
             const owner_bytes = try owner_writer.toOwnedSlice();
             defer self.base.allocator.free(owner_bytes);
             try nft_writer.writeMessage(2, owner_bytes);

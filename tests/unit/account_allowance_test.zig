@@ -1,10 +1,10 @@
 const std = @import("std");
 const testing = std.testing;
 const AccountAllowance = @import("account_allowance.zig").AccountAllowance;
-const AccountId = @import("account_id.zig").AccountId;
-const TokenId = @import("../token/token_id.zig").TokenId;
-const NftId = @import("../token/nft_id.zig").NftId;
-const Hbar = @import("../core/hbar.zig").Hbar;
+const hedera.AccountId = @import("delete_account_id.zig").hedera.AccountId;
+const hedera.TokenId = @import("../token/token_id.zig").hedera.TokenId;
+const hedera.NftId = @import("../token/nft_id.zig").hedera.NftId;
+const hedera.Hbar = @import("../core/hbar.zig").hedera.Hbar;
 
 test "HbarAllowance creation and methods" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
@@ -16,13 +16,13 @@ test "HbarAllowance creation and methods" {
     const amount = try Hbar.from(50);
     
     const allowance = AccountAllowance.HbarAllowance{
-        .owner_account_id = owner,
-        .spender_account_id = spender,
+        .owner_delete_account_id = owner,
+        .spender_delete_account_id = spender,
         .amount = amount,
     };
     
-    try testing.expectEqual(owner.num, allowance.owner_account_id.num);
-    try testing.expectEqual(spender.num, allowance.spender_account_id.num);
+    try testing.expectEqual(owner.num(), allowance.owner_delete_account_id.account);
+    try testing.expectEqual(spender.num(), allowance.spender_delete_account_id.account);
     try testing.expectEqual(amount.tinybar, allowance.amount.tinybar);
     
     // Test serialization
@@ -45,12 +45,12 @@ test "TokenAllowance creation and validation" {
     
     const allowance = AccountAllowance.TokenAllowance{
         .token_id = token,
-        .owner_account_id = owner,
-        .spender_account_id = spender,
+        .owner_delete_account_id = owner,
+        .spender_delete_account_id = spender,
         .amount = 1000,
     };
     
-    try testing.expectEqual(token.num, allowance.token_id.num);
+    try testing.expectEqual(token.num(), allowance.token_id.num());
     try testing.expectEqual(@as(i64, 1000), allowance.amount);
     
     // Test serialization
@@ -75,8 +75,8 @@ test "NftAllowance with approved for all" {
     defer allowance.deinit();
     
     allowance.token_id = token;
-    allowance.owner_account_id = owner;
-    allowance.spender_account_id = spender;
+    allowance.owner_delete_account_id = owner;
+    allowance.spender_delete_account_id = spender;
     allowance.approved_for_all = true;
     
     try allowance.addSerialNumber(1);
@@ -99,10 +99,10 @@ test "AccountAllowance list operations" {
     var list = AccountAllowance.AllowanceList.init(allocator);
     defer list.deinit();
     
-    // Add Hbar allowance
+    // Add hedera.Hbar allowance
     const hbar_allowance = AccountAllowance.HbarAllowance{
-        .owner_account_id = AccountId.init(0, 0, 100),
-        .spender_account_id = AccountId.init(0, 0, 200),
+        .owner_delete_account_id = AccountId.init(0, 0, 100),
+        .spender_delete_account_id = AccountId.init(0, 0, 200),
         .amount = try Hbar.from(50),
     };
     try list.addHbarAllowance(hbar_allowance);
@@ -110,8 +110,8 @@ test "AccountAllowance list operations" {
     // Add Token allowance
     const token_allowance = AccountAllowance.TokenAllowance{
         .token_id = TokenId.init(0, 0, 500),
-        .owner_account_id = AccountId.init(0, 0, 100),
-        .spender_account_id = AccountId.init(0, 0, 200),
+        .owner_delete_account_id = AccountId.init(0, 0, 100),
+        .spender_delete_account_id = AccountId.init(0, 0, 200),
         .amount = 1000,
     };
     try list.addTokenAllowance(token_allowance);
@@ -131,7 +131,7 @@ test "AccountAllowance approval and deletion" {
     const owner = AccountId.init(0, 0, 100);
     const spender = AccountId.init(0, 0, 200);
     
-    // Approve Hbar allowance
+    // Approve hedera.Hbar allowance
     try approval.approveHbarAllowance(owner, spender, try Hbar.from(100));
     
     // Approve token allowance
@@ -152,3 +152,4 @@ test "AccountAllowance approval and deletion" {
     try deletion.deleteAllTokenNftAllowances(token, owner);
     try testing.expectEqual(@as(usize, 1), deletion.nft_deletions.items.len);
 }
+

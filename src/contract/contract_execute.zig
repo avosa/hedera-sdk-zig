@@ -62,7 +62,7 @@ pub const ContractFunctionParameters = struct {
     }
     
     // Sets the function selector for the contract call
-    pub fn setFunction(self: *ContractFunctionParameters, function_name: []const u8) !void {
+    pub fn setFunction(self: *ContractFunctionParameters, function_name: []const u8) *ContractFunctionParameters {
         // Calculate function selector using Keccak256
         var hasher = std.crypto.hash.sha3.Keccak256.init(.{});
         hasher.update(function_name);
@@ -296,50 +296,74 @@ pub const ContractExecuteTransaction = struct {
         self.base.deinit();
     }
     
-    // Set the contract ID
-    pub fn setContractId(self: *ContractExecuteTransaction, contract_id: ContractId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    // SetContractID sets the contract ID to execute
+    pub fn setContractId(self: *ContractExecuteTransaction, contract_id: ContractId) *ContractExecuteTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.contract_id = contract_id;
+        return self;
     }
     
-    // Set gas limit
-    pub fn setGas(self: *ContractExecuteTransaction, gas: i64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        
-        if (gas <= 0) return error.GasMustBePositive;
-        if (gas > MAX_GAS) return error.GasExceedsMaximum;
-        
-        self.gas = gas;
+    // GetContractID returns the contract ID to execute
+    pub fn getContractId(self: *const ContractExecuteTransaction) ContractId {
+        return self.contract_id orelse ContractId{};
     }
     
-    // Set payable amount
-    pub fn setPayableAmount(self: *ContractExecuteTransaction, amount: Hbar) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        
-        if (amount.isNegative()) return error.PayableAmountMustBeNonNegative;
-        
+    // SetGas sets the gas limit for the contract execution
+    pub fn setGas(self: *ContractExecuteTransaction, gas: u64) *ContractExecuteTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
+        self.gas = @intCast(gas);
+        return self;
+    }
+    
+    // GetGas returns the gas limit for the contract execution
+    pub fn getGas(self: *const ContractExecuteTransaction) u64 {
+        return @intCast(self.gas);
+    }
+    
+    // SetPayableAmount sets the amount of Hbar sent with the contract execution
+    pub fn setPayableAmount(self: *ContractExecuteTransaction, amount: Hbar) *ContractExecuteTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.payable_amount = amount;
+        return self;
     }
     
-    // Set function parameters
-    pub fn setFunctionParameters(self: *ContractExecuteTransaction, parameters: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    // GetPayableAmount returns the amount of Hbar sent with the contract execution
+    pub fn getPayableAmount(self: *const ContractExecuteTransaction) Hbar {
+        return self.payable_amount;
+    }
+    
+    // SetFunctionParameters sets the function parameters for the contract execution
+    pub fn setFunctionParameters(self: *ContractExecuteTransaction, parameters: []const u8) *ContractExecuteTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.function_parameters = parameters;
+        return self;
     }
     
-    // Set function with parameters
-    pub fn setFunction(self: *ContractExecuteTransaction, function_name: []const u8, parameters: *ContractFunctionParameters) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    // GetFunctionParameters returns the function parameters for the contract execution
+    pub fn getFunctionParameters(self: *const ContractExecuteTransaction) []const u8 {
+        return self.function_parameters;
+    }
+    
+    // SetFunction sets the function name and parameters for the contract execution
+    pub fn setFunction(self: *ContractExecuteTransaction, function_name: []const u8, parameters: ?*ContractFunctionParameters) *ContractExecuteTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         
-        try parameters.setFunction(function_name);
-        const data = try parameters.build();
+        var params = parameters;
+        if (params == null) {
+            var default_params = ContractFunctionParameters.init(self.base.allocator);
+            params = &default_params;
+        }
+        
+        params.?.setFunction(function_name) catch @panic("failed to set function");
+        const data = params.?.build() catch @panic("failed to build parameters");
         self.function_parameters = data;
+        return self;
     }
     
     // Execute the transaction
     pub fn execute(self: *ContractExecuteTransaction, client: *Client) !TransactionResponse {
         if (self.contract_id == null) {
-            return error.ContractIdRequired;
+            @panic("contract ID is required");
         }
         
         return try self.base.execute(client);
@@ -361,9 +385,9 @@ pub const ContractExecuteTransaction = struct {
         if (self.contract_id) |contract| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
             defer contract_writer.deinit();
-            try contract_writer.writeInt64(1, @intCast(contract.entity.shard));
-            try contract_writer.writeInt64(2, @intCast(contract.entity.realm));
-            try contract_writer.writeInt64(3, @intCast(contract.entity.num));
+            try contract_writer.writeInt64(1, @intCast(contract.shard));
+            try contract_writer.writeInt64(2, @intCast(contract.realm));
+            try contract_writer.writeInt64(3, @intCast(contract.num));
             
             if (contract.evm_address) |evm| {
                 try contract_writer.writeString(4, evm);
@@ -408,9 +432,9 @@ pub const ContractExecuteTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -425,9 +449,9 @@ pub const ContractExecuteTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

@@ -16,9 +16,9 @@ const NetworkMap = struct {
     
     pub fn contains(self: NetworkMap, account_id: AccountId) bool {
         for (self.nodes) |node| {
-            if (node.account_id.entity.shard == account_id.entity.shard and
-                node.account_id.entity.realm == account_id.entity.realm and
-                node.account_id.entity.num == account_id.entity.num) {
+            if (node.account_id.shard == account_id.shard and
+                node.account_id.realm == account_id.realm and
+                node.account_id.account == account_id.account) {
                 return true;
             }
         }
@@ -133,7 +133,7 @@ pub const ConnectionPool = struct {
         self.mutex.lock();
         defer self.mutex.unlock();
         
-        const node_id = node.account_id.entity.num;
+        const node_id = node.account_id.account;
         if (self.connections.get(node_id)) |conn| {
             return conn;
         }
@@ -157,7 +157,7 @@ pub const ConnectionPool = struct {
         self.mutex.lock();
         defer self.mutex.unlock();
         
-        const node_id = node.account_id.entity.num;
+        const node_id = node.account_id.account;
         if (self.connections.fetchRemove(node_id)) |entry| {
             entry.value.deinit();
             self.allocator.destroy(entry.value);
@@ -269,7 +269,7 @@ pub const Client = struct {
         }
     }
     
-    pub fn setOperator(self: *Client, account_id: AccountId, private_key: Operator.PrivateKey) void {
+    pub fn setOperator(self: *Client, account_id: AccountId, private_key: Operator.PrivateKey) *Client {
         self.operator = Operator.fromAccountId(account_id, private_key);
     }
     
@@ -297,7 +297,7 @@ pub const Client = struct {
         return NetworkMap{ .nodes = self.nodes.items };
     }
     
-    pub fn setNetwork(self: *Client, nodes: []const NodeAddress) !void {
+    pub fn setNetwork(self: *Client, nodes: []const NodeAddress) *Client {
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -421,48 +421,55 @@ pub const Client = struct {
         return error.NodeNotFound;
     }
     
-    pub fn setMaxTransactionFee(self: *Client, fee: Hbar) void {
+    pub fn setMaxTransactionFee(self: *Client, fee: Hbar) *Client {
         self.default_max_transaction_fee = fee;
     }
     
-    pub fn setMaxQueryPayment(self: *Client, payment: Hbar) void {
+    pub fn setMaxQueryPayment(self: *Client, payment: Hbar) *Client {
         self.default_max_query_payment = payment;
     }
     
-    pub fn setAutoValidateChecksums(self: *Client, validate: bool) void {
+    pub fn setAutoValidateChecksums(self: *Client, validate: bool) *Client {
         self.auto_validate_checksums = validate;
     }
     
-    pub fn setRegenerateTransactionId(self: *Client, regenerate: bool) void {
+    pub fn setRegenerateTransactionId(self: *Client, regenerate: bool) *Client {
         self.default_regenerate_transaction_id = regenerate;
     }
     
-    pub fn setMaxRetry(self: *Client, max_retry: u32) void {
+    pub fn setMaxRetry(self: *Client, max_retry: u32) *Client {
         self.config.max_attempts = max_retry;
+        return self;
     }
     
-    pub fn setRequestTimeout(self: *Client, timeout_ns: i64) void {
+    pub fn setRequestTimeout(self: *Client, timeout_ns: i64) *Client {
         self.config.request_timeout = timeout_ns;
+        return self;
     }
     
-    pub fn setRequestTimeoutDuration(self: *Client, timeout: Duration) void {
+    pub fn setRequestTimeoutDuration(self: *Client, timeout: Duration) *Client {
         self.config.request_timeout = timeout.toNanoseconds();
+        return self;
     }
     
-    pub fn setMaxBackoff(self: *Client, backoff: Duration) void {
+    pub fn setMaxBackoff(self: *Client, backoff: Duration) *Client {
         self.max_backoff = backoff;
+        return self;
     }
     
-    pub fn setMinBackoff(self: *Client, backoff: Duration) void {
+    pub fn setMinBackoff(self: *Client, backoff: Duration) *Client {
         self.min_backoff = backoff;
+        return self;
     }
     
-    pub fn setMaxNodeAttempts(self: *Client, attempts: u32) void {
+    pub fn setMaxNodeAttempts(self: *Client, attempts: u32) *Client {
         self.max_node_attempts = attempts;
+        return self;
     }
     
-    pub fn setNodeWaitTime(self: *Client, wait_time: Duration) void {
+    pub fn setNodeWaitTime(self: *Client, wait_time: Duration) *Client {
         self.node_wait_time = wait_time;
+        return self;
     }
     
     pub fn close(self: *Client) void {

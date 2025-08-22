@@ -67,13 +67,15 @@ pub const TokenBalanceQuery = struct {
     }
     
     // Set the account ID to query
-    pub fn setAccountId(self: *TokenBalanceQuery, account_id: AccountId) !void {
+    pub fn setAccountId(self: *TokenBalanceQuery, account_id: AccountId) *TokenBalanceQuery {
         self.account_id = account_id;
+        return self;
     }
     
     // Set the token ID to query
-    pub fn setTokenId(self: *TokenBalanceQuery, token_id: TokenId) !void {
+    pub fn setTokenId(self: *TokenBalanceQuery, token_id: TokenId) *TokenBalanceQuery {
         self.token_id = token_id;
+        return self;
     }
     
     // Execute the query
@@ -107,9 +109,9 @@ pub const TokenBalanceQuery = struct {
         if (self.account_id) |id| {
             var id_writer = ProtoWriter.init(self.base.allocator);
             defer id_writer.deinit();
-            try id_writer.writeInt64(1, @intCast(id.entity.shard));
-            try id_writer.writeInt64(2, @intCast(id.entity.realm));
-            try id_writer.writeInt64(3, @intCast(id.entity.num));
+            try id_writer.writeInt64(1, @intCast(id.shard));
+            try id_writer.writeInt64(2, @intCast(id.realm));
+            try id_writer.writeInt64(3, @intCast(id.account));
             const id_bytes = try id_writer.toOwnedSlice();
             defer self.base.allocator.free(id_bytes);
             try balance_writer.writeMessage(1, id_bytes);
@@ -119,9 +121,9 @@ pub const TokenBalanceQuery = struct {
         if (self.token_id) |id| {
             var id_writer = ProtoWriter.init(self.base.allocator);
             defer id_writer.deinit();
-            try id_writer.writeInt64(1, @intCast(id.entity.shard));
-            try id_writer.writeInt64(2, @intCast(id.entity.realm));
-            try id_writer.writeInt64(3, @intCast(id.entity.num));
+            try id_writer.writeInt64(1, @intCast(id.shard));
+            try id_writer.writeInt64(2, @intCast(id.realm));
+            try id_writer.writeInt64(3, @intCast(id.num));
             const id_bytes = try id_writer.toOwnedSlice();
             defer self.base.allocator.free(id_bytes);
             try balance_writer.writeMessage(2, id_bytes);

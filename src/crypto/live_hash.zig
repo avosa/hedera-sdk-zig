@@ -33,9 +33,7 @@ pub const LiveHash = struct {
         if (self.hash.len > 0) {
             self.allocator.free(self.hash);
         }
-        for (self.keys.items) |*key| {
-            key.deinit();
-        }
+        // Keys don't need individual deinit
         self.keys.deinit();
     }
     
@@ -67,40 +65,41 @@ pub const LiveHashAddTransaction = struct {
         if (self.hash.len > 0) {
             self.base.allocator.free(self.hash);
         }
-        for (self.keys.items) |*key| {
-            key.deinit();
-        }
+        // Keys don't need individual deinit
         self.keys.deinit();
     }
     
     // Set the account ID for the live hash
-    pub fn setAccountId(self: *LiveHashAddTransaction, account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAccountId(self: *LiveHashAddTransaction, account_id: AccountId) *LiveHashAddTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.account_id = account_id;
+        return self;
     }
     
     // Set the hash value (must be SHA-384)
-    pub fn setHash(self: *LiveHashAddTransaction, hash: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (hash.len != 48) return error.InvalidHashLength; // SHA-384 hash
+    pub fn setHash(self: *LiveHashAddTransaction, hash: []const u8) !*LiveHashAddTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        if (hash.len != 48) @panic("Invalid hash length - must be SHA-384");
         
         if (self.hash.len > 0) {
             self.base.allocator.free(self.hash);
         }
         self.hash = try self.base.allocator.dupe(u8, hash);
+        return self;
     }
     
     // Includes a key that can query the live hash
     pub fn addKey(self: *LiveHashAddTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        try self.keys.append(try key.clone(self.base.allocator));
+        if (self.base.frozen) @panic("Transaction is frozen");
+        try self.keys.append(key);
     }
     
     // Set the duration the live hash will remain valid
-    pub fn setDuration(self: *LiveHashAddTransaction, duration: Duration) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (duration.seconds > 120 * 24 * 60 * 60) return error.InvalidDuration; // Maximum 120 days
+    pub fn setDuration(self: *LiveHashAddTransaction, duration: Duration) *LiveHashAddTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        if (duration.seconds > 120 * 24 * 60 * 60) @panic("Duration exceeds maximum of 120 days");
         self.duration = duration;
+        return self;
     }
     
     // Execute the transaction
@@ -141,9 +140,9 @@ pub const LiveHashAddTransaction = struct {
         if (self.account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(account.entity.shard));
-            try account_writer.writeInt64(2, @intCast(account.entity.realm));
-            try account_writer.writeInt64(3, @intCast(account.entity.num));
+            try account_writer.writeInt64(1, @intCast(account.shard));
+            try account_writer.writeInt64(2, @intCast(account.realm));
+            try account_writer.writeInt64(3, @intCast(account.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try live_hash_writer.writeMessage(1, account_bytes);
@@ -207,9 +206,9 @@ pub const LiveHashAddTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -228,9 +227,9 @@ pub const LiveHashAddTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);
@@ -278,20 +277,22 @@ pub const LiveHashDeleteTransaction = struct {
     }
     
     // Set the account ID for the live hash
-    pub fn setAccountId(self: *LiveHashDeleteTransaction, account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAccountId(self: *LiveHashDeleteTransaction, account_id: AccountId) *LiveHashDeleteTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.account_id = account_id;
+        return self;
     }
     
     // Set the hash value to delete
-    pub fn setHash(self: *LiveHashDeleteTransaction, hash: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (hash.len != 48) return error.InvalidHashLength; // SHA-384 hash
+    pub fn setHash(self: *LiveHashDeleteTransaction, hash: []const u8) !*LiveHashDeleteTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        if (hash.len != 48) @panic("Invalid hash length - must be SHA-384");
         
         if (self.hash.len > 0) {
             self.base.allocator.free(self.hash);
         }
         self.hash = try self.base.allocator.dupe(u8, hash);
+        return self;
     }
     
     // Execute the transaction
@@ -322,9 +323,9 @@ pub const LiveHashDeleteTransaction = struct {
         if (self.account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(account.entity.shard));
-            try account_writer.writeInt64(2, @intCast(account.entity.realm));
-            try account_writer.writeInt64(3, @intCast(account.entity.num));
+            try account_writer.writeInt64(1, @intCast(account.shard));
+            try account_writer.writeInt64(2, @intCast(account.realm));
+            try account_writer.writeInt64(3, @intCast(account.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try delete_writer.writeMessage(1, account_bytes);
@@ -358,9 +359,9 @@ pub const LiveHashDeleteTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -379,9 +380,9 @@ pub const LiveHashDeleteTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

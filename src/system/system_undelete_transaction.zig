@@ -23,17 +23,19 @@ pub const SystemUndeleteTransaction = struct {
     }
     
     // Set the contract ID to undelete
-    pub fn setContractId(self: *SystemUndeleteTransaction, contract_id: ContractId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setContractId(self: *SystemUndeleteTransaction, contract_id: ContractId) *SystemUndeleteTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.contract_id = contract_id;
         self.file_id = null; // Clear file ID when setting contract ID
+        return self;
     }
     
     // Set the file ID to undelete
-    pub fn setFileId(self: *SystemUndeleteTransaction, file_id: FileId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setFileId(self: *SystemUndeleteTransaction, file_id: FileId) *SystemUndeleteTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.file_id = file_id;
         self.contract_id = null; // Clear contract ID when setting file ID
+        return self;
     }
     
     // Execute the transaction
@@ -57,21 +59,22 @@ pub const SystemUndeleteTransaction = struct {
         if (self.contract_id) |contract_id| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
             defer contract_writer.deinit();
-            try contract_writer.writeInt64(1, @intCast(contract_id.entity.shard));
-            try contract_writer.writeInt64(2, @intCast(contract_id.entity.realm));
-            try contract_writer.writeInt64(3, @intCast(contract_id.entity.num));
+            try contract_writer.writeInt64(1, @intCast(contract_id.shard));
+            try contract_writer.writeInt64(2, @intCast(contract_id.realm));
+            try contract_writer.writeInt64(3, @intCast(contract_id.num));
             const contract_bytes = try contract_writer.toOwnedSlice();
             defer self.base.allocator.free(contract_bytes);
             try undelete_writer.writeMessage(1, contract_bytes);
         } else if (self.file_id) |file_id| {
             var file_writer = ProtoWriter.init(self.base.allocator);
             defer file_writer.deinit();
-            try file_writer.writeInt64(1, @intCast(file_id.entity.shard));
-            try file_writer.writeInt64(2, @intCast(file_id.entity.realm));
-            try file_writer.writeInt64(3, @intCast(file_id.entity.num));
+            try file_writer.writeInt64(1, @intCast(file_id.shard));
+            try file_writer.writeInt64(2, @intCast(file_id.realm));
+            try file_writer.writeInt64(3, @intCast(file_id.num));
             const file_bytes = try file_writer.toOwnedSlice();
             defer self.base.allocator.free(file_bytes);
             try undelete_writer.writeMessage(2, file_bytes);
+            return self;
         }
         
         const undelete_bytes = try undelete_writer.toOwnedSlice();

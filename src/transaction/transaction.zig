@@ -227,9 +227,10 @@ pub const Transaction = struct {
     }
     
     // Set transaction ID
-    pub fn setTransactionId(self: *Transaction, tx_id: TransactionId) !void {
-        if (self.frozen) return error.TransactionIsFrozen;
+    pub fn setTransactionId(self: *Transaction, tx_id: TransactionId) *Transaction {
+        if (self.frozen) @panic("Transaction is frozen");
         self.transaction_id = tx_id;
+        return self;
     }
     
     // Get or generate transaction ID
@@ -241,42 +242,46 @@ pub const Transaction = struct {
     }
     
     // Set node account IDs
-    pub fn setNodeAccountIds(self: *Transaction, node_ids: []const AccountId) !void {
-        if (self.frozen) return error.TransactionIsFrozen;
+    pub fn setNodeAccountIds(self: *Transaction, node_ids: []const AccountId) !*Transaction {
+        if (self.frozen) @panic("Transaction is frozen");
         
         self.node_account_ids.clearRetainingCapacity();
         for (node_ids) |id| {
             try self.node_account_ids.append(id);
         }
+        return self;
     }
     
     // Set transaction valid duration
-    pub fn setTransactionValidDuration(self: *Transaction, duration: Duration) !void {
-        if (self.frozen) return error.TransactionIsFrozen;
+    pub fn setTransactionValidDuration(self: *Transaction, duration: Duration) *Transaction {
+        if (self.frozen) @panic("Transaction is frozen");
         
         if (duration.seconds < 0 or duration.seconds > 180) {
-            return error.InvalidTransactionDuration;
+            @panic("Invalid transaction duration");
         }
         
         self.transaction_valid_duration = duration;
+        return self;
     }
     
     // Set transaction memo
-    pub fn setTransactionMemo(self: *Transaction, memo: []const u8) !void {
-        if (self.frozen) return error.TransactionIsFrozen;
+    pub fn setTransactionMemo(self: *Transaction, memo: []const u8) *Transaction {
+        if (self.frozen) @panic("Transaction is frozen");
         
         if (memo.len > 100) {
-            return error.MemoTooLong;
+            @panic("Memo too long");
         }
         
         self.transaction_memo = memo;
         self.memo = memo;
+        return self;
     }
     
     // Set max transaction fee
-    pub fn setMaxTransactionFee(self: *Transaction, fee: Hbar) !void {
-        if (self.frozen) return error.TransactionIsFrozen;
+    pub fn setMaxTransactionFee(self: *Transaction, fee: Hbar) *Transaction {
+        if (self.frozen) @panic("Transaction is frozen");
         self.max_transaction_fee = fee;
+        return self;
     }
     
     // Freeze transaction for signing
@@ -399,9 +404,9 @@ pub const Transaction = struct {
         
         // Use string key to avoid alignment issues  
         const key = try std.fmt.allocPrint(self.allocator, "{d}.{d}.{d}", .{
-            account_id.entity.shard,
-            account_id.entity.realm,
-            account_id.entity.num,
+            account_id.shard,
+            account_id.realm,
+            account_id.account,
         });
         const key_copy = try self.allocator.dupe(u8, key);
         try self.signature_keys.append(key_copy);  // Track for cleanup
@@ -478,9 +483,9 @@ pub const Transaction = struct {
             
             var account_writer = ProtoWriter.init(self.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -499,9 +504,9 @@ pub const Transaction = struct {
             var node_writer = ProtoWriter.init(self.allocator);
             defer node_writer.deinit();
             const node = self.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

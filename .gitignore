@@ -343,11 +343,6 @@ perf.data.old
 callgrind.out.*
 cachegrind.out.*
 
-# Core dumps
-core
-core.*
-vgcore.*
-
 # Hedera SDK specific
 .hedera/
 hedera-config.json

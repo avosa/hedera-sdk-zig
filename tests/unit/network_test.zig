@@ -58,12 +58,12 @@ test "Client operator configuration" {
     var operator_key = try hedera.generate_private_key(allocator);
     defer operator_key.deinit();
     
-    try client.set_operator(operator_id, operator_key);
+    _ = try client.set_operator(operator_id, operator_key);
     
     // Get operator account ID
     const retrieved_id = client.getOperatorAccountId();
     try testing.expect(retrieved_id != null);
-    try testing.expectEqual(@as(u64, 1001), retrieved_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 1001), retrieved_id.?.account);
     
     // Get operator public key
     const retrieved_key = client.getOperatorPublicKey();
@@ -91,27 +91,27 @@ test "Client configuration settings" {
     defer client.deinit();
     
     // Set request timeout
-    client.setRequestTimeoutDuration(hedera.Duration.fromSeconds(60));
+    _ = client.setRequestTimeoutDuration(hedera.Duration.fromSeconds(60));
     try testing.expectEqual(@as(i64, 60_000_000_000), client.config.request_timeout);
     
     // Set max retry
-    client.setMaxRetry(5);
+    _ = client.setMaxRetry(5);
     try testing.expectEqual(@as(u32, 5), client.config.max_attempts);
     
     // Set max backoff
-    client.setMaxBackoff(hedera.Duration.fromSeconds(8));
+    _ = client.setMaxBackoff(hedera.Duration.fromSeconds(8));
     try testing.expectEqual(@as(i64, 8), client.max_backoff.seconds);
     
     // Set min backoff
-    client.setMinBackoff(hedera.Duration.fromMillis(250));
+    _ = client.setMinBackoff(hedera.Duration.fromMillis(250));
     try testing.expectEqual(@as(i32, 250000000), client.min_backoff.nanos);
     
     // Set max node attempts
-    client.setMaxNodeAttempts(3);
+    _ = client.setMaxNodeAttempts(3);
     try testing.expectEqual(@as(u32, 3), client.max_node_attempts);
     
     // Set node wait time
-    client.setNodeWaitTime(hedera.Duration.fromSeconds(5));
+    _ = client.setNodeWaitTime(hedera.Duration.fromSeconds(5));
     try testing.expectEqual(@as(i64, 5), client.node_wait_time.seconds);
 }
 
@@ -122,11 +122,11 @@ test "Node connection management" {
     const address = try std.net.Address.parseIp4("35.237.200.180", 50211);
     var node = hedera.Node.init(account_id, address);
     
-    // Node already initialized with account_id and address
+    // Node already initialized with delete_account_id and address
     // cert_hash is already null by default
     
     // Test getting node info
-    try testing.expectEqual(@as(u64, 3), node.account_id.entity.num);
+    try testing.expectEqual(@as(u64, 3), node.account_id.account);
     try testing.expectEqual(@as(u16, 50211), node.address.getPort());
     try testing.expectEqual(@as(u64, 0), node.used_count);
 }
@@ -290,8 +290,8 @@ test "Request and response handling" {
     
     try testing.expectEqual(hedera.RequestType.Query, request.type);
     try testing.expectEqual(hedera.ResponseType.Query, response.type);
-    try testing.expectEqual(@as(u64, 3), request.node_account_id.entity.num);
-    try testing.expectEqual(@as(u64, 3), response.node_account_id.entity.num);
+    try testing.expectEqual(@as(u64, 3), request.node_account_id.account);
+    try testing.expectEqual(@as(u64, 3), response.node_account_id.account);
     try testing.expectEqual(hedera.Status.OK, response.status);
 }
 
@@ -319,8 +319,8 @@ test "Load balancing strategies" {
     const node2 = round_robin.nodes.items[round_robin.current_index];
     round_robin.current_index = (round_robin.current_index + 1) % round_robin.nodes.items.len;
     
-    try testing.expectEqual(@as(u64, 3), node1.entity.num);
-    try testing.expectEqual(@as(u64, 4), node2.entity.num);
+    try testing.expectEqual(@as(u64, 3), node1.num());
+    try testing.expectEqual(@as(u64, 4), node2.num());
     
     // Random strategy
     var random = hedera.LoadBalancer{
@@ -340,7 +340,7 @@ test "Load balancing strategies" {
     const random_index = rand.intRangeAtMost(usize, 0, random.nodes.items.len - 1);
     const random_node = random.nodes.items[random_index];
     
-    try testing.expect(random_node.entity.num >= 3 and random_node.entity.num <= 5);
+    try testing.expect(random_node.num() >= 3 and random_node.num() <= 5);
 }
 
 test "TLS certificate handling" {
@@ -398,3 +398,4 @@ test "Client close and cleanup" {
     // Cleanup
     client.deinit();
 }
+

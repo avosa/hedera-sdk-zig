@@ -34,89 +34,105 @@ pub const TokenBurnTransaction = struct {
     }
     
     // Set the token to burn
-    pub fn setTokenId(self: *TokenBurnTransaction, token_id: TokenId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTokenId(self: *TokenBurnTransaction, token_id: TokenId) *TokenBurnTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.token_id = token_id;
+        return self;
     }
     
     // Set amount to burn (for fungible tokens)
-    pub fn setAmount(self: *TokenBurnTransaction, amount: u64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAmount(self: *TokenBurnTransaction, amount: u64) *TokenBurnTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.serial_numbers.items.len > 0) {
-            return error.CannotSetBothAmountAndSerialNumbers;
+            @panic("Cannot set both amount and serial numbers");
         }
         
         if (amount == 0) {
-            return error.InvalidBurnAmount;
+            @panic("Invalid burn amount");
         }
         
         if (amount > std.math.maxInt(i64)) {
-            return error.BurnAmountTooLarge;
+            @panic("Burn amount too large");
         }
         
         self.amount = amount;
+        return self;
     }
     
     // Includes a serial number for NFT burning
-    pub fn addSerialNumber(self: *TokenBurnTransaction, serial_number: i64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn addSerialNumber(self: *TokenBurnTransaction, serial_number: i64) *TokenBurnTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.amount > 0) {
-            return error.CannotSetBothAmountAndSerialNumbers;
+            @panic("Cannot set both amount and serial numbers");
         }
         
         if (serial_number <= 0) {
-            return error.InvalidSerialNumber;
+            @panic("Invalid serial number");
         }
         
         if (self.serial_numbers.items.len >= MAX_NFT_BURN_BATCH_SIZE) {
-            return error.TooManySerialNumbers;
+            @panic("Too many serial numbers");
         }
         
         // Check for duplicates
         for (self.serial_numbers.items) |existing| {
             if (existing == serial_number) {
-                return error.DuplicateSerialNumber;
+                @panic("Duplicate serial number");
             }
         }
         
-        try self.serial_numbers.append(serial_number);
+        self.serial_numbers.append(serial_number) catch @panic("Failed to append serial number");
     }
     
     // Set serial numbers for batch NFT burning
-    pub fn setSerialNumbers(self: *TokenBurnTransaction, serial_numbers: []const i64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setSerialNumbers(self: *TokenBurnTransaction, serial_numbers: []const i64) *TokenBurnTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.amount > 0) {
-            return error.CannotSetBothAmountAndSerialNumbers;
+            @panic("Cannot set both amount and serial numbers");
         }
         
         if (serial_numbers.len > MAX_NFT_BURN_BATCH_SIZE) {
-            return error.TooManySerialNumbers;
+            @panic("Too many serial numbers");
         }
         
         self.serial_numbers.clearRetainingCapacity();
         
         for (serial_numbers) |serial_number| {
             if (serial_number <= 0) {
-                return error.InvalidSerialNumber;
+                @panic("Invalid serial number");
             }
             
             // Check for duplicates
             for (self.serial_numbers.items) |existing| {
                 if (existing == serial_number) {
-                    return error.DuplicateSerialNumber;
+                    @panic("Duplicate serial number");
                 }
             }
             
-            try self.serial_numbers.append(serial_number);
+            self.serial_numbers.append(serial_number) catch @panic("Failed to append serial number");
         }
+        return self;
     }
     
-    // Add serial (alias for addSerialNumber)
-    pub fn addSerial(self: *TokenBurnTransaction, serial: i64) !void {
+    // Add serial (alias for AddSerialNumber)
+    pub fn addSerial(self: *TokenBurnTransaction, serial: i64) *TokenBurnTransaction {
         return self.addSerialNumber(serial);
+    }
+    
+    // Getter methods for uniformity with Go SDK
+    pub fn getTokenId(self: *const TokenBurnTransaction) ?TokenId {
+        return self.token_id;
+    }
+    
+    pub fn getAmount(self: *const TokenBurnTransaction) u64 {
+        return self.amount;
+    }
+    
+    pub fn getSerialNumbers(self: *const TokenBurnTransaction) []const i64 {
+        return self.serial_numbers.items;
     }
     
     // Execute the transaction
@@ -148,9 +164,9 @@ pub const TokenBurnTransaction = struct {
         if (self.token_id) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(token.entity.shard));
-            try token_writer.writeInt64(2, @intCast(token.entity.realm));
-            try token_writer.writeInt64(3, @intCast(token.entity.num));
+            try token_writer.writeInt64(1, @intCast(token.shard));
+            try token_writer.writeInt64(2, @intCast(token.realm));
+            try token_writer.writeInt64(3, @intCast(token.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try burn_writer.writeMessage(1, token_bytes);
@@ -189,9 +205,9 @@ pub const TokenBurnTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -210,9 +226,9 @@ pub const TokenBurnTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

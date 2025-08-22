@@ -36,12 +36,12 @@ pub const TokenRejectFlow = struct {
     }
     
     // Set owner ID
-    pub fn setOwnerId(self: *TokenRejectFlow, owner_id: AccountId) void {
+    pub fn setOwnerId(self: *TokenRejectFlow, owner_id: AccountId) *TokenRejectFlow {
         self.owner_id = owner_id;
     }
     
     // Set token IDs
-    pub fn setTokenIds(self: *TokenRejectFlow, ids: []const TokenId) !void {
+    pub fn setTokenIds(self: *TokenRejectFlow, ids: []const TokenId) *TokenRejectFlow {
         self.token_ids.clearRetainingCapacity();
         try self.token_ids.appendSlice(ids);
     }
@@ -52,7 +52,7 @@ pub const TokenRejectFlow = struct {
     }
     
     // Set NFT IDs
-    pub fn setNftIds(self: *TokenRejectFlow, ids: []const NftId) !void {
+    pub fn setNftIds(self: *TokenRejectFlow, ids: []const NftId) *TokenRejectFlow {
         self.nft_ids.clearRetainingCapacity();
         try self.nft_ids.appendSlice(ids);
     }
@@ -84,6 +84,7 @@ pub const TokenRejectFlow = struct {
         
         if (self.owner_id) |owner_id| {
             try token_dissociate.setAccountId(owner_id);
+            return self;
         }
         
         // Collect all unique token IDs from both token_ids and nft_ids

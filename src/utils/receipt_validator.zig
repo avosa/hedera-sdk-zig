@@ -75,6 +75,7 @@ pub const ReceiptValidator = struct {
         // Validate transaction ID match
         if (expected_tx_id) |expected| {
             try self.validateTransactionId(receipt.transaction_id, expected, &result);
+            return self;
         }
         
         // Validate timestamps if enabled
@@ -180,14 +181,14 @@ pub const ReceiptValidator = struct {
                     self.allocator,
                     "Transaction ID mismatch: expected {d}.{d}.{d}-{d}-{d}, got {d}.{d}.{d}-{d}-{d}",
                     .{
-                        expected.account_id.entity.shard,
-                        expected.account_id.entity.realm,
-                        expected.account_id.entity.num,
+                        expected.account_id.shard,
+                        expected.account_id.realm,
+                        expected.account_id.account,
                         expected.valid_start.seconds,
                         expected.valid_start.nanos,
-                        actual.account_id.entity.shard,
-                        actual.account_id.entity.realm,
-                        actual.account_id.entity.num,
+                        actual.account_id.shard,
+                        actual.account_id.realm,
+                        actual.account_id.account,
                         actual.valid_start.seconds,
                         actual.valid_start.nanos,
                     }
@@ -237,7 +238,7 @@ pub const ReceiptValidator = struct {
         
         // Validate account ID if present
         if (receipt.account_id) |account_id| {
-            if (account_id.entity.shard < 0 or account_id.entity.realm < 0 or account_id.entity.num < 0) {
+            if (account_id.shard < 0 or account_id.realm < 0 or account_id.account < 0) {
                 try result.issues.append(ValidationIssue{
                     .type = .InvalidEntityId,
                     .severity = .Error,
@@ -249,7 +250,7 @@ pub const ReceiptValidator = struct {
         
         // Similar validation for other entity types
         if (receipt.contract_id) |contract_id| {
-            if (contract_id.entity.shard < 0 or contract_id.entity.realm < 0 or contract_id.entity.num < 0) {
+            if (contract_id.shard < 0 or contract_id.realm < 0 or contract_id.account < 0) {
                 try result.issues.append(ValidationIssue{
                     .type = .InvalidEntityId,
                     .severity = .Error,

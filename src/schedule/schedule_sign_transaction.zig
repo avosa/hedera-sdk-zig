@@ -21,14 +21,15 @@ pub const ScheduleSignTransaction = struct {
     }
     
     // Set the schedule ID to sign
-    pub fn setScheduleId(self: *ScheduleSignTransaction, schedule_id: ScheduleId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setScheduleId(self: *ScheduleSignTransaction, schedule_id: ScheduleId) *ScheduleSignTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.schedule_id = schedule_id;
+        return self;
     }
     
     // Clear the schedule ID
     pub fn clearScheduleId(self: *ScheduleSignTransaction) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.schedule_id = null;
     }
     
@@ -53,12 +54,13 @@ pub const ScheduleSignTransaction = struct {
         if (self.schedule_id) |schedule_id| {
             var id_writer = ProtoWriter.init(self.base.allocator);
             defer id_writer.deinit();
-            try id_writer.writeInt64(1, @intCast(schedule_id.entity.shard));
-            try id_writer.writeInt64(2, @intCast(schedule_id.entity.realm));
-            try id_writer.writeInt64(3, @intCast(schedule_id.entity.num));
+            try id_writer.writeInt64(1, @intCast(schedule_id.shard));
+            try id_writer.writeInt64(2, @intCast(schedule_id.realm));
+            try id_writer.writeInt64(3, @intCast(schedule_id.num));
             const id_bytes = try id_writer.toOwnedSlice();
             defer self.base.allocator.free(id_bytes);
             try schedule_writer.writeMessage(1, id_bytes);
+            return self;
         }
         
         const schedule_bytes = try schedule_writer.toOwnedSlice();

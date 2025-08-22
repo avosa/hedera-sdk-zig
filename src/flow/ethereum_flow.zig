@@ -36,19 +36,21 @@ pub const EthereumFlow = struct {
     }
     
     // Set Ethereum data
-    pub fn setEthereumData(self: *EthereumFlow, data: *EthereumTransactionData) void {
+    pub fn setEthereumData(self: *EthereumFlow, data: *EthereumTransactionData) *EthereumFlow {
         if (self.ethereum_data) |old_data| {
             old_data.deinit();
             self.allocator.destroy(old_data);
+            return self;
         }
         self.ethereum_data = data;
     }
     
     // Set Ethereum data from bytes
-    pub fn setEthereumDataBytes(self: *EthereumFlow, data: []const u8) !void {
+    pub fn setEthereumDataBytes(self: *EthereumFlow, data: []const u8) *EthereumFlow {
         if (self.ethereum_data) |old_data| {
             old_data.deinit();
             self.allocator.destroy(old_data);
+            return self;
         }
         
         const ethereum_data = try self.allocator.create(EthereumTransactionData);
@@ -57,17 +59,17 @@ pub const EthereumFlow = struct {
     }
     
     // Set call data file ID
-    pub fn setCallDataFileId(self: *EthereumFlow, file_id: FileId) void {
+    pub fn setCallDataFileId(self: *EthereumFlow, file_id: FileId) *EthereumFlow {
         self.call_data_file_id = file_id;
     }
     
     // Set max gas allowance
-    pub fn setMaxGasAllowance(self: *EthereumFlow, max: Hbar) void {
+    pub fn setMaxGasAllowance(self: *EthereumFlow, max: Hbar) *EthereumFlow {
         self.max_gas_allowance = max;
     }
     
     // Set node account IDs
-    pub fn setNodeAccountIds(self: *EthereumFlow, nodes: []const AccountId) !void {
+    pub fn setNodeAccountIds(self: *EthereumFlow, nodes: []const AccountId) *EthereumFlow {
         self.node_account_ids.clearRetainingCapacity();
         try self.node_account_ids.appendSlice(nodes);
     }
@@ -82,6 +84,7 @@ pub const EthereumFlow = struct {
         for (call_data, 0..) |byte, i| {
             hex_buffer[i * 2] = hex_chars[byte >> 4];
             hex_buffer[i * 2 + 1] = hex_chars[byte & 0x0F];
+            return self;
         }
         
         var file_create = FileCreateTransaction.init(self.allocator);

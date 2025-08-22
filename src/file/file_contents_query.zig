@@ -38,13 +38,15 @@ pub const FileContentsQuery = struct {
     }
     
     // Set the file ID to query contents for
-    pub fn setFileId(self: *FileContentsQuery, file_id: FileId) !void {
+    pub fn setFileId(self: *FileContentsQuery, file_id: FileId) *FileContentsQuery {
         self.file_id = file_id;
+        return self;
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *FileContentsQuery, payment: Hbar) !void {
+    pub fn setQueryPayment(self: *FileContentsQuery, payment: Hbar) *FileContentsQuery {
         self.base.payment_amount = payment;
+        return self;
     }
     
     // Execute the query
@@ -109,9 +111,9 @@ pub const FileContentsQuery = struct {
         if (self.file_id) |file| {
             var file_writer = ProtoWriter.init(self.base.allocator);
             defer file_writer.deinit();
-            try file_writer.writeInt64(1, @intCast(file.entity.shard));
-            try file_writer.writeInt64(2, @intCast(file.entity.realm));
-            try file_writer.writeInt64(3, @intCast(file.entity.num));
+            try file_writer.writeInt64(1, @intCast(file.shard));
+            try file_writer.writeInt64(2, @intCast(file.realm));
+            try file_writer.writeInt64(3, @intCast(file.num));
             const file_bytes = try file_writer.toOwnedSlice();
             defer self.base.allocator.free(file_bytes);
             try contents_query_writer.writeMessage(1, file_bytes);

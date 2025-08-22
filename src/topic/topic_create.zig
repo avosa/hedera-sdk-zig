@@ -4,203 +4,260 @@ const Key = @import("../crypto/key.zig").Key;
 const Duration = @import("../core/duration.zig").Duration;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
 const TransactionResponse = @import("../transaction/transaction.zig").TransactionResponse;
-const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
-const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const Hbar = @import("../core/hbar.zig").Hbar;
+
+// CustomFixedFee represents a fixed fee for custom fees
+pub const CustomFixedFee = struct {
+    amount: u64,
+    denomination_token_id: ?[]const u8,
+    fee_collector_account_id: AccountId,
+    
+    pub fn init(amount: u64, fee_collector_account_id: AccountId) CustomFixedFee {
+        return CustomFixedFee{
+            .amount = amount,
+            .denomination_token_id = null,
+            .fee_collector_account_id = fee_collector_account_id,
+        };
+    }
+};
 
 // TopicCreateTransaction creates a new consensus service topic
 pub const TopicCreateTransaction = struct {
-    base: Transaction,
-    memo: ?[]const u8,
+    allocator: std.mem.Allocator,
+    transaction: Transaction,
     admin_key: ?Key,
     submit_key: ?Key,
+    fee_schedule_key: ?Key,
+    fee_exempt_keys: std.ArrayList(Key),
+    custom_fees: std.ArrayList(*CustomFixedFee),
+    memo: []const u8,
     auto_renew_period: Duration,
-    auto_renew_account: ?AccountId,
     auto_renew_account_id: ?AccountId,
     
-    pub fn init(allocator: std.mem.Allocator) TopicCreateTransaction {
-        return TopicCreateTransaction{
-            .base = Transaction.init(allocator),
-            .memo = null,
+    pub fn init(allocator: std.mem.Allocator) !*TopicCreateTransaction {
+        var self = try allocator.create(TopicCreateTransaction);
+        self.* = TopicCreateTransaction{
+            .allocator = allocator,
+            .transaction = Transaction.init(allocator),
             .admin_key = null,
             .submit_key = null,
-            .auto_renew_period = Duration{ .seconds = 7890000, .nanos = 0 }, // ~90 days default
-            .auto_renew_account = null,
+            .fee_schedule_key = null,
+            .fee_exempt_keys = std.ArrayList(Key).init(allocator),
+            .custom_fees = std.ArrayList(*CustomFixedFee).init(allocator),
+            .memo = "",
+            .auto_renew_period = Duration{ .seconds = 7890000, .nanos = 0 },
             .auto_renew_account_id = null,
         };
+        
+        // Set default auto renew period and max transaction fee
+        _ = self.setAutoRenewPeriod(Duration{ .seconds = 7890000, .nanos = 0 });
+        _ = self.transaction.setMaxTransactionFee(Hbar.fromTinybars(2500000000) catch unreachable); // 25 Hbar
+        
+        return self;
     }
     
     pub fn deinit(self: *TopicCreateTransaction) void {
-        self.base.deinit();
+        self.fee_exempt_keys.deinit();
+        for (self.custom_fees.items) |fee| {
+            self.allocator.destroy(fee);
+        }
+        self.custom_fees.deinit();
+        self.transaction.deinit();
+        self.allocator.destroy(self);
     }
     
-    // Set topic memo
-    pub fn setTopicMemo(self: *TopicCreateTransaction, memo: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (memo.len > 100) return error.MemoTooLong;
+    // setAdminKey sets the key required to update or delete the topic
+    pub fn setAdminKey(self: *TopicCreateTransaction, public_key: Key) *TopicCreateTransaction {
+        if (self.transaction.frozen) @panic("Transaction is frozen");
+        self.admin_key = public_key;
+        return self;
+    }
+    
+    // getAdminKey returns the key required to update or delete the topic
+    pub fn getAdminKey(self: *TopicCreateTransaction) !Key {
+        return self.admin_key orelse error.AdminKeyNotSet;
+    }
+    
+    // setSubmitKey sets the key required for submitting messages to the topic
+    pub fn setSubmitKey(self: *TopicCreateTransaction, public_key: Key) *TopicCreateTransaction {
+        if (self.transaction.frozen) @panic("Transaction is frozen");
+        self.submit_key = public_key;
+        return self;
+    }
+    
+    // getSubmitKey returns the key required for submitting messages to the topic
+    pub fn getSubmitKey(self: *TopicCreateTransaction) !Key {
+        return self.submit_key orelse error.SubmitKeyNotSet;
+    }
+    
+    // setFeeScheduleKey sets the key which allows updates to the new topic's fees
+    pub fn setFeeScheduleKey(self: *TopicCreateTransaction, public_key: Key) *TopicCreateTransaction {
+        if (self.transaction.frozen) @panic("Transaction is frozen");
+        self.fee_schedule_key = public_key;
+        return self;
+    }
+    
+    // GetFeeScheduleKey returns the key which allows updates to the new topic's fees
+    pub fn getFeeScheduleKey(self: *TopicCreateTransaction) Key {
+        return self.fee_schedule_key orelse Key{};
+    }
+    
+    // SetFeeExemptKeys sets the keys that will be exempt from paying fees
+    pub fn setFeeExemptKeys(self: *TopicCreateTransaction, keys: []const Key) *TopicCreateTransaction {
+        if (self.transaction.frozen) @panic("Transaction is frozen");
+        self.fee_exempt_keys.clearRetainingCapacity();
+        self.fee_exempt_keys.appendSlice(keys) catch @panic("Failed to set fee exempt keys");
+    }
+    
+    // AddFeeExemptKey adds a key that will be exempt from paying fees
+    pub fn addFeeExemptKey(self: *TopicCreateTransaction, key: Key) *TopicCreateTransaction {
+        if (self.transaction.frozen) @panic("Transaction is frozen");
+        self.fee_exempt_keys.append(key) catch @panic("Failed to add fee exempt key");
+    }
+    
+    // ClearFeeExemptKeys removes all keys that will be exempt from paying fees
+    pub fn clearFeeExemptKeys(self: *TopicCreateTransaction) *TopicCreateTransaction {
+        if (self.transaction.frozen) @panic("Transaction is frozen");
+        self.fee_exempt_keys.clearRetainingCapacity();
+        return self;
+    }
+    
+    // GetFeeExemptKeys returns the keys that will be exempt from paying fees
+    pub fn getFeeExemptKeys(self: *TopicCreateTransaction) []const Key {
+        return self.fee_exempt_keys.items;
+    }
+    
+    // SetCustomFees sets the fixed fees to assess when a message is submitted to the new topic
+    pub fn setCustomFees(self: *TopicCreateTransaction, fees: []*CustomFixedFee) *TopicCreateTransaction {
+        if (self.transaction.frozen) @panic("Transaction is frozen");
+        for (self.custom_fees.items) |fee| {
+            self.allocator.destroy(fee);
+        }
+        self.custom_fees.clearRetainingCapacity();
+        self.custom_fees.appendSlice(fees) catch @panic("Failed to set custom fees");
+    }
+    
+    // AddCustomFee adds a fixed fee to assess when a message is submitted to the new topic
+    pub fn addCustomFee(self: *TopicCreateTransaction, fee: *CustomFixedFee) *TopicCreateTransaction {
+        if (self.transaction.frozen) @panic("Transaction is frozen");
+        self.custom_fees.append(fee) catch @panic("Failed to add custom fee");
+    }
+    
+    // ClearCustomFees removes all custom fees to assess when a message is submitted to the new topic
+    pub fn clearCustomFees(self: *TopicCreateTransaction) *TopicCreateTransaction {
+        if (self.transaction.frozen) @panic("Transaction is frozen");
+        for (self.custom_fees.items) |fee| {
+            self.allocator.destroy(fee);
+        }
+        self.custom_fees.clearRetainingCapacity();
+        return self;
+    }
+    
+    // GetCustomFees returns the fixed fees to assess when a message is submitted to the new topic
+    pub fn getCustomFees(self: *TopicCreateTransaction) []*CustomFixedFee {
+        return self.custom_fees.items;
+    }
+    
+    // SetTopicMemo sets a short publicly visible memo about the topic
+    pub fn setTopicMemo(self: *TopicCreateTransaction, memo: []const u8) *TopicCreateTransaction {
+        if (self.transaction.frozen) @panic("Transaction is frozen");
         self.memo = memo;
+        return self;
     }
     
-    // Set admin key
-    pub fn setAdminKey(self: *TopicCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        self.admin_key = key;
+    // GetTopicMemo returns the memo for this topic
+    pub fn getTopicMemo(self: *TopicCreateTransaction) []const u8 {
+        return self.memo;
     }
     
-    // Set submit key
-    pub fn setSubmitKey(self: *TopicCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        self.submit_key = key;
-    }
-    
-    // Set auto renew period
-    pub fn setAutoRenewPeriod(self: *TopicCreateTransaction, period: Duration) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        
-        // Minimum is ~1 day, maximum is ~3 months
-        if (period.seconds < 86400 or period.seconds > 8000001) {
-            return error.InvalidAutoRenewPeriod;
-        }
-        
+    // SetAutoRenewPeriod sets the initial lifetime of the topic
+    pub fn setAutoRenewPeriod(self: *TopicCreateTransaction, period: Duration) *TopicCreateTransaction {
+        if (self.transaction.frozen) @panic("Transaction is frozen");
         self.auto_renew_period = period;
+        return self;
     }
     
-    // Set auto renew account
-    pub fn setAutoRenewAccountId(self: *TopicCreateTransaction, account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        self.auto_renew_account = account_id;
-        self.auto_renew_account_id = account_id;
+    // GetAutoRenewPeriod returns the auto renew period for this topic
+    pub fn getAutoRenewPeriod(self: *TopicCreateTransaction) Duration {
+        return self.auto_renew_period;
     }
     
-    // Set auto renew account (alias)
-    pub fn setAutoRenewAccount(self: *TopicCreateTransaction, account_id: AccountId) !void {
-        return self.setAutoRenewAccountId(account_id);
+    // SetAutoRenewAccountID sets an optional account to be used at the topic's expirationTime
+    pub fn setAutoRenewAccountId(self: *TopicCreateTransaction, auto_renew_account_id: AccountId) *TopicCreateTransaction {
+        if (self.transaction.frozen) @panic("Transaction is frozen");
+        self.auto_renew_account_id = auto_renew_account_id;
+        return self;
     }
     
-    // Execute the transaction
+    // GetAutoRenewAccountID returns the auto renew account ID for this topic
+    pub fn getAutoRenewAccountID(self: *TopicCreateTransaction) AccountId {
+        return self.auto_renew_account_id orelse AccountId{};
+    }
+    
+    // Execute executes the transaction
     pub fn execute(self: *TopicCreateTransaction, client: *Client) !TransactionResponse {
-        return try self.base.execute(client);
+        return try self.transaction.execute(client);
     }
     
-    // Build transaction body
-    pub fn buildTransactionBody(self: *TopicCreateTransaction) ![]u8 {
-        var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
-        
-        // Common transaction fields
-        try self.writeCommonFields(&writer);
-        
-        // consensusCreateTopic = 24 (oneof data)
-        var create_writer = ProtoWriter.init(self.base.allocator);
-        defer create_writer.deinit();
-        
-        // memo = 1
-        if (self.memo.len > 0) {
-            try create_writer.writeString(1, self.memo);
-        }
-        
-        // adminKey = 2
-        if (self.admin_key) |key| {
-            const key_bytes = try key.toProtobuf(self.base.allocator);
-            defer self.base.allocator.free(key_bytes);
-            try create_writer.writeMessage(2, key_bytes);
-        }
-        
-        // submitKey = 3
-        if (self.submit_key) |key| {
-            const key_bytes = try key.toProtobuf(self.base.allocator);
-            defer self.base.allocator.free(key_bytes);
-            try create_writer.writeMessage(3, key_bytes);
-        }
-        
-        // autoRenewPeriod = 6
-        var duration_writer = ProtoWriter.init(self.base.allocator);
-        defer duration_writer.deinit();
-        try duration_writer.writeInt64(1, self.auto_renew_period.seconds);
-        const duration_bytes = try duration_writer.toOwnedSlice();
-        defer self.base.allocator.free(duration_bytes);
-        try create_writer.writeMessage(6, duration_bytes);
-        
-        // autoRenewAccount = 7
-        if (self.auto_renew_account_id) |account| {
-            var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(account.entity.shard));
-            try account_writer.writeInt64(2, @intCast(account.entity.realm));
-            try account_writer.writeInt64(3, @intCast(account.entity.num));
-            const account_bytes = try account_writer.toOwnedSlice();
-            defer self.base.allocator.free(account_bytes);
-            try create_writer.writeMessage(7, account_bytes);
-        }
-        
-        const create_bytes = try create_writer.toOwnedSlice();
-        defer self.base.allocator.free(create_bytes);
-        try writer.writeMessage(24, create_bytes);
-        
-        return writer.toOwnedSlice();
+    // Freeze prepares the transaction for execution
+    pub fn freeze(self: *TopicCreateTransaction) !*TopicCreateTransaction {
+        return try self.freezeWith(null);
     }
     
-    fn writeCommonFields(self: *TopicCreateTransaction, writer: *ProtoWriter) !void {
-        // transactionID = 1
-        if (self.base.transaction_id) |tx_id| {
-            var tx_id_writer = ProtoWriter.init(self.base.allocator);
-            defer tx_id_writer.deinit();
-            
-            var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
-            try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
-            try timestamp_writer.writeInt32(2, tx_id.valid_start.nanos);
-            const timestamp_bytes = try timestamp_writer.toOwnedSlice();
-            defer self.base.allocator.free(timestamp_bytes);
-            try tx_id_writer.writeMessage(1, timestamp_bytes);
-            
-            var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
-            const account_bytes = try account_writer.toOwnedSlice();
-            defer self.base.allocator.free(account_bytes);
-            try tx_id_writer.writeMessage(2, account_bytes);
-            
-            if (tx_id.nonce) |n| {
-                try tx_id_writer.writeInt32(4, @intCast(n));
-            }
-            
-            const tx_id_bytes = try tx_id_writer.toOwnedSlice();
-            defer self.base.allocator.free(tx_id_bytes);
-            try writer.writeMessage(1, tx_id_bytes);
-        }
-        
-        // nodeAccountID = 2
-        if (self.base.node_account_ids.items.len > 0) {
-            var node_writer = ProtoWriter.init(self.base.allocator);
-            defer node_writer.deinit();
-            const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
-            const node_bytes = try node_writer.toOwnedSlice();
-            defer self.base.allocator.free(node_bytes);
-            try writer.writeMessage(2, node_bytes);
-        }
-        
-        // transactionFee = 3
-        if (self.base.max_transaction_fee) |fee| {
-            try writer.writeUint64(3, @intCast(fee.toTinybars()));
-        }
-        
-        // transactionValidDuration = 4
-        var duration_writer = ProtoWriter.init(self.base.allocator);
-        defer duration_writer.deinit();
-        try duration_writer.writeInt64(1, self.base.transaction_valid_duration.seconds);
-        const duration_bytes = try duration_writer.toOwnedSlice();
-        defer self.base.allocator.free(duration_bytes);
-        try writer.writeMessage(4, duration_bytes);
-        
-        // memo = 5
-        if (self.base.transaction_memo.len > 0) {
-            try writer.writeString(5, self.base.transaction_memo);
-        }
+    // FreezeWith prepares the transaction for execution with a client
+    pub fn freezeWith(self: *TopicCreateTransaction, client: ?*Client) !*TopicCreateTransaction {
+        try self.transaction.freezeWith(client);
+        return self;
+    }
+    
+    // Sign signs the transaction
+    pub fn sign(self: *TopicCreateTransaction, private_key: anytype) *TopicCreateTransaction {
+        self.transaction.sign(private_key);
+        return self;
+    }
+    
+    // SignWith signs the transaction with a specific key
+    pub fn signWith(self: *TopicCreateTransaction, public_key: anytype, private_key: anytype) *TopicCreateTransaction {
+        self.transaction.signWith(public_key, private_key);
+        return self;
+    }
+    
+    // SetMaxTransactionFee sets the maximum transaction fee
+    pub fn setMaxTransactionFee(self: *TopicCreateTransaction, fee: Hbar) *TopicCreateTransaction {
+        _ = self.transaction.setMaxTransactionFee(fee);
+        return self;
+    }
+    
+    // GetMaxTransactionFee returns the maximum transaction fee
+    pub fn getMaxTransactionFee(self: *TopicCreateTransaction) ?Hbar {
+        return self.transaction.getMaxTransactionFee();
+    }
+    
+    // SetTransactionMemo sets the transaction memo
+    pub fn setTransactionMemo(self: *TopicCreateTransaction, memo: []const u8) *TopicCreateTransaction {
+        _ = self.transaction.setTransactionMemo(memo);
+        return self;
+    }
+    
+    // GetTransactionMemo returns the transaction memo
+    pub fn getTransactionMemo(self: *TopicCreateTransaction) []const u8 {
+        return self.transaction.getTransactionMemo();
+    }
+    
+    // SetNodeAccountIDs sets the node account IDs for this transaction
+    pub fn setNodeAccountIDs(self: *TopicCreateTransaction, node_account_ids: []const AccountId) *TopicCreateTransaction {
+        _ = self.transaction.setNodeAccountIDs(node_account_ids);
+        return self;
+    }
+    
+    // GetNodeAccountIDs returns the node account IDs for this transaction
+    pub fn getNodeAccountIDs(self: *TopicCreateTransaction) []const AccountId {
+        return self.transaction.getNodeAccountIDs();
     }
 };
+
+// NewTopicCreateTransaction creates a TopicCreateTransaction
+pub fn newTopicCreateTransaction(allocator: std.mem.Allocator) !*TopicCreateTransaction {
+    return try TopicCreateTransaction.init(allocator);
+}

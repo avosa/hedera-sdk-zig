@@ -35,69 +35,85 @@ pub const TokenMintTransaction = struct {
     }
     
     // Set the token to mint
-    pub fn setTokenId(self: *TokenMintTransaction, token_id: TokenId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTokenId(self: *TokenMintTransaction, token_id: TokenId) *TokenMintTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.token_id = token_id;
+        return self;
     }
     
     // Set amount to mint (for fungible tokens)
-    pub fn setAmount(self: *TokenMintTransaction, amount: u64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAmount(self: *TokenMintTransaction, amount: u64) *TokenMintTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.metadata_list.items.len > 0) {
-            return error.CannotSetBothAmountAndMetadata;
+            @panic("Cannot set both amount and metadata");
         }
         
         if (amount == 0) {
-            return error.InvalidMintAmount;
+            @panic("Invalid mint amount");
         }
         
         if (amount > std.math.maxInt(i64)) {
-            return error.MintAmountTooLarge;
+            @panic("Mint amount too large");
         }
         
         self.amount = amount;
+        return self;
     }
     
     // Includes metadata for NFT minting
-    pub fn addMetadata(self: *TokenMintTransaction, metadata: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn addMetadata(self: *TokenMintTransaction, metadata: []const u8) *TokenMintTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.amount > 0) {
-            return error.CannotSetBothAmountAndMetadata;
+            @panic("Cannot set both amount and metadata");
         }
         
         if (metadata.len > MAX_METADATA_SIZE) {
-            return error.MetadataTooLarge;
+            @panic("Metadata too large");
         }
         
         if (self.metadata_list.items.len >= MAX_NFT_MINT_BATCH_SIZE) {
-            return error.TooManyNFTsInBatch;
+            @panic("Too many NFTs in batch");
         }
         
-        try self.metadata_list.append(metadata);
+        self.metadata_list.append(metadata) catch @panic("Failed to append metadata");
     }
     
     // Set metadata list for batch NFT minting
-    pub fn setMetadataList(self: *TokenMintTransaction, metadata_list: []const []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setMetadata(self: *TokenMintTransaction, metadata_list: []const []const u8) *TokenMintTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.amount > 0) {
-            return error.CannotSetBothAmountAndMetadata;
+            @panic("Cannot set both amount and metadata");
         }
         
         if (metadata_list.len > MAX_NFT_MINT_BATCH_SIZE) {
-            return error.TooManyNFTsInBatch;
+            @panic("Too many NFTs in batch");
         }
         
         self.metadata_list.clearRetainingCapacity();
         
         for (metadata_list) |metadata| {
             if (metadata.len > MAX_METADATA_SIZE) {
-                return error.MetadataTooLarge;
+                @panic("Metadata too large");
             }
-            try self.metadata_list.append(metadata);
+            self.metadata_list.append(metadata) catch @panic("Failed to append metadata");
         }
+        return self;
+    }
+    
+    // Getter methods for uniformity with Go SDK
+    pub fn getTokenId(self: *const TokenMintTransaction) ?TokenId {
+        return self.token_id;
+    }
+    
+    pub fn getAmount(self: *const TokenMintTransaction) u64 {
+        return self.amount;
+    }
+    
+    pub fn getMetadata(self: *const TokenMintTransaction) []const []const u8 {
+        return self.metadata_list.items;
     }
     
     // Execute the transaction
@@ -129,9 +145,9 @@ pub const TokenMintTransaction = struct {
         if (self.token_id) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(token.entity.shard));
-            try token_writer.writeInt64(2, @intCast(token.entity.realm));
-            try token_writer.writeInt64(3, @intCast(token.entity.num));
+            try token_writer.writeInt64(1, @intCast(token.shard));
+            try token_writer.writeInt64(2, @intCast(token.realm));
+            try token_writer.writeInt64(3, @intCast(token.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try mint_writer.writeMessage(1, token_bytes);
@@ -170,9 +186,9 @@ pub const TokenMintTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -191,9 +207,9 @@ pub const TokenMintTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

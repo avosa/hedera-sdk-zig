@@ -31,9 +31,10 @@ pub const TokenClaimAirdropTransaction = struct {
     }
     
     // Set all pending airdrops to claim
-    pub fn setPendingAirdrops(self: *TokenClaimAirdropTransaction, pending_airdrops: []const PendingAirdropId) !void {
+    pub fn setPendingAirdrops(self: *TokenClaimAirdropTransaction, pending_airdrops: []const PendingAirdropId) *TokenClaimAirdropTransaction {
         self.pending_airdrops.clearAndFree();
         try self.pending_airdrops.appendSlice(pending_airdrops);
+        return self;
     }
     
     // Execute the transaction
@@ -61,9 +62,9 @@ pub const TokenClaimAirdropTransaction = struct {
             // senderId = 1
             var sender_writer = ProtoWriter.init(self.base.allocator);
             defer sender_writer.deinit();
-            try sender_writer.writeInt64(1, @intCast(pending.sender.entity.shard));
-            try sender_writer.writeInt64(2, @intCast(pending.sender.entity.realm));
-            try sender_writer.writeInt64(3, @intCast(pending.sender.entity.num));
+            try sender_writer.writeInt64(1, @intCast(pending.sender.shard));
+            try sender_writer.writeInt64(2, @intCast(pending.sender.realm));
+            try sender_writer.writeInt64(3, @intCast(pending.sender.account));
             const sender_bytes = try sender_writer.toOwnedSlice();
             defer self.base.allocator.free(sender_bytes);
             try pending_writer.writeMessage(1, sender_bytes);
@@ -71,9 +72,9 @@ pub const TokenClaimAirdropTransaction = struct {
             // receiverId = 2
             var receiver_writer = ProtoWriter.init(self.base.allocator);
             defer receiver_writer.deinit();
-            try receiver_writer.writeInt64(1, @intCast(pending.receiver.entity.shard));
-            try receiver_writer.writeInt64(2, @intCast(pending.receiver.entity.realm));
-            try receiver_writer.writeInt64(3, @intCast(pending.receiver.entity.num));
+            try receiver_writer.writeInt64(1, @intCast(pending.receiver.shard));
+            try receiver_writer.writeInt64(2, @intCast(pending.receiver.realm));
+            try receiver_writer.writeInt64(3, @intCast(pending.receiver.account));
             const receiver_bytes = try receiver_writer.toOwnedSlice();
             defer self.base.allocator.free(receiver_bytes);
             try pending_writer.writeMessage(2, receiver_bytes);
@@ -82,9 +83,9 @@ pub const TokenClaimAirdropTransaction = struct {
             if (pending.token_id) |token_id| {
                 var token_writer = ProtoWriter.init(self.base.allocator);
                 defer token_writer.deinit();
-                try token_writer.writeInt64(1, @intCast(token_id.entity.shard));
-                try token_writer.writeInt64(2, @intCast(token_id.entity.realm));
-                try token_writer.writeInt64(3, @intCast(token_id.entity.num));
+                try token_writer.writeInt64(1, @intCast(token_id.shard));
+                try token_writer.writeInt64(2, @intCast(token_id.realm));
+                try token_writer.writeInt64(3, @intCast(token_id.num));
                 const token_bytes = try token_writer.toOwnedSlice();
                 defer self.base.allocator.free(token_bytes);
                 try pending_writer.writeMessage(3, token_bytes);
@@ -98,9 +99,9 @@ pub const TokenClaimAirdropTransaction = struct {
                 // tokenId = 1
                 var token_writer = ProtoWriter.init(self.base.allocator);
                 defer token_writer.deinit();
-                try token_writer.writeInt64(1, @intCast(nft_id.token_id.entity.shard));
-                try token_writer.writeInt64(2, @intCast(nft_id.token_id.entity.realm));
-                try token_writer.writeInt64(3, @intCast(nft_id.token_id.entity.num));
+                try token_writer.writeInt64(1, @intCast(nft_id.token_id.shard));
+                try token_writer.writeInt64(2, @intCast(nft_id.token_id.realm));
+                try token_writer.writeInt64(3, @intCast(nft_id.token_id.num));
                 const token_bytes = try token_writer.toOwnedSlice();
                 defer self.base.allocator.free(token_bytes);
                 try nft_writer.writeMessage(1, token_bytes);
@@ -116,6 +117,7 @@ pub const TokenClaimAirdropTransaction = struct {
             const pending_bytes = try pending_writer.toOwnedSlice();
             defer self.base.allocator.free(pending_bytes);
             try claim_writer.writeMessage(1, pending_bytes);
+            return self;
         }
         
         const claim_bytes = try claim_writer.toOwnedSlice();

@@ -38,13 +38,15 @@ pub const ContractBytecodeQuery = struct {
     }
     
     // Set the contract ID to query bytecode for
-    pub fn setContractId(self: *ContractBytecodeQuery, contract_id: ContractId) !void {
+    pub fn setContractId(self: *ContractBytecodeQuery, contract_id: ContractId) *ContractBytecodeQuery {
         self.contract_id = contract_id;
+        return self;
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *ContractBytecodeQuery, payment: Hbar) !void {
+    pub fn setQueryPayment(self: *ContractBytecodeQuery, payment: Hbar) *ContractBytecodeQuery {
         self.base.payment_amount = payment;
+        return self;
     }
     
     // Execute the query
@@ -109,9 +111,9 @@ pub const ContractBytecodeQuery = struct {
         if (self.contract_id) |contract| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
             defer contract_writer.deinit();
-            try contract_writer.writeInt64(1, @intCast(contract.entity.shard));
-            try contract_writer.writeInt64(2, @intCast(contract.entity.realm));
-            try contract_writer.writeInt64(3, @intCast(contract.entity.num));
+            try contract_writer.writeInt64(1, @intCast(contract.shard));
+            try contract_writer.writeInt64(2, @intCast(contract.realm));
+            try contract_writer.writeInt64(3, @intCast(contract.num));
             const contract_bytes = try contract_writer.toOwnedSlice();
             defer self.base.allocator.free(contract_bytes);
             try bytecode_query_writer.writeMessage(1, contract_bytes);

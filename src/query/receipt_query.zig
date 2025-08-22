@@ -79,18 +79,21 @@ pub const TransactionReceiptQuery = struct {
     }
     
     // Set the transaction ID
-    pub fn setTransactionId(self: *TransactionReceiptQuery, transaction_id: TransactionId) !void {
+    pub fn setTransactionId(self: *TransactionReceiptQuery, transaction_id: TransactionId) *TransactionReceiptQuery {
         self.transaction_id = transaction_id;
+        return self;
     }
     
     // Set whether to include child receipts
-    pub fn setIncludeChildren(self: *TransactionReceiptQuery, include: bool) !void {
+    pub fn setIncludeChildren(self: *TransactionReceiptQuery, include: bool) *TransactionReceiptQuery {
         self.include_children = include;
+        return self;
     }
     
     // Set whether to include duplicate receipts
-    pub fn setIncludeDuplicates(self: *TransactionReceiptQuery, include: bool) !void {
+    pub fn setIncludeDuplicates(self: *TransactionReceiptQuery, include: bool) *TransactionReceiptQuery {
         self.include_duplicates = include;
+        return self;
     }
     
     // Execute the query
@@ -137,9 +140,9 @@ pub const TransactionReceiptQuery = struct {
             // accountID = 2
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);

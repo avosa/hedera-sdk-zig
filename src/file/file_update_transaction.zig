@@ -36,25 +36,28 @@ pub const FileUpdateTransaction = struct {
     }
     
     // Set the file ID to update
-    pub fn setFileId(self: *FileUpdateTransaction, file_id: FileId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setFileId(self: *FileUpdateTransaction, file_id: FileId) *FileUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.file_id = file_id;
+        return self;
     }
     
     // Set the keys for the file (accepts ArrayList)
-    pub fn setKeysList(self: *FileUpdateTransaction, keys: std.ArrayList(Key)) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setKeysList(self: *FileUpdateTransaction, keys: std.ArrayList(Key)) *FileUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.keys) |*old_keys| {
             old_keys.deinit();
+            return self;
         }
         
         self.keys = keys;
+        return self;
     }
     
     // Set the keys for the file (accepts single Key)
-    pub fn setKeys(self: *FileUpdateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setKeys(self: *FileUpdateTransaction, key: Key) !*FileUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.keys) |*old_keys| {
             old_keys.deinit();
@@ -63,38 +66,42 @@ pub const FileUpdateTransaction = struct {
         var keys = std.ArrayList(Key).init(self.base.allocator);
         try keys.append(key);
         self.keys = keys;
+        return self;
     }
     
     // Set the contents of the file
-    pub fn setContents(self: *FileUpdateTransaction, contents: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setContents(self: *FileUpdateTransaction, contents: []const u8) !*FileUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.contents) |old_contents| {
             self.base.allocator.free(old_contents);
         }
         
         self.contents = try self.base.allocator.dupe(u8, contents);
+        return self;
     }
     
     // Set the expiration time
-    pub fn setExpirationTime(self: *FileUpdateTransaction, expiration_time: Timestamp) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setExpirationTime(self: *FileUpdateTransaction, expiration_time: Timestamp) *FileUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.expiration_time = expiration_time;
+        return self;
     }
     
     // Set the memo
-    pub fn setMemo(self: *FileUpdateTransaction, memo: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setMemo(self: *FileUpdateTransaction, memo: []const u8) !*FileUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.memo) |old_memo| {
             self.base.allocator.free(old_memo);
         }
         
         self.memo = try self.base.allocator.dupe(u8, memo);
+        return self;
     }
     
     // Set the file memo (alias for setMemo for Go SDK compatibility)
-    pub fn setFileMemo(self: *FileUpdateTransaction, memo: []const u8) !void {
+    pub fn setFileMemo(self: *FileUpdateTransaction, memo: []const u8) !*FileUpdateTransaction {
         return self.setMemo(memo);
     }
     
@@ -119,12 +126,13 @@ pub const FileUpdateTransaction = struct {
         if (self.file_id) |file_id| {
             var id_writer = ProtoWriter.init(self.base.allocator);
             defer id_writer.deinit();
-            try id_writer.writeInt64(1, @intCast(file_id.entity.shard));
-            try id_writer.writeInt64(2, @intCast(file_id.entity.realm));
-            try id_writer.writeInt64(3, @intCast(file_id.entity.num));
+            try id_writer.writeInt64(1, @intCast(file_id.shard));
+            try id_writer.writeInt64(2, @intCast(file_id.realm));
+            try id_writer.writeInt64(3, @intCast(file_id.num));
             const id_bytes = try id_writer.toOwnedSlice();
             defer self.base.allocator.free(id_bytes);
             try file_writer.writeMessage(1, id_bytes);
+            return self;
         }
         
         // expirationTime = 2

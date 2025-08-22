@@ -108,9 +108,9 @@ pub const TokenAirdropTransaction = struct {
             // token = 1
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(transfer.token_id.entity.shard));
-            try token_writer.writeInt64(2, @intCast(transfer.token_id.entity.realm));
-            try token_writer.writeInt64(3, @intCast(transfer.token_id.entity.num));
+            try token_writer.writeInt64(1, @intCast(transfer.token_id.shard));
+            try token_writer.writeInt64(2, @intCast(transfer.token_id.realm));
+            try token_writer.writeInt64(3, @intCast(transfer.token_id.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try transfer_writer.writeMessage(1, token_bytes);
@@ -122,9 +122,9 @@ pub const TokenAirdropTransaction = struct {
             // accountID = 1
             var acc_id_writer = ProtoWriter.init(self.base.allocator);
             defer acc_id_writer.deinit();
-            try acc_id_writer.writeInt64(1, @intCast(transfer.account_id.entity.shard));
-            try acc_id_writer.writeInt64(2, @intCast(transfer.account_id.entity.realm));
-            try acc_id_writer.writeInt64(3, @intCast(transfer.account_id.entity.num));
+            try acc_id_writer.writeInt64(1, @intCast(transfer.account_id.shard));
+            try acc_id_writer.writeInt64(2, @intCast(transfer.account_id.realm));
+            try acc_id_writer.writeInt64(3, @intCast(transfer.account_id.account));
             const acc_bytes = try acc_id_writer.toOwnedSlice();
             defer self.base.allocator.free(acc_bytes);
             try account_writer.writeMessage(1, acc_bytes);
@@ -154,9 +154,9 @@ pub const TokenAirdropTransaction = struct {
             // token = 1
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(nft.token_id.entity.shard));
-            try token_writer.writeInt64(2, @intCast(nft.token_id.entity.realm));
-            try token_writer.writeInt64(3, @intCast(nft.token_id.entity.num));
+            try token_writer.writeInt64(1, @intCast(nft.token_id.shard));
+            try token_writer.writeInt64(2, @intCast(nft.token_id.realm));
+            try token_writer.writeInt64(3, @intCast(nft.token_id.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try nft_writer.writeMessage(1, token_bytes);
@@ -164,9 +164,9 @@ pub const TokenAirdropTransaction = struct {
             // sender = 2
             var sender_writer = ProtoWriter.init(self.base.allocator);
             defer sender_writer.deinit();
-            try sender_writer.writeInt64(1, @intCast(nft.sender.entity.shard));
-            try sender_writer.writeInt64(2, @intCast(nft.sender.entity.realm));
-            try sender_writer.writeInt64(3, @intCast(nft.sender.entity.num));
+            try sender_writer.writeInt64(1, @intCast(nft.sender.shard));
+            try sender_writer.writeInt64(2, @intCast(nft.sender.realm));
+            try sender_writer.writeInt64(3, @intCast(nft.sender.account));
             const sender_bytes = try sender_writer.toOwnedSlice();
             defer self.base.allocator.free(sender_bytes);
             try nft_writer.writeMessage(2, sender_bytes);
@@ -174,9 +174,9 @@ pub const TokenAirdropTransaction = struct {
             // receiver = 3
             var receiver_writer = ProtoWriter.init(self.base.allocator);
             defer receiver_writer.deinit();
-            try receiver_writer.writeInt64(1, @intCast(nft.receiver.entity.shard));
-            try receiver_writer.writeInt64(2, @intCast(nft.receiver.entity.realm));
-            try receiver_writer.writeInt64(3, @intCast(nft.receiver.entity.num));
+            try receiver_writer.writeInt64(1, @intCast(nft.receiver.shard));
+            try receiver_writer.writeInt64(2, @intCast(nft.receiver.realm));
+            try receiver_writer.writeInt64(3, @intCast(nft.receiver.account));
             const receiver_bytes = try receiver_writer.toOwnedSlice();
             defer self.base.allocator.free(receiver_bytes);
             try nft_writer.writeMessage(3, receiver_bytes);

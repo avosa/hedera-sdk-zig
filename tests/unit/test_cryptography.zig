@@ -316,9 +316,9 @@ test "Composite key structures" {
     var key_list = hedera.KeyList.init(allocator);
     defer key_list.deinit();
     
-    try key_list.addKey(hedera.Key.fromPublicKey(key1.getPublicKey()));
-    try key_list.addKey(hedera.Key.fromPublicKey(key2.getPublicKey()));
-    try key_list.addKey(hedera.Key.fromPublicKey(key3.getPublicKey()));
+    _ = key_list.addKey(hedera.Key.fromPublicKey(key1.getPublicKey()));
+    _ = key_list.addKey(hedera.Key.fromPublicKey(key2.getPublicKey()));
+    _ = key_list.addKey(hedera.Key.fromPublicKey(key3.getPublicKey()));
     
     try testing.expectEqual(@as(usize, 3), key_list.keys.items.len);
     
@@ -326,9 +326,9 @@ test "Composite key structures" {
     var threshold_key = hedera.ThresholdKey.init(allocator, 2);
     defer threshold_key.deinit();
     
-    try threshold_key.addKey(hedera.Key.fromPublicKey(key1.getPublicKey()));
-    try threshold_key.addKey(hedera.Key.fromPublicKey(key2.getPublicKey()));
-    try threshold_key.addKey(hedera.Key.fromPublicKey(key3.getPublicKey()));
+    _ = threshold_key.addKey(hedera.Key.fromPublicKey(key1.getPublicKey()));
+    _ = threshold_key.addKey(hedera.Key.fromPublicKey(key2.getPublicKey()));
+    _ = threshold_key.addKey(hedera.Key.fromPublicKey(key3.getPublicKey()));
     
     try testing.expectEqual(@as(u32, 2), threshold_key.threshold);
     try testing.expectEqual(@as(usize, 3), threshold_key.keys.items.len);

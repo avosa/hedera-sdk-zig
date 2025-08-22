@@ -62,13 +62,15 @@ pub const TokenNftInfoQuery = struct {
     }
     
     // Set the NFT ID to query
-    pub fn setNftId(self: *TokenNftInfoQuery, nft_id: NftId) !void {
+    pub fn setNftId(self: *TokenNftInfoQuery, nft_id: NftId) *TokenNftInfoQuery {
         self.nft_id = nft_id;
+        return self;
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *TokenNftInfoQuery, payment: Hbar) !void {
+    pub fn setQueryPayment(self: *TokenNftInfoQuery, payment: Hbar) *TokenNftInfoQuery {
         self.base.payment_amount = payment;
+        return self;
     }
     
     // Execute the query
@@ -137,9 +139,9 @@ pub const TokenNftInfoQuery = struct {
             // tokenID = 1
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(nft.token_id.entity.shard));
-            try token_writer.writeInt64(2, @intCast(nft.token_id.entity.realm));
-            try token_writer.writeInt64(3, @intCast(nft.token_id.entity.num));
+            try token_writer.writeInt64(1, @intCast(nft.token_id.shard));
+            try token_writer.writeInt64(2, @intCast(nft.token_id.realm));
+            try token_writer.writeInt64(3, @intCast(nft.token_id.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try nft_writer.writeMessage(1, token_bytes);

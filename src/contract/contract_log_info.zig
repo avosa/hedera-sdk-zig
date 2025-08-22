@@ -28,7 +28,7 @@ pub const ContractLogInfo = struct {
         }
     }
 
-    pub fn setBloom(self: *ContractLogInfo, bloom: [256]u8) void {
+    pub fn setBloom(self: *ContractLogInfo, bloom: [256]u8) *ContractLogInfo {
         self.bloom = bloom;
     }
 
@@ -36,9 +36,10 @@ pub const ContractLogInfo = struct {
         try self.topics.append(topic);
     }
 
-    pub fn setData(self: *ContractLogInfo, data: []const u8) !void {
+    pub fn setData(self: *ContractLogInfo, data: []const u8) *ContractLogInfo {
         if (self.data.len > 0) {
             self.allocator.free(self.data);
+            return self;
         }
         self.data = try self.allocator.dupe(u8, data);
     }
@@ -93,9 +94,9 @@ pub const ContractLogInfo = struct {
         // contractID = 1
         var contract_writer = ProtoWriter.init(allocator);
         defer contract_writer.deinit();
-        try contract_writer.writeInt64(1, @intCast(self.contract_id.entity.shard));
-        try contract_writer.writeInt64(2, @intCast(self.contract_id.entity.realm));
-        try contract_writer.writeInt64(3, @intCast(self.contract_id.entity.num));
+        try contract_writer.writeInt64(1, @intCast(self.contract_id.shard));
+        try contract_writer.writeInt64(2, @intCast(self.contract_id.realm));
+        try contract_writer.writeInt64(3, @intCast(self.contract_id.num));
         const contract_bytes = try contract_writer.toOwnedSlice();
         defer allocator.free(contract_bytes);
         try writer.writeMessage(1, contract_bytes);
@@ -139,13 +140,7 @@ pub const ContractLogInfo = struct {
                         }
                     }
 
-                    log_info.contract_id = ContractId{
-                        .entity = .{
-                            .shard = shard,
-                            .realm = realm,
-                            .num = num,
-                        },
-                    };
+                    log_info.contract_id = ContractId.init(@intCast(shard), @intCast(realm), @intCast(num));
                 },
                 2 => {
                     if (field.data.len == 256) {
@@ -187,9 +182,9 @@ pub const ContractLogInfo = struct {
     }
 
     pub fn equals(self: *const ContractLogInfo, other: *const ContractLogInfo) bool {
-        if (self.contract_id.entity.shard != other.contract_id.entity.shard or
-            self.contract_id.entity.realm != other.contract_id.entity.realm or
-            self.contract_id.entity.num != other.contract_id.entity.num) {
+        if (self.contract_id.shard != other.contract_id.shard or
+            self.contract_id.realm != other.contract_id.realm or
+            self.contract_id.num != other.contract_id.num) {
             return false;
         }
 
@@ -267,9 +262,9 @@ pub const ContractLogInfoList = struct {
         defer result.deinit();
 
         for (self.logs.items) |log| {
-            if (log.contract_id.entity.shard == contract_id.entity.shard and
-                log.contract_id.entity.realm == contract_id.entity.realm and
-                log.contract_id.entity.num == contract_id.entity.num) {
+            if (log.contract_id.shard == contract_id.shard and
+                log.contract_id.realm == contract_id.realm and
+                log.contract_id.num == contract_id.num) {
                 try result.append(try log.clone(allocator));
             }
         }

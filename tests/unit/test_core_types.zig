@@ -5,9 +5,9 @@ const hedera = @import("hedera");
 test "AccountId creation and validation" {
     // Test basic account ID creation
     const account = hedera.AccountId.init(0, 0, 3);
-    try testing.expectEqual(@as(u64, 0), account.entity.shard);
-    try testing.expectEqual(@as(u64, 0), account.entity.realm);
-    try testing.expectEqual(@as(u64, 3), account.entity.num);
+    try testing.expectEqual(@as(u64, 0), account.shard);
+    try testing.expectEqual(@as(u64, 0), account.realm);
+    try testing.expectEqual(@as(u64, 3), account.num());
     
     // Test checksum calculation
     const checksum = account.calculateChecksum();
@@ -25,9 +25,9 @@ test "AccountId creation and validation" {
 
 test "ContractId creation and validation" {
     const contract = hedera.ContractId.init(0, 0, 1001);
-    try testing.expectEqual(@as(u64, 0), contract.entity.shard);
-    try testing.expectEqual(@as(u64, 0), contract.entity.realm);
-    try testing.expectEqual(@as(u64, 1001), contract.entity.num);
+    try testing.expectEqual(@as(u64, 0), contract.shard);
+    try testing.expectEqual(@as(u64, 0), contract.realm);
+    try testing.expectEqual(@as(u64, 1001), contract.num());
     
     const parsed = try hedera.ContractId.fromString("0.0.1001");
     try testing.expect(parsed.equals(contract));
@@ -35,9 +35,9 @@ test "ContractId creation and validation" {
 
 test "FileId creation and validation" {
     const file = hedera.FileId.init(0, 0, 150);
-    try testing.expectEqual(@as(u64, 0), file.entity.shard);
-    try testing.expectEqual(@as(u64, 0), file.entity.realm);
-    try testing.expectEqual(@as(u64, 150), file.entity.num);
+    try testing.expectEqual(@as(u64, 0), file.shard);
+    try testing.expectEqual(@as(u64, 0), file.realm);
+    try testing.expectEqual(@as(u64, 150), file.num());
     
     const parsed = try hedera.FileId.fromString("0.0.150");
     try testing.expect(parsed.equals(file));
@@ -45,9 +45,9 @@ test "FileId creation and validation" {
 
 test "TokenId creation and validation" {
     const token = hedera.TokenId.init(0, 0, 2000);
-    try testing.expectEqual(@as(u64, 0), token.entity.shard);
-    try testing.expectEqual(@as(u64, 0), token.entity.realm);
-    try testing.expectEqual(@as(u64, 2000), token.entity.num);
+    try testing.expectEqual(@as(u64, 0), token.shard);
+    try testing.expectEqual(@as(u64, 0), token.realm);
+    try testing.expectEqual(@as(u64, 2000), token.num());
     
     const parsed = try hedera.TokenId.fromString("0.0.2000");
     try testing.expect(parsed.equals(token));
@@ -55,9 +55,9 @@ test "TokenId creation and validation" {
 
 test "TopicId creation and validation" {
     const topic = hedera.TopicId.init(0, 0, 5000);
-    try testing.expectEqual(@as(u64, 0), topic.entity.shard);
-    try testing.expectEqual(@as(u64, 0), topic.entity.realm);
-    try testing.expectEqual(@as(u64, 5000), topic.entity.num);
+    try testing.expectEqual(@as(u64, 0), topic.shard);
+    try testing.expectEqual(@as(u64, 0), topic.realm);
+    try testing.expectEqual(@as(u64, 5000), topic.num());
     
     const parsed = try hedera.TopicId.fromString("0.0.5000");
     try testing.expect(parsed.equals(topic));
@@ -65,9 +65,9 @@ test "TopicId creation and validation" {
 
 test "ScheduleId creation and validation" {
     const schedule = hedera.ScheduleId.init(0, 0, 3000);
-    try testing.expectEqual(@as(u64, 0), schedule.entity.shard);
-    try testing.expectEqual(@as(u64, 0), schedule.entity.realm);
-    try testing.expectEqual(@as(u64, 3000), schedule.entity.num);
+    try testing.expectEqual(@as(u64, 0), schedule.shard);
+    try testing.expectEqual(@as(u64, 0), schedule.realm);
+    try testing.expectEqual(@as(u64, 3000), schedule.num());
     
     const parsed = try hedera.ScheduleId.fromString("0.0.3000");
     try testing.expect(parsed.equals(schedule));
@@ -327,3 +327,4 @@ test "Entity ID format validation" {
         try testing.expectError(error.InvalidAccountId, hedera.AccountId.fromString(invalid_id));
     }
 }
+

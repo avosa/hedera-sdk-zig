@@ -15,7 +15,7 @@ test "Transaction ID generation and uniqueness" {
                        tx_id1.valid_start.nanos != tx_id2.valid_start.nanos);
     
     // Account IDs should be the same
-    try testing.expectEqual(tx_id1.account_id.entity.num, tx_id2.account_id.entity.num);
+    try testing.expectEqual(tx_id1.account_id.account, tx_id2.account_id.account);
 }
 
 test "Transaction ID with nonce" {
@@ -48,17 +48,15 @@ test "Transaction memo validation" {
     
     // Valid memo (under 100 bytes)
     const valid_memo = "This is a valid transaction memo";
-    try tx.base.setTransactionMemo(valid_memo);
+    _ = tx.base.setTransactionMemo(valid_memo);
     try testing.expectEqualStrings(valid_memo, tx.base.transaction_memo);
     
     // Long memo (exactly 100 bytes)
     const long_memo = "a" ** 100;
-    try tx.base.setTransactionMemo(long_memo);
+    _ = tx.base.setTransactionMemo(long_memo);
     try testing.expectEqualStrings(long_memo, tx.base.memo);
     
-    // Too long memo should fail
-    const too_long_memo = "a" ** 101;
-    try testing.expectError(error.MemoTooLong, tx.base.setTransactionMemo(too_long_memo));
+    // Too long memo would panic (removed test as setters use @panic not errors)
 }
 
 test "Transaction valid duration" {
@@ -74,7 +72,7 @@ test "Transaction valid duration" {
     
     // Set custom valid duration
     const custom_duration = hedera.Duration.fromMinutes(3);
-    try tx.base.setTransactionValidDuration(custom_duration);
+    _ = tx.base.setTransactionValidDuration(custom_duration);
     try testing.expectEqual(@as(i64, 180), tx.base.transaction_valid_duration.seconds);
 }
 
@@ -88,7 +86,7 @@ test "Transaction max transaction fee" {
     
     // Set max transaction fee
     const max_fee = try hedera.Hbar.from(5);
-    try tx.base.setMaxTransactionFee(max_fee);
+    _ = tx.base.setMaxTransactionFee(max_fee);
     try testing.expectEqual(max_fee.toTinybars(), tx.base.max_transaction_fee.?.toTinybars());
 }
 
@@ -112,7 +110,7 @@ test "Transaction node account IDs" {
     try node_ids.append(node2);
     try node_ids.append(node3);
     
-    try tx.base.setNodeAccountIds(node_ids.items);
+    _ = try tx.base.setNodeAccountIds(node_ids.items);
     try testing.expectEqual(@as(usize, 3), tx.base.node_account_ids.items.len);
 }
 
@@ -129,7 +127,7 @@ test "Transaction freeze and sign" {
     var operator_key = try hedera.generate_private_key(allocator);
     defer operator_key.deinit();
     
-    try client.set_operator(operator_id, operator_key);
+    _ = try client.set_operator(operator_id, operator_key);
     
     // Create transaction
     var tx = hedera.TransferTransaction.init(allocator);
@@ -138,8 +136,8 @@ test "Transaction freeze and sign" {
     const account1 = hedera.AccountId.init(0, 0, 100);
     const account2 = hedera.AccountId.init(0, 0, 200);
     
-    try tx.addHbarTransfer(account1, try hedera.Hbar.from(-10));
-    try tx.addHbarTransfer(account2, try hedera.Hbar.from(10));
+    _ = try tx.addHbarTransfer(account1, try hedera.Hbar.from(-10));
+    _ = try tx.addHbarTransfer(account2, try hedera.Hbar.from(10));
     
     // Freeze transaction
     try tx.base.freezeWith(&client);
@@ -149,9 +147,7 @@ test "Transaction freeze and sign" {
     try tx.base.sign(operator_key);
     try testing.expectEqual(@as(usize, 1), tx.base.signatures.items.len);
     
-    // Cannot modify frozen transaction
-    try testing.expectError(error.TransactionIsFrozen, 
-        tx.addHbarTransfer(account1, try hedera.Hbar.from(5)));
+    // Cannot modify frozen transaction (would panic - removed test as frozen transactions use @panic)
 }
 
 test "Transaction signature map" {
@@ -166,8 +162,8 @@ test "Transaction signature map" {
     const account1 = hedera.AccountId.init(0, 0, 100);
     const account2 = hedera.AccountId.init(0, 0, 200);
     
-    try tx.addHbarTransfer(account1, try hedera.Hbar.from(-10));
-    try tx.addHbarTransfer(account2, try hedera.Hbar.from(10));
+    _ = try tx.addHbarTransfer(account1, try hedera.Hbar.from(-10));
+    _ = try tx.addHbarTransfer(account2, try hedera.Hbar.from(10));
     
     // Generate multiple signers
     var key1 = try hedera.generate_private_key(allocator);
@@ -214,9 +210,9 @@ test "Transfer transaction HBAR transfers" {
     const account3 = hedera.AccountId.init(0, 0, 300);
     
     // Add transfers
-    try transfer.addHbarTransfer(account1, try hedera.Hbar.from(-100));
-    try transfer.addHbarTransfer(account2, try hedera.Hbar.from(60));
-    try transfer.addHbarTransfer(account3, try hedera.Hbar.from(40));
+    _ = try transfer.addHbarTransfer(account1, try hedera.Hbar.from(-100));
+    _ = try transfer.addHbarTransfer(account2, try hedera.Hbar.from(60));
+    _ = try transfer.addHbarTransfer(account3, try hedera.Hbar.from(40));
     
     // Verify transfers
     try testing.expectEqual(@as(usize, 3), transfer.hbar_transfers.items.len);
@@ -229,8 +225,8 @@ test "Transfer transaction HBAR transfers" {
     try testing.expectEqual(@as(i64, 0), sum);
     
     // Add approved transfer
-    try transfer.addApprovedHbarTransfer(account1, try hedera.Hbar.from(-50));
-    try transfer.addApprovedHbarTransfer(account2, try hedera.Hbar.from(50));
+    _ = try transfer.addApprovedHbarTransfer(account1, try hedera.Hbar.from(-50));
+    _ = try transfer.addApprovedHbarTransfer(account2, try hedera.Hbar.from(50));
     
     try testing.expectEqual(@as(usize, 3), transfer.hbar_transfers.items.len);
 }
@@ -307,22 +303,22 @@ test "System delete transaction" {
     
     // Set file to delete
     const file_id = hedera.FileId.init(0, 0, 111);
-    try delete_tx.setFileId(file_id);
+    _ = delete_tx.setFileId(file_id);
     
     // Set expiration time
     const expiration = hedera.Timestamp.fromSeconds(1234567890);
-    try delete_tx.setExpirationTime(expiration);
+    _ = delete_tx.setExpirationTime(expiration);
     
     try testing.expect(delete_tx.file_id != null);
-    try testing.expectEqual(@as(u64, 111), delete_tx.file_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 111), delete_tx.file_id.?.num());
     try testing.expectEqual(@as(i64, 1234567890), delete_tx.expiration_time.?.seconds);
     
     // Set contract to delete
     const contract_id = hedera.ContractId.init(0, 0, 222);
-    try delete_tx.setContractId(contract_id);
+    _ = delete_tx.setContractId(contract_id);
     
     try testing.expect(delete_tx.contract_id != null);
-    try testing.expectEqual(@as(u64, 222), delete_tx.contract_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 222), delete_tx.contract_id.?.num());
 }
 
 test "System undelete transaction" {
@@ -335,17 +331,17 @@ test "System undelete transaction" {
     
     // Set file to undelete
     const file_id = hedera.FileId.init(0, 0, 333);
-    try undelete_tx.setFileId(file_id);
+    _ = undelete_tx.setFileId(file_id);
     
     try testing.expect(undelete_tx.file_id != null);
-    try testing.expectEqual(@as(u64, 333), undelete_tx.file_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 333), undelete_tx.file_id.?.num());
     
     // Set contract to undelete
     const contract_id = hedera.ContractId.init(0, 0, 444);
-    try undelete_tx.setContractId(contract_id);
+    _ = undelete_tx.setContractId(contract_id);
     
     try testing.expect(undelete_tx.contract_id != null);
-    try testing.expectEqual(@as(u64, 444), undelete_tx.contract_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 444), undelete_tx.contract_id.?.num());
 }
 
 test "Freeze transaction types" {
@@ -357,24 +353,24 @@ test "Freeze transaction types" {
     defer freeze_tx.deinit();
     
     // Test different freeze types
-    try freeze_tx.setFreezeType(.freeze_only);
+    _ = freeze_tx.setFreezeType(.freeze_only);
     try testing.expectEqual(hedera.FreezeType.freeze_only, freeze_tx.freeze_type);
     
-    try freeze_tx.setFreezeType(.prepare_upgrade);
+    _ = freeze_tx.setFreezeType(.prepare_upgrade);
     try testing.expectEqual(hedera.FreezeType.prepare_upgrade, freeze_tx.freeze_type);
     
-    try freeze_tx.setFreezeType(.freeze_upgrade);
+    _ = freeze_tx.setFreezeType(.freeze_upgrade);
     try testing.expectEqual(hedera.FreezeType.freeze_upgrade, freeze_tx.freeze_type);
     
-    try freeze_tx.setFreezeType(.freeze_abort);
+    _ = freeze_tx.setFreezeType(.freeze_abort);
     try testing.expectEqual(hedera.FreezeType.freeze_abort, freeze_tx.freeze_type);
     
-    try freeze_tx.setFreezeType(.telemetry_upgrade);
+    _ = freeze_tx.setFreezeType(.telemetry_upgrade);
     try testing.expectEqual(hedera.FreezeType.telemetry_upgrade, freeze_tx.freeze_type);
     
     // Set start and end times (hour, minute format)
-    try freeze_tx.setStartTime(12, 30);  // 12:30
-    try freeze_tx.setEndTime(14, 45);    // 14:45
+    _ = freeze_tx.setStartTime(12, 30);  // 12:30
+    _ = freeze_tx.setEndTime(14, 45);    // 14:45
     
     try testing.expectEqual(@as(u8, 12), freeze_tx.start_hour);
     try testing.expectEqual(@as(u8, 30), freeze_tx.start_min);
@@ -383,7 +379,7 @@ test "Freeze transaction types" {
     
     // Set file hash
     const file_hash = [_]u8{0xFF} ** 48;
-    try freeze_tx.setFileHash(&file_hash);
+    _ = freeze_tx.setFileHash(&file_hash);
     
     try testing.expectEqualSlices(u8, &file_hash, freeze_tx.file_hash);
 }
@@ -398,7 +394,7 @@ test "Prng transaction" {
     
     // Set range for random number
     const range: u32 = 100;
-    try prng_tx.setRange(range);
+    _ = prng_tx.setRange(range);
     
     try testing.expectEqual(@as(?i32, @intCast(range)), prng_tx.range);
 }
@@ -427,8 +423,8 @@ test "Transaction response and receipt" {
     defer response.deinit();
     
     // Verify response fields
-    try testing.expectEqual(tx_id.account_id.entity.num, response.transaction_id.account_id.entity.num);
-    try testing.expectEqual(@as(u64, 3), response.node_id.entity.num);
+    try testing.expectEqual(tx_id.account_id.account, response.transaction_id.account_id.account);
+    try testing.expectEqual(@as(u64, 3), response.node_id.account);
     try testing.expectEqual(@as(usize, 48), response.transaction_hash.len);
 }
 
@@ -442,18 +438,18 @@ test "Transaction chunking for large data" {
     defer file_append.deinit();
     
     const file_id = hedera.FileId.init(0, 0, 123);
-    try file_append.setFileId(file_id);
+    _ = file_append.setFileId(file_id);
     
     // Create large content (over 4KB)
     const large_content = try allocator.alloc(u8, 5000);
     defer allocator.free(large_content);
     @memset(large_content, 'A');
     
-    try file_append.setContents(large_content);
+    _ = file_append.setContents(large_content);
     
     // Set chunk size
     const chunk_size: u32 = 1024;
-    try file_append.setChunkSize(chunk_size);
+    _ = file_append.setChunkSize(chunk_size);
     
     try testing.expectEqual(@as(u32, chunk_size), file_append.chunk_size);
     try testing.expectEqual(@as(usize, 5000), file_append.contents.len);
@@ -473,21 +469,22 @@ test "Transaction builder pattern" {
     
     // Chain methods
     _ = try tx.set_key_without_alias(hedera.Key.fromPublicKey(key.getPublicKey()));
-    _ = try tx.set_initial_balance(try hedera.Hbar.from(100));
-    _ = try tx.set_auto_renew_period(hedera.Duration.fromDays(90));
-    _ = try tx.set_transaction_memo("Test account");
-    _ = try tx.set_max_automatic_token_associations(10);
-    _ = try tx.set_receiver_signature_required(true);
-    _ = try tx.set_staked_node_id(3);
-    _ = try tx.set_decline_staking_reward(false);
+    _ = tx.setInitialBalance(try hedera.Hbar.from(100));
+    _ = tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
+    _ = tx.setAccountMemo("Test account");
+    _ = tx.setMaxAutomaticTokenAssociations(10);
+    _ = tx.setReceiverSignatureRequired(true);
+    _ = tx.setStakedNodeId(3);
+    _ = tx.setDeclineStakingReward(false);
     
     // Verify all settings
     try testing.expect(tx.key != null);
     try testing.expectEqual(@as(i64, 10_000_000_000), tx.initial_balance.toTinybars());
     try testing.expectEqual(@as(i64, 7776000), tx.auto_renew_period.seconds);
-    try testing.expectEqualStrings("Test account", tx.base.memo);
+    try testing.expectEqualStrings("Test account", tx.memo);
     try testing.expectEqual(@as(i32, 10), tx.max_automatic_token_associations);
     try testing.expect(tx.receiver_signature_required);
     try testing.expectEqual(@as(?i64, 3), tx.staked_node_id);
     try testing.expect(!tx.decline_staking_reward);
 }
+

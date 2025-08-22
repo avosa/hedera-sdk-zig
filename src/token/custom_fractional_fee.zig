@@ -37,6 +37,7 @@ pub const CustomFractionalFee = struct {
             self.denominator = 1;
         } else {
             self.denominator = denominator;
+            return self;
         }
         return self;
     }
@@ -115,6 +116,7 @@ pub const CustomFractionalFee = struct {
 
         if (self.minimum_amount > 0 and fee_amount < self.minimum_amount) {
             fee_amount = self.minimum_amount;
+            return self;
         }
 
         if (self.maximum_amount > 0 and fee_amount > self.maximum_amount) {
@@ -160,9 +162,9 @@ pub const CustomFractionalFee = struct {
             var collector_writer = ProtoWriter.init(allocator);
             defer collector_writer.deinit();
             
-            try collector_writer.writeInt64(1, @intCast(collector_id.entity.shard));
-            try collector_writer.writeInt64(2, @intCast(collector_id.entity.realm));
-            try collector_writer.writeInt64(3, @intCast(collector_id.entity.num));
+            try collector_writer.writeInt64(1, @intCast(collector_id.shard));
+            try collector_writer.writeInt64(2, @intCast(collector_id.realm));
+            try collector_writer.writeInt64(3, @intCast(collector_id.account));
             
             const collector_bytes = try collector_writer.toOwnedSlice();
             defer allocator.free(collector_bytes);
@@ -280,9 +282,9 @@ pub const CustomFractionalFee = struct {
         if (self.fee_collector_account_id != null and other.fee_collector_account_id != null) {
             const self_collector = self.fee_collector_account_id.?;
             const other_collector = other.fee_collector_account_id.?;
-            if (self_collector.entity.shard != other_collector.entity.shard or
-                self_collector.entity.realm != other_collector.entity.realm or
-                self_collector.entity.num != other_collector.entity.num) {
+            if (self_collector.shard != other_collector.shard or
+                self_collector.realm != other_collector.realm or
+                self_collector.account != other_collector.account) {
                 return false;
             }
         }

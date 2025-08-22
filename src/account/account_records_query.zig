@@ -26,13 +26,15 @@ pub const AccountRecordsQuery = struct {
     }
     
     // Set the account ID to query records for
-    pub fn setAccountId(self: *AccountRecordsQuery, account_id: AccountId) !void {
+    pub fn setAccountId(self: *AccountRecordsQuery, account_id: AccountId) *AccountRecordsQuery {
         self.account_id = account_id;
+        return self;
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *AccountRecordsQuery, payment: Hbar) !void {
+    pub fn setQueryPayment(self: *AccountRecordsQuery, payment: Hbar) *AccountRecordsQuery {
         self.base.payment_amount = payment;
+        return self;
     }
     
     // Execute the query
@@ -97,9 +99,9 @@ pub const AccountRecordsQuery = struct {
         if (self.account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(account.entity.shard));
-            try account_writer.writeInt64(2, @intCast(account.entity.realm));
-            try account_writer.writeInt64(3, @intCast(account.entity.num));
+            try account_writer.writeInt64(1, @intCast(account.shard));
+            try account_writer.writeInt64(2, @intCast(account.realm));
+            try account_writer.writeInt64(3, @intCast(account.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try records_query_writer.writeMessage(1, account_bytes);

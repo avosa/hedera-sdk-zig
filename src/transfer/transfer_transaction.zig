@@ -138,7 +138,7 @@ pub const TransferTransaction = struct {
     
     // Includes an HBAR transfer in the transaction
     pub fn addHbarTransfer(self: *TransferTransaction, account_id: AccountId, amount: Hbar) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         // Check if account already has a transfer
         for (self.hbar_transfers.items) |*transfer| {
@@ -155,7 +155,7 @@ pub const TransferTransaction = struct {
     
     // Includes an approved HBAR transfer in the transaction
     pub fn addApprovedHbarTransfer(self: *TransferTransaction, account_id: AccountId, amount: Hbar) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         // Check if account already has a transfer
         for (self.hbar_transfers.items) |*transfer| {
@@ -172,7 +172,7 @@ pub const TransferTransaction = struct {
     
     // Includes a token transfer in the transaction
     pub fn addTokenTransfer(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         // Check if this token-account pair already has a transfer
         for (self.token_transfers.items) |*transfer| {
@@ -188,7 +188,7 @@ pub const TransferTransaction = struct {
     
     // Includes a token transfer in the transaction with decimals
     pub fn addTokenTransferWithDecimals(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64, decimals: u32) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         // Store expected decimals
         try self.token_decimals.put(token_id, decimals);
@@ -208,7 +208,7 @@ pub const TransferTransaction = struct {
     
     // Includes an approved token transfer in the transaction
     pub fn addApprovedTokenTransfer(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         // Check if this token-account pair already has a transfer
         for (self.token_transfers.items) |*transfer| {
@@ -225,7 +225,7 @@ pub const TransferTransaction = struct {
     
     // Includes an NFT transfer in the transaction
     pub fn addNftTransfer(self: *TransferTransaction, nft_id: NftId, sender: AccountId, receiver: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         // Check for duplicate (same NFT with same sender/receiver)
         for (self.nft_transfers.items) |transfer| {
@@ -241,7 +241,7 @@ pub const TransferTransaction = struct {
     
     // Includes an approved NFT transfer in the transaction
     pub fn addApprovedNftTransfer(self: *TransferTransaction, nft_id: NftId, sender: AccountId, receiver: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         // Check for duplicate (same NFT with same sender/receiver)
         for (self.nft_transfers.items) |transfer| {
@@ -343,9 +343,9 @@ pub const TransferTransaction = struct {
                 // accountID = 1
                 var account_writer = ProtoWriter.init(self.base.allocator);
                 defer account_writer.deinit();
-                try account_writer.writeInt64(1, @intCast(transfer.account_id.entity.shard));
-                try account_writer.writeInt64(2, @intCast(transfer.account_id.entity.realm));
-                try account_writer.writeInt64(3, @intCast(transfer.account_id.entity.num));
+                try account_writer.writeInt64(1, @intCast(transfer.account_id.shard));
+                try account_writer.writeInt64(2, @intCast(transfer.account_id.realm));
+                try account_writer.writeInt64(3, @intCast(transfer.account_id.account));
                 const account_bytes = try account_writer.toOwnedSlice();
                 defer self.base.allocator.free(account_bytes);
                 try amount_writer.writeMessage(1, account_bytes);
@@ -397,9 +397,9 @@ pub const TransferTransaction = struct {
                 // token = 1
                 var token_writer = ProtoWriter.init(self.base.allocator);
                 defer token_writer.deinit();
-                try token_writer.writeInt64(1, @intCast(entry.key_ptr.*.entity.shard));
-                try token_writer.writeInt64(2, @intCast(entry.key_ptr.*.entity.realm));
-                try token_writer.writeInt64(3, @intCast(entry.key_ptr.*.entity.num));
+                try token_writer.writeInt64(1, @intCast(entry.key_ptr.*.shard));
+                try token_writer.writeInt64(2, @intCast(entry.key_ptr.*.realm));
+                try token_writer.writeInt64(3, @intCast(entry.key_ptr.*.account));
                 const token_bytes = try token_writer.toOwnedSlice();
                 defer self.base.allocator.free(token_bytes);
                 try token_list_writer.writeMessage(1, token_bytes);
@@ -412,9 +412,9 @@ pub const TransferTransaction = struct {
                     // accountID = 1
                     var account_writer = ProtoWriter.init(self.base.allocator);
                     defer account_writer.deinit();
-                    try account_writer.writeInt64(1, @intCast(transfer.account_id.entity.shard));
-                    try account_writer.writeInt64(2, @intCast(transfer.account_id.entity.realm));
-                    try account_writer.writeInt64(3, @intCast(transfer.account_id.entity.num));
+                    try account_writer.writeInt64(1, @intCast(transfer.account_id.shard));
+                    try account_writer.writeInt64(2, @intCast(transfer.account_id.realm));
+                    try account_writer.writeInt64(3, @intCast(transfer.account_id.account));
                     const account_bytes = try account_writer.toOwnedSlice();
                     defer self.base.allocator.free(account_bytes);
                     try amount_writer.writeMessage(1, account_bytes);
@@ -473,9 +473,9 @@ pub const TransferTransaction = struct {
                 // token = 1
                 var token_writer = ProtoWriter.init(self.base.allocator);
                 defer token_writer.deinit();
-                try token_writer.writeInt64(1, @intCast(entry.key_ptr.*.entity.shard));
-                try token_writer.writeInt64(2, @intCast(entry.key_ptr.*.entity.realm));
-                try token_writer.writeInt64(3, @intCast(entry.key_ptr.*.entity.num));
+                try token_writer.writeInt64(1, @intCast(entry.key_ptr.*.shard));
+                try token_writer.writeInt64(2, @intCast(entry.key_ptr.*.realm));
+                try token_writer.writeInt64(3, @intCast(entry.key_ptr.*.account));
                 const token_bytes = try token_writer.toOwnedSlice();
                 defer self.base.allocator.free(token_bytes);
                 try nft_list_writer.writeMessage(1, token_bytes);
@@ -488,9 +488,9 @@ pub const TransferTransaction = struct {
                     // senderAccountID = 1
                     var sender_writer = ProtoWriter.init(self.base.allocator);
                     defer sender_writer.deinit();
-                    try sender_writer.writeInt64(1, @intCast(transfer.sender_account_id.entity.shard));
-                    try sender_writer.writeInt64(2, @intCast(transfer.sender_account_id.entity.realm));
-                    try sender_writer.writeInt64(3, @intCast(transfer.sender_account_id.entity.num));
+                    try sender_writer.writeInt64(1, @intCast(transfer.sender_account_id.shard));
+                    try sender_writer.writeInt64(2, @intCast(transfer.sender_account_id.realm));
+                    try sender_writer.writeInt64(3, @intCast(transfer.sender_account_id.account));
                     const sender_bytes = try sender_writer.toOwnedSlice();
                     defer self.base.allocator.free(sender_bytes);
                     try nft_transfer_writer.writeMessage(1, sender_bytes);
@@ -498,9 +498,9 @@ pub const TransferTransaction = struct {
                     // receiverAccountID = 2
                     var receiver_writer = ProtoWriter.init(self.base.allocator);
                     defer receiver_writer.deinit();
-                    try receiver_writer.writeInt64(1, @intCast(transfer.receiver_account_id.entity.shard));
-                    try receiver_writer.writeInt64(2, @intCast(transfer.receiver_account_id.entity.realm));
-                    try receiver_writer.writeInt64(3, @intCast(transfer.receiver_account_id.entity.num));
+                    try receiver_writer.writeInt64(1, @intCast(transfer.receiver_account_id.shard));
+                    try receiver_writer.writeInt64(2, @intCast(transfer.receiver_account_id.realm));
+                    try receiver_writer.writeInt64(3, @intCast(transfer.receiver_account_id.account));
                     const receiver_bytes = try receiver_writer.toOwnedSlice();
                     defer self.base.allocator.free(receiver_bytes);
                     try nft_transfer_writer.writeMessage(2, receiver_bytes);
@@ -547,9 +547,9 @@ pub const TransferTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -564,9 +564,9 @@ pub const TransferTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

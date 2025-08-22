@@ -43,48 +43,48 @@ pub const EthereumLegacyTransaction = struct {
     }
     
     // Set nonce
-    pub fn setNonce(self: *EthereumLegacyTransaction, nonce: u64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setNonce(self: *EthereumLegacyTransaction, nonce: u64) *EthereumLegacyTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.nonce = nonce;
     }
     
     // Set gas price
-    pub fn setGasPrice(self: *EthereumLegacyTransaction, gas_price: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setGasPrice(self: *EthereumLegacyTransaction, gas_price: []const u8) *EthereumLegacyTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         if (self.gas_price.len > 0) self.base.allocator.free(self.gas_price);
         self.gas_price = try self.base.allocator.dupe(u8, gas_price);
     }
     
     // Set gas limit
-    pub fn setGasLimit(self: *EthereumLegacyTransaction, gas_limit: u64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setGasLimit(self: *EthereumLegacyTransaction, gas_limit: u64) *EthereumLegacyTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.gas_limit = gas_limit;
     }
     
     // Set to address
-    pub fn setTo(self: *EthereumLegacyTransaction, to: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTo(self: *EthereumLegacyTransaction, to: []const u8) *EthereumLegacyTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         if (self.to) |old_to| self.base.allocator.free(old_to);
         self.to = try self.base.allocator.dupe(u8, to);
     }
     
     // Set value
-    pub fn setValue(self: *EthereumLegacyTransaction, value: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setValue(self: *EthereumLegacyTransaction, value: []const u8) *EthereumLegacyTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         if (self.value.len > 0) self.base.allocator.free(self.value);
         self.value = try self.base.allocator.dupe(u8, value);
     }
     
     // Set data
-    pub fn setData(self: *EthereumLegacyTransaction, data: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setData(self: *EthereumLegacyTransaction, data: []const u8) *EthereumLegacyTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         if (self.data.len > 0) self.base.allocator.free(self.data);
         self.data = try self.base.allocator.dupe(u8, data);
     }
     
     // Set signature
-    pub fn setSignature(self: *EthereumLegacyTransaction, v: []const u8, r: []const u8, s: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setSignature(self: *EthereumLegacyTransaction, v: []const u8, r: []const u8, s: []const u8) *EthereumLegacyTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.v.len > 0) self.base.allocator.free(self.v);
         if (self.r.len > 0) self.base.allocator.free(self.r);
@@ -114,6 +114,7 @@ pub const EthereumLegacyTransaction = struct {
             try rlpEncodeBytes(&list_data, to);
         } else {
             try list_data.append(0x80); // Empty RLP
+            return self;
         }
         
         try rlpEncodeBytes(&list_data, self.value);

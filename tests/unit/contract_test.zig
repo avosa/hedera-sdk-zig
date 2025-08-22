@@ -9,9 +9,9 @@ test "ContractId creation and serialization" {
     
     const contract_id = hedera.ContractId.init(0, 0, 1000);
     
-    try testing.expectEqual(@as(u64, 0), contract_id.entity.shard);
-    try testing.expectEqual(@as(u64, 0), contract_id.entity.realm);
-    try testing.expectEqual(@as(u64, 1000), contract_id.entity.num);
+    try testing.expectEqual(@as(u64, 0), contract_id.shard());
+    try testing.expectEqual(@as(u64, 0), contract_id.realm());
+    try testing.expectEqual(@as(u64, 1000), contract_id.num());
     
     // Test EVM address
     const evm_address = try contract_id.toEvmAddress(allocator);
@@ -52,7 +52,7 @@ test "ContractInfo initialization and fields" {
         .decline_reward = false,
     };
     
-    try testing.expectEqual(@as(u64, 1000), info.contract_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 1000), info.contract_id.?.num());
     try testing.expectEqual(@as(i64, 1024), info.storage);
     try testing.expectEqualStrings("Smart Contract", info.memo.?);
     try testing.expect(!info.deleted);
@@ -104,7 +104,7 @@ test "ContractCallResult parsing" {
     try testing.expectEqual(@as(u64, 21000), result.gas_used);
     try testing.expectEqual(@as(usize, 1), result.logs.items.len);
     try testing.expectEqual(@as(usize, 1), result.created_contract_ids.items.len);
-    try testing.expectEqual(@as(u64, 1001), result.created_contract_ids.items[0].entity.num);
+    try testing.expectEqual(@as(u64, 1001), result.created_contract_ids.items[0].num());
 }
 
 test "FunctionSelector creation and encoding" {
@@ -241,39 +241,40 @@ test "Contract creation transaction" {
     
     // Set bytecode
     const bytecode = try allocator.dupe(u8, &[_]u8{0x60, 0x80, 0x60, 0x40}); // Simple bytecode
-    try tx.setBytecode(bytecode);
+    _ = tx.setBytecode(bytecode);
     
     // Set constructor parameters
     const params = try allocator.dupe(u8, &[_]u8{0x00} ** 64);
-    try tx.setConstructorParameters(params);
+    _ = tx.setConstructorParameters(params);
     
     // Set gas
-    try tx.setGas(100000);
+    _ = tx.setGas(100000);
     
     // Set initial balance
-    try tx.setInitialBalance(try hedera.Hbar.from(10));
+    _ = tx.setInitialBalance(try hedera.Hbar.from(10));
     
     // Set admin key
     var admin_key = try hedera.generate_private_key(allocator);
     defer admin_key.deinit();
-    try tx.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
+    _ = tx.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
     
     // Set memo
-    try tx.setMemo("Test Contract");
+    _ = tx.setMemo("Test Contract");
     
     // Set auto renew
-    try tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
-    try tx.setAutoRenewAccountId(hedera.AccountId.init(0, 0, 800));
+    _ = tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
+    _ = tx.setAutoRenewAccountId(hedera.AccountId.init(0, 0, 800));
     
     // Set max automatic token associations
-    try tx.setMaxAutomaticTokenAssociations(10);
+    _ = tx.setMaxAutomaticTokenAssociations(10);
     
     // Set staking
-    try tx.setStakedNodeId(3);
-    try tx.setDeclineStakingReward(false);
+    _ = tx.setStakedNodeId(3);
+    _ = tx.setDeclineStakingReward(false);
     
     try testing.expectEqual(@as(i64, 100000), tx.gas);
     try testing.expectEqualStrings("Test Contract", tx.memo);
     try testing.expectEqual(@as(i32, 10), tx.max_automatic_token_associations);
     try testing.expectEqual(@as(?i64, 3), tx.staked_node_id);
 }
+

@@ -30,35 +30,37 @@ pub const TokenDissociateTransaction = struct {
     }
     
     // Set the account to dissociate tokens from
-    pub fn setAccountId(self: *TokenDissociateTransaction, account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAccountId(self: *TokenDissociateTransaction, account_id: AccountId) *TokenDissociateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.account_id = account_id;
+        return self;
     }
     
     // Includes a token for dissociation
-    pub fn addTokenId(self: *TokenDissociateTransaction, token_id: TokenId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn addTokenId(self: *TokenDissociateTransaction, token_id: TokenId) *TokenDissociateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.token_ids.items.len >= MAX_TOKEN_DISSOCIATIONS) {
-            return error.TooManyTokenDissociations;
+            @panic("Too many token dissociations");
         }
         
         // Check for duplicates
         for (self.token_ids.items) |existing| {
             if (existing.equals(token_id)) {
-                return error.DuplicateTokenId;
+                @panic("Duplicate token ID");
             }
         }
         
-        try self.token_ids.append(token_id);
+        self.token_ids.append(token_id) catch @panic("Failed to append token ID");
+        return self;
     }
     
     // Set the list of tokens to dissociate
-    pub fn setTokenIds(self: *TokenDissociateTransaction, token_ids: []const TokenId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTokenIds(self: *TokenDissociateTransaction, token_ids: []const TokenId) *TokenDissociateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (token_ids.len > MAX_TOKEN_DISSOCIATIONS) {
-            return error.TooManyTokenDissociations;
+            @panic("Too many token dissociations");
         }
         
         // Clear existing tokens
@@ -68,11 +70,21 @@ pub const TokenDissociateTransaction = struct {
         for (token_ids) |token_id| {
             for (self.token_ids.items) |existing| {
                 if (existing.equals(token_id)) {
-                    return error.DuplicateTokenId;
+                    @panic("Duplicate token ID");
                 }
             }
-            try self.token_ids.append(token_id);
+            self.token_ids.append(token_id) catch @panic("Failed to append token ID");
         }
+        return self;
+    }
+    
+    // Getter methods for uniformity with Go SDK
+    pub fn getAccountId(self: *const TokenDissociateTransaction) ?AccountId {
+        return self.account_id;
+    }
+    
+    pub fn getTokenIDs(self: *const TokenDissociateTransaction) []const TokenId {
+        return self.token_ids.items;
     }
     
     // Execute the transaction
@@ -104,9 +116,9 @@ pub const TokenDissociateTransaction = struct {
         if (self.account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(account.entity.shard));
-            try account_writer.writeInt64(2, @intCast(account.entity.realm));
-            try account_writer.writeInt64(3, @intCast(account.entity.num));
+            try account_writer.writeInt64(1, @intCast(account.shard));
+            try account_writer.writeInt64(2, @intCast(account.realm));
+            try account_writer.writeInt64(3, @intCast(account.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try dissociate_writer.writeMessage(1, account_bytes);
@@ -116,9 +128,9 @@ pub const TokenDissociateTransaction = struct {
         for (self.token_ids.items) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(token.entity.shard));
-            try token_writer.writeInt64(2, @intCast(token.entity.realm));
-            try token_writer.writeInt64(3, @intCast(token.entity.num));
+            try token_writer.writeInt64(1, @intCast(token.shard));
+            try token_writer.writeInt64(2, @intCast(token.realm));
+            try token_writer.writeInt64(3, @intCast(token.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try dissociate_writer.writeMessage(2, token_bytes);
@@ -147,9 +159,9 @@ pub const TokenDissociateTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -168,9 +180,9 @@ pub const TokenDissociateTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

@@ -90,10 +90,11 @@ pub const ContractCallResultQuery = struct {
             const new_url = try std.fmt.allocPrint(
                 self.allocator,
                 "{s}/{d}.{d}.{d}",
-                .{ url, contract_id.entity.shard, contract_id.entity.realm, contract_id.entity.num }
+                .{ url, contract_id.shard, contract_id.realm, contract_id.num }
             );
             self.allocator.free(url);
             url = new_url;
+            return self;
         }
 
         var query_params = std.ArrayList([]const u8).init(self.allocator);
@@ -165,7 +166,6 @@ pub const ContractCallResultQuery = struct {
 
         const obj = root.getObject() orelse return error.InvalidJson;
         const results = obj.get("results").?.getArray() orelse return error.InvalidField;
-
         var contract_results = std.ArrayList(ContractResult).init(self.allocator);
         defer contract_results.deinit();
 
@@ -228,7 +228,7 @@ pub const ContractStateQuery = struct {
         const url = try std.fmt.allocPrint(
             self.allocator,
             "/api/v1/contracts/{d}.{d}.{d}/state",
-            .{ self.contract_id.entity.shard, self.contract_id.entity.realm, self.contract_id.entity.num }
+            .{ self.contract_id.shard, self.contract_id.realm, self.contract_id.num }
         );
 
         var query_params = std.ArrayList([]const u8).init(self.allocator);
@@ -285,7 +285,6 @@ pub const ContractStateQuery = struct {
 
         const obj = root.getObject() orelse return error.InvalidJson;
         const state = obj.get("state").?.getArray() orelse return error.InvalidField;
-
         var entries = std.ArrayList(ContractStateEntry).init(self.allocator);
         defer entries.deinit();
 
@@ -317,7 +316,7 @@ pub const ContractBytecodeQuery = struct {
         const url = try std.fmt.allocPrint(
             self.allocator,
             "/api/v1/contracts/{d}.{d}.{d}",
-            .{ self.contract_id.entity.shard, self.contract_id.entity.realm, self.contract_id.entity.num }
+            .{ self.contract_id.shard, self.contract_id.realm, self.contract_id.num }
         );
         defer self.allocator.free(url);
 
@@ -335,7 +334,6 @@ pub const ContractBytecodeQuery = struct {
         defer root.deinit(self.allocator);
 
         const obj = root.getObject() orelse return error.InvalidJson;
-
         const bytecode_hex = obj.get("bytecode").?.getString() orelse return error.MissingBytecode;
         const runtime_bytecode_hex = obj.get("runtime_bytecode").?.getString() orelse "";
 

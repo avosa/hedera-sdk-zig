@@ -32,9 +32,10 @@ pub const TokenRejectTransaction = struct {
     }
     
     // Set the owner account
-    pub fn setOwner(self: *TokenRejectTransaction, owner: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setOwner(self: *TokenRejectTransaction, owner: AccountId) *TokenRejectTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.owner = owner;
+        return self;
     }
     
     // Add a fungible token to reject
@@ -52,9 +53,10 @@ pub const TokenRejectTransaction = struct {
     }
     
     // Set all token references to reject
-    pub fn setTokenReferences(self: *TokenRejectTransaction, references: []const TokenReference) !void {
+    pub fn setTokenReferences(self: *TokenRejectTransaction, references: []const TokenReference) *TokenRejectTransaction {
         self.token_references.clearAndFree();
         try self.token_references.appendSlice(references);
+        return self;
     }
     
     // Execute the transaction
@@ -78,9 +80,9 @@ pub const TokenRejectTransaction = struct {
         if (self.owner) |owner| {
             var owner_writer = ProtoWriter.init(self.base.allocator);
             defer owner_writer.deinit();
-            try owner_writer.writeInt64(1, @intCast(owner.entity.shard));
-            try owner_writer.writeInt64(2, @intCast(owner.entity.realm));
-            try owner_writer.writeInt64(3, @intCast(owner.entity.num));
+            try owner_writer.writeInt64(1, @intCast(owner.shard));
+            try owner_writer.writeInt64(2, @intCast(owner.realm));
+            try owner_writer.writeInt64(3, @intCast(owner.account));
             const owner_bytes = try owner_writer.toOwnedSlice();
             defer self.base.allocator.free(owner_bytes);
             try reject_writer.writeMessage(1, owner_bytes);
@@ -95,9 +97,9 @@ pub const TokenRejectTransaction = struct {
             if (reference.token_id) |token_id| {
                 var token_writer = ProtoWriter.init(self.base.allocator);
                 defer token_writer.deinit();
-                try token_writer.writeInt64(1, @intCast(token_id.entity.shard));
-                try token_writer.writeInt64(2, @intCast(token_id.entity.realm));
-                try token_writer.writeInt64(3, @intCast(token_id.entity.num));
+                try token_writer.writeInt64(1, @intCast(token_id.shard));
+                try token_writer.writeInt64(2, @intCast(token_id.realm));
+                try token_writer.writeInt64(3, @intCast(token_id.num));
                 const token_bytes = try token_writer.toOwnedSlice();
                 defer self.base.allocator.free(token_bytes);
                 try ref_writer.writeMessage(1, token_bytes);
@@ -111,9 +113,9 @@ pub const TokenRejectTransaction = struct {
                 // tokenId = 1
                 var token_writer = ProtoWriter.init(self.base.allocator);
                 defer token_writer.deinit();
-                try token_writer.writeInt64(1, @intCast(nft_id.token_id.entity.shard));
-                try token_writer.writeInt64(2, @intCast(nft_id.token_id.entity.realm));
-                try token_writer.writeInt64(3, @intCast(nft_id.token_id.entity.num));
+                try token_writer.writeInt64(1, @intCast(nft_id.token_id.shard));
+                try token_writer.writeInt64(2, @intCast(nft_id.token_id.realm));
+                try token_writer.writeInt64(3, @intCast(nft_id.token_id.num));
                 const token_bytes = try token_writer.toOwnedSlice();
                 defer self.base.allocator.free(token_bytes);
                 try nft_writer.writeMessage(1, token_bytes);

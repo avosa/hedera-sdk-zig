@@ -38,18 +38,21 @@ pub const TransactionRecordQuery = struct {
     }
     
     // Set the transaction ID to query
-    pub fn setTransactionId(self: *TransactionRecordQuery, id: TransactionId) !void {
+    pub fn setTransactionId(self: *TransactionRecordQuery, id: TransactionId) *TransactionRecordQuery {
         self.transaction_id = id;
+        return self;
     }
     
     // Include child transaction records
-    pub fn setIncludeChildren(self: *TransactionRecordQuery, include: bool) void {
+    pub fn setIncludeChildren(self: *TransactionRecordQuery, include: bool) *TransactionRecordQuery {
         self.include_children = include;
+        return self;
     }
     
     // Include duplicate transaction records
-    pub fn setIncludeDuplicates(self: *TransactionRecordQuery, include: bool) void {
+    pub fn setIncludeDuplicates(self: *TransactionRecordQuery, include: bool) *TransactionRecordQuery {
         self.include_duplicates = include;
+        return self;
     }
     
     // Execute the query
@@ -114,9 +117,9 @@ pub const TransactionRecordQuery = struct {
             // Write account ID
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);

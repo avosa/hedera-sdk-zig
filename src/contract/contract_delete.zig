@@ -28,88 +28,65 @@ pub const ContractDeleteTransaction = struct {
         self.base.deinit();
     }
     
-    // Set the contract to delete
-    pub fn setContractId(self: *ContractDeleteTransaction, contract_id: ContractId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    // SetContractID sets the contract to delete
+    pub fn SetContractID(self: *ContractDeleteTransaction, contract_id: ContractId) *ContractDeleteTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.contract_id = contract_id;
-    }
-    
-    // Match Go SDK's SetContractID
-    pub fn set_contract_id(self: *ContractDeleteTransaction, contract_id: ContractId) !*ContractDeleteTransaction {
-        try self.setContractId(contract_id);
         return self;
     }
     
-    // Set account to transfer remaining balance to
-    pub fn setTransferAccountId(self: *ContractDeleteTransaction, account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (self.transfer_contract_id != null) {
-            return error.CannotSetBothTransferAccountAndContract;
-        }
+    // GetContractID returns the contract to delete
+    pub fn GetContractID(self: *const ContractDeleteTransaction) ContractId {
+        return self.contract_id orelse ContractId{};
+    }
+    
+    // SetTransferAccountID sets the account to transfer remaining balance to
+    pub fn SetTransferAccountID(self: *ContractDeleteTransaction, account_id: AccountId) *ContractDeleteTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.transfer_account_id = account_id;
-    }
-    
-    // Match Go SDK's SetTransferAccountID
-    pub fn set_transfer_account_id(self: *ContractDeleteTransaction, account_id: AccountId) !*ContractDeleteTransaction {
-        try self.setTransferAccountId(account_id);
+        self.transfer_contract_id = null; // Clear contract ID when setting account ID
         return self;
     }
     
-    // Set contract to transfer remaining balance to
-    pub fn setTransferContractId(self: *ContractDeleteTransaction, contract_id: ContractId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (self.transfer_account_id != null) {
-            return error.CannotSetBothTransferAccountAndContract;
-        }
+    // GetTransferAccountID returns the account to transfer remaining balance to
+    pub fn GetTransferAccountID(self: *const ContractDeleteTransaction) AccountId {
+        return self.transfer_account_id orelse AccountId{};
+    }
+    
+    // SetTransferContractID sets the contract to transfer remaining balance to
+    pub fn SetTransferContractID(self: *ContractDeleteTransaction, contract_id: ContractId) *ContractDeleteTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.transfer_contract_id = contract_id;
-    }
-    
-    // Match Go SDK's SetTransferContractID
-    pub fn set_transfer_contract_id(self: *ContractDeleteTransaction, contract_id: ContractId) !*ContractDeleteTransaction {
-        try self.setTransferContractId(contract_id);
+        self.transfer_account_id = null; // Clear account ID when setting contract ID
         return self;
     }
     
-    // Set permanent removal flag
-    pub fn setPermanentRemoval(self: *ContractDeleteTransaction, permanent: bool) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    // GetTransferContractID returns the contract to transfer remaining balance to
+    pub fn GetTransferContractID(self: *const ContractDeleteTransaction) ContractId {
+        return self.transfer_contract_id orelse ContractId{};
+    }
+    
+    // SetPermanentRemoval sets the permanent removal flag
+    pub fn SetPermanentRemoval(self: *ContractDeleteTransaction, permanent: bool) *ContractDeleteTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.permanent_removal = permanent;
-    }
-    
-    // Match Go SDK's SetPermanentRemoval
-    pub fn set_permanent_removal(self: *ContractDeleteTransaction, permanent: bool) !*ContractDeleteTransaction {
-        try self.setPermanentRemoval(permanent);
         return self;
     }
     
-    // Freeze the transaction
-    pub fn freeze(self: *ContractDeleteTransaction) !void {
-        try self.base.freeze();
+    // GetPermanentRemoval returns the permanent removal flag
+    pub fn GetPermanentRemoval(self: *const ContractDeleteTransaction) bool {
+        return self.permanent_removal;
     }
     
-    // Freeze with client
-    pub fn freezeWith(self: *ContractDeleteTransaction, client: *Client) !void {
-        try self.base.freezeWith(client);
-    }
-    
-    // Sign the transaction
-    pub fn sign(self: *ContractDeleteTransaction, private_key: anytype) !void {
-        try self.base.sign(private_key);
-    }
-    
-    // Sign with operator
-    pub fn signWithOperator(self: *ContractDeleteTransaction, client: *Client) !void {
-        try self.base.signWithOperator(client);
-    }
     
     // Execute the transaction
     pub fn execute(self: *ContractDeleteTransaction, client: *Client) !TransactionResponse {
         if (self.contract_id == null) {
-            return error.ContractIdRequired;
+            @panic("contract ID is required");
         }
         
         if (self.transfer_account_id == null and self.transfer_contract_id == null) {
-            return error.TransferTargetRequired;
+            @panic("transfer target is required");
         }
         
         return try self.base.execute(client);
@@ -131,9 +108,9 @@ pub const ContractDeleteTransaction = struct {
         if (self.contract_id) |contract| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
             defer contract_writer.deinit();
-            try contract_writer.writeInt64(1, @intCast(contract.entity.shard));
-            try contract_writer.writeInt64(2, @intCast(contract.entity.realm));
-            try contract_writer.writeInt64(3, @intCast(contract.entity.num));
+            try contract_writer.writeInt64(1, @intCast(contract.shard));
+            try contract_writer.writeInt64(2, @intCast(contract.realm));
+            try contract_writer.writeInt64(3, @intCast(contract.num));
             const contract_bytes = try contract_writer.toOwnedSlice();
             defer self.base.allocator.free(contract_bytes);
             try delete_writer.writeMessage(1, contract_bytes);
@@ -143,18 +120,18 @@ pub const ContractDeleteTransaction = struct {
         if (self.transfer_account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(account.entity.shard));
-            try account_writer.writeInt64(2, @intCast(account.entity.realm));
-            try account_writer.writeInt64(3, @intCast(account.entity.num));
+            try account_writer.writeInt64(1, @intCast(account.shard));
+            try account_writer.writeInt64(2, @intCast(account.realm));
+            try account_writer.writeInt64(3, @intCast(account.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try delete_writer.writeMessage(2, account_bytes);
         } else if (self.transfer_contract_id) |contract| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
             defer contract_writer.deinit();
-            try contract_writer.writeInt64(1, @intCast(contract.entity.shard));
-            try contract_writer.writeInt64(2, @intCast(contract.entity.realm));
-            try contract_writer.writeInt64(3, @intCast(contract.entity.num));
+            try contract_writer.writeInt64(1, @intCast(contract.shard));
+            try contract_writer.writeInt64(2, @intCast(contract.realm));
+            try contract_writer.writeInt64(3, @intCast(contract.num));
             const contract_bytes = try contract_writer.toOwnedSlice();
             defer self.base.allocator.free(contract_bytes);
             try delete_writer.writeMessage(3, contract_bytes);

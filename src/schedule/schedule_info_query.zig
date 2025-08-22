@@ -87,13 +87,15 @@ pub const ScheduleInfoQuery = struct {
     }
     
     // Set the schedule ID to query
-    pub fn setScheduleId(self: *ScheduleInfoQuery, schedule_id: ScheduleId) !void {
+    pub fn setScheduleId(self: *ScheduleInfoQuery, schedule_id: ScheduleId) *ScheduleInfoQuery {
         self.schedule_id = schedule_id;
+        return self;
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *ScheduleInfoQuery, payment: Hbar) !void {
+    pub fn setQueryPayment(self: *ScheduleInfoQuery, payment: Hbar) *ScheduleInfoQuery {
         self.base.payment_amount = payment;
+        return self;
     }
     
     // Execute the query
@@ -158,9 +160,9 @@ pub const ScheduleInfoQuery = struct {
         if (self.schedule_id) |schedule| {
             var schedule_writer = ProtoWriter.init(self.base.allocator);
             defer schedule_writer.deinit();
-            try schedule_writer.writeInt64(1, @intCast(schedule.entity.shard));
-            try schedule_writer.writeInt64(2, @intCast(schedule.entity.realm));
-            try schedule_writer.writeInt64(3, @intCast(schedule.entity.num));
+            try schedule_writer.writeInt64(1, @intCast(schedule.shard));
+            try schedule_writer.writeInt64(2, @intCast(schedule.realm));
+            try schedule_writer.writeInt64(3, @intCast(schedule.num));
             const schedule_bytes = try schedule_writer.toOwnedSlice();
             defer self.base.allocator.free(schedule_bytes);
             try info_query_writer.writeMessage(1, schedule_bytes);

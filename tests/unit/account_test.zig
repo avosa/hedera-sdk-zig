@@ -16,13 +16,13 @@ test "Account create transaction" {
     
     // Set all parameters
     _ = try tx.set_key_without_alias(hedera.Key.fromPublicKey(key.getPublicKey()));
-    _ = try tx.set_initial_balance(try hedera.Hbar.from(100));
-    _ = try tx.set_receiver_signature_required(true);
-    _ = try tx.set_max_automatic_token_associations(10);
-    _ = try tx.set_transaction_memo("Test account creation");
-    _ = try tx.set_auto_renew_period(hedera.Duration.fromDays(90));
-    _ = try tx.set_staked_node_id(3);
-    _ = try tx.set_decline_staking_reward(false);
+    _ = tx.setInitialBalance(try hedera.Hbar.from(100));
+    _ = tx.setReceiverSignatureRequired(true);
+    _ = tx.setMaxAutomaticTokenAssociations(10);
+    _ = tx.setAccountMemo("Test account creation");
+    _ = tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
+    _ = tx.setStakedNodeId(3);
+    _ = tx.setDeclineStakingReward(false);
     
     // Verify all settings
     try testing.expect(tx.key != null);
@@ -52,7 +52,7 @@ test "Account create with alias" {
     const alias = try public_key.toBytes(allocator);
     defer allocator.free(alias);
     
-    _ = try tx.set_alias(alias);
+    _ = try tx.setAlias(alias);
     
     try testing.expect(tx.alias != null);
     try testing.expectEqualSlices(u8, alias, tx.alias.?);
@@ -68,27 +68,27 @@ test "Account update transaction" {
     
     // Set account to update
     const account_id = hedera.AccountId.init(0, 0, 1234);
-    try tx.setAccountId(account_id);
+    _ = tx.setAccountId(account_id);
     
     // Generate new key
     var new_key = try hedera.generate_private_key(allocator);
     defer new_key.deinit();
     
     // Update various properties
-    try tx.setKey(hedera.Key.fromPublicKey(new_key.getPublicKey()));
-    try tx.setReceiverSignatureRequired(false);
-    try tx.setMaxAutomaticTokenAssociations(20);
-    try tx.setMemo("Updated account");
-    try tx.setExpirationTime(hedera.Timestamp.fromSeconds(1234567890));
-    try tx.setAutoRenewPeriod(hedera.Duration.fromDays(120));
-    try tx.setStakedNodeId(4);
-    try tx.setDeclineStakingReward(true);
+    _ = tx.setKey(hedera.Key.fromPublicKey(new_key.getPublicKey()));
+    _ = tx.setReceiverSignatureRequired(false);
+    _ = tx.setMaxAutomaticTokenAssociations(20);
+    _ = tx.setMemo("Updated account");
+    _ = tx.setExpirationTime(hedera.Timestamp.fromSeconds(1234567890));
+    _ = tx.setAutoRenewPeriod(hedera.Duration.fromDays(120));
+    _ = tx.setStakedNodeId(4);
+    _ = tx.setDeclineStakingReward(true);
     
     // Verify settings
-    try testing.expectEqual(@as(u64, 1234), tx.account_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 1234), tx.account_id.?.account);
     try testing.expect(tx.key != null);
-    try testing.expect(tx.receiver_signature_required != null);
-    try testing.expect(!tx.receiver_signature_required.?);
+    try testing.expect(tx.receiver_sig_required != null);
+    try testing.expect(!tx.receiver_sig_required.?);
     try testing.expectEqual(@as(i32, 20), tx.max_automatic_token_associations);
     try testing.expectEqualStrings("Updated account", tx.memo.?);
     try testing.expectEqual(@as(i64, 1234567890), tx.expiration_time.?.seconds);
@@ -107,14 +107,14 @@ test "Account delete transaction" {
     
     // Set account to delete
     const account_id = hedera.AccountId.init(0, 0, 1000);
-    try tx.setAccountId(account_id);
+    _ = tx.setAccountId(account_id);
     
     // Set transfer account (where remaining funds go)
     const transfer_account = hedera.AccountId.init(0, 0, 2000);
-    try tx.setTransferAccountId(transfer_account);
+    _ = tx.setTransferAccountId(transfer_account);
     
-    try testing.expectEqual(@as(u64, 1000), tx.account_id.?.entity.num);
-    try testing.expectEqual(@as(u64, 2000), tx.transfer_account_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 1000), tx.delete_account_id.?.account);
+    try testing.expectEqual(@as(u64, 2000), tx.transfer_account_id.?.account);
 }
 
 test "Account allowance approve transaction" {
@@ -171,8 +171,8 @@ test "Account allowance delete transaction" {
     try tx.deleteAllTokenNftAllowances(token_id, owner);
     
     try testing.expectEqual(@as(usize, 1), tx.nft_allowance_deletions.items.len);
-    try testing.expectEqual(@as(u64, 2000), tx.nft_allowance_deletions.items[0].token_id.entity.num);
-    try testing.expectEqual(@as(u64, 300), tx.nft_allowance_deletions.items[0].owner.entity.num);
+    try testing.expectEqual(@as(u64, 2000), tx.nft_allowance_deletions.items[0].token_id.num());
+    try testing.expectEqual(@as(u64, 300), tx.nft_allowance_deletions.items[0].owner.num());
 }
 
 test "Live hash add transaction" {
@@ -185,15 +185,15 @@ test "Live hash add transaction" {
     
     // Set account
     const account_id = hedera.AccountId.init(0, 0, 500);
-    try tx.setAccountId(account_id);
+    _ = tx.setAccountId(account_id);
     
     // Set hash
     const hash = [_]u8{0xAB} ** 48;
-    try tx.setHash(&hash);
+    _ = try tx.setHash(&hash);
     
     // Set duration
     const duration = hedera.Duration.fromDays(30);
-    try tx.setDuration(duration);
+    _ = tx.setDuration(duration);
     
     // Add keys
     var key1 = try hedera.generate_private_key(allocator);
@@ -202,12 +202,12 @@ test "Live hash add transaction" {
     var key2 = try hedera.generate_private_key(allocator);
     defer key2.deinit();
     
-    try tx.addKey(hedera.Key.fromPublicKey(key1.getPublicKey()));
-    try tx.addKey(hedera.Key.fromPublicKey(key2.getPublicKey()));
+    _ = try tx.addKey(hedera.Key.fromPublicKey(key1.getPublicKey()));
+    _ = try tx.addKey(hedera.Key.fromPublicKey(key2.getPublicKey()));
     
-    try testing.expectEqual(@as(u64, 500), tx.account_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 500), tx.account_id.?.account);
     try testing.expectEqualSlices(u8, &hash, tx.hash);
-    try testing.expectEqual(@as(i64, 2592000), tx.duration.seconds);
+    try testing.expectEqual(@as(i64, 2592000), tx.duration.?.seconds);
     try testing.expectEqual(@as(usize, 2), tx.keys.items.len);
 }
 
@@ -221,13 +221,13 @@ test "Live hash delete transaction" {
     
     // Set account
     const account_id = hedera.AccountId.init(0, 0, 600);
-    try tx.setAccountId(account_id);
+    _ = tx.setAccountId(account_id);
     
     // Set hash to delete
     const hash = [_]u8{0xCD} ** 48;
-    try tx.setHash(&hash);
+    _ = try tx.setHash(&hash);
     
-    try testing.expectEqual(@as(u64, 600), tx.account_id.?.entity.num);
+    try testing.expectEqual(@as(u64, 600), tx.account_id.?.account);
     try testing.expectEqualSlices(u8, &hash, tx.hash);
 }
 
@@ -285,7 +285,7 @@ test "Account info structure" {
     try info.token_relationships.append(token_rel);
     
     // Verify fields
-    try testing.expectEqual(@as(u64, 1234), info.account_id.entity.num);
+    try testing.expectEqual(@as(u64, 1234), info.account_id.account);
     try testing.expect(!info.deleted);
     try testing.expectEqual(@as(i64, 1_000_000_000), info.proxy_received);
     try testing.expectEqual(@as(i64, 100_000_000_000), info.balance.toTinybars());
@@ -371,7 +371,7 @@ test "Proxy staker structure" {
         .allocator = testing.allocator,
     };
     
-    try testing.expectEqual(@as(u64, 777), proxy_staker.account_id.entity.num);
+    try testing.expectEqual(@as(u64, 777), proxy_staker.account_id.account);
     try testing.expectEqual(@as(i64, 100_000_000_000), proxy_staker.amount.toTinybars());
 }
 
@@ -382,7 +382,7 @@ test "Transfer structure" {
         .is_approved = true,
     };
     
-    try testing.expectEqual(@as(u64, 888), transfer.account_id.entity.num);
+    try testing.expectEqual(@as(u64, 888), transfer.account_id.account);
     try testing.expectEqual(@as(i64, -5_000_000_000), transfer.amount.toTinybars());
     try testing.expect(transfer.is_approved);
 }
@@ -424,8 +424,9 @@ test "Token transfer structure" {
         .is_approved = true,
     });
     
-    try testing.expectEqual(@as(u64, 3000), token_transfer.token_id.entity.num);
+    try testing.expectEqual(@as(u64, 3000), token_transfer.token_id.num());
     try testing.expectEqual(@as(usize, 2), token_transfer.transfers.items.len);
     try testing.expectEqual(@as(usize, 1), token_transfer.nft_transfers.items.len);
     try testing.expectEqual(@as(?u32, 6), token_transfer.expected_decimals);
 }
+

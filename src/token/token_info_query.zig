@@ -124,13 +124,15 @@ pub const TokenInfoQuery = struct {
     }
     
     // Set the token ID to query
-    pub fn setTokenId(self: *TokenInfoQuery, token_id: TokenId) !void {
+    pub fn setTokenId(self: *TokenInfoQuery, token_id: TokenId) *TokenInfoQuery {
         self.token_id = token_id;
+        return self;
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *TokenInfoQuery, payment: Hbar) !void {
+    pub fn setQueryPayment(self: *TokenInfoQuery, payment: Hbar) *TokenInfoQuery {
         self.base.payment_amount = payment;
+        return self;
     }
     
     // Execute the query
@@ -195,9 +197,9 @@ pub const TokenInfoQuery = struct {
         if (self.token_id) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(token.entity.shard));
-            try token_writer.writeInt64(2, @intCast(token.entity.realm));
-            try token_writer.writeInt64(3, @intCast(token.entity.num));
+            try token_writer.writeInt64(1, @intCast(token.shard));
+            try token_writer.writeInt64(2, @intCast(token.realm));
+            try token_writer.writeInt64(3, @intCast(token.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try info_query_writer.writeMessage(1, token_bytes);

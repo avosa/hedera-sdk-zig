@@ -61,9 +61,9 @@ pub const CustomFee = struct {
             if (self.denominating_token_id) |token| {
                 var token_writer = ProtoWriter.init(writer.buffer.allocator);
                 defer token_writer.deinit();
-                try token_writer.writeInt64(1, @intCast(token.entity.shard));
-                try token_writer.writeInt64(2, @intCast(token.entity.realm));
-                try token_writer.writeInt64(3, @intCast(token.entity.num));
+                try token_writer.writeInt64(1, @intCast(token.shard));
+                try token_writer.writeInt64(2, @intCast(token.realm));
+                try token_writer.writeInt64(3, @intCast(token.num));
                 const token_bytes = try token_writer.toOwnedSlice();
                 defer writer.buffer.allocator.free(token_bytes);
                 try fee_writer.writeMessage(2, token_bytes);
@@ -76,9 +76,9 @@ pub const CustomFee = struct {
             // feeCollectorAccountId = 2
             var collector_writer = ProtoWriter.init(writer.buffer.allocator);
             defer collector_writer.deinit();
-            try collector_writer.writeInt64(1, @intCast(self.fee_collector_account_id.entity.shard));
-            try collector_writer.writeInt64(2, @intCast(self.fee_collector_account_id.entity.realm));
-            try collector_writer.writeInt64(3, @intCast(self.fee_collector_account_id.entity.num));
+            try collector_writer.writeInt64(1, @intCast(self.fee_collector_account_id.shard));
+            try collector_writer.writeInt64(2, @intCast(self.fee_collector_account_id.realm));
+            try collector_writer.writeInt64(3, @intCast(self.fee_collector_account_id.account));
             const collector_bytes = try collector_writer.toOwnedSlice();
             defer writer.buffer.allocator.free(collector_bytes);
             try writer.writeMessage(2, collector_bytes);
@@ -133,9 +133,9 @@ pub const CustomFee = struct {
             // feeCollectorAccountId = 2
             var collector_writer = ProtoWriter.init(writer.buffer.allocator);
             defer collector_writer.deinit();
-            try collector_writer.writeInt64(1, @intCast(self.fee_collector_account_id.entity.shard));
-            try collector_writer.writeInt64(2, @intCast(self.fee_collector_account_id.entity.realm));
-            try collector_writer.writeInt64(3, @intCast(self.fee_collector_account_id.entity.num));
+            try collector_writer.writeInt64(1, @intCast(self.fee_collector_account_id.shard));
+            try collector_writer.writeInt64(2, @intCast(self.fee_collector_account_id.realm));
+            try collector_writer.writeInt64(3, @intCast(self.fee_collector_account_id.account));
             const collector_bytes = try collector_writer.toOwnedSlice();
             defer writer.buffer.allocator.free(collector_bytes);
             try writer.writeMessage(2, collector_bytes);
@@ -183,9 +183,9 @@ pub const CustomFee = struct {
             // feeCollectorAccountId = 2
             var collector_writer = ProtoWriter.init(writer.buffer.allocator);
             defer collector_writer.deinit();
-            try collector_writer.writeInt64(1, @intCast(self.fee_collector_account_id.entity.shard));
-            try collector_writer.writeInt64(2, @intCast(self.fee_collector_account_id.entity.realm));
-            try collector_writer.writeInt64(3, @intCast(self.fee_collector_account_id.entity.num));
+            try collector_writer.writeInt64(1, @intCast(self.fee_collector_account_id.shard));
+            try collector_writer.writeInt64(2, @intCast(self.fee_collector_account_id.realm));
+            try collector_writer.writeInt64(3, @intCast(self.fee_collector_account_id.account));
             const collector_bytes = try collector_writer.toOwnedSlice();
             defer writer.buffer.allocator.free(collector_bytes);
             try writer.writeMessage(2, collector_bytes);
@@ -240,7 +240,7 @@ pub const TokenCreateTransaction = struct {
     metadata_key: ?Key,
     
     pub fn init(allocator: std.mem.Allocator) TokenCreateTransaction {
-        return TokenCreateTransaction{
+        var transaction = TokenCreateTransaction{
             .base = Transaction.init(allocator),
             .name = "",
             .symbol = "",
@@ -256,7 +256,7 @@ pub const TokenCreateTransaction = struct {
             .freeze_default = false,
             .expiration_time = null,
             .auto_renew_account = null,
-            .auto_renew_period = null,
+            .auto_renew_period = Duration.fromSeconds(7890000),
             .memo = "",
             .token_type = .fungible_common,
             .supply_type = .infinite,
@@ -267,6 +267,8 @@ pub const TokenCreateTransaction = struct {
             .metadata = "",
             .metadata_key = null,
         };
+        transaction.base.max_transaction_fee = Hbar.from(40) catch Hbar.zero();
+        return transaction;
     }
     
     pub fn deinit(self: *TokenCreateTransaction) void {
@@ -275,223 +277,373 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set token name
-    pub fn setTokenName(self: *TokenCreateTransaction, name: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTokenName(self: *TokenCreateTransaction, name: []const u8) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         
-        if (name.len == 0) return error.TokenNameRequired;
-        if (name.len > 100) return error.TokenNameTooLong;
+        if (name.len == 0) @panic("token name is required");
+        if (name.len > 100) @panic("token name too long");
         
         self.name = name;
+        return self;
+    }
+    
+    // Get token name
+    pub fn getTokenName(self: *TokenCreateTransaction) []const u8 {
+        return self.name;
     }
     
     // Set token symbol
-    pub fn setTokenSymbol(self: *TokenCreateTransaction, symbol: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTokenSymbol(self: *TokenCreateTransaction, symbol: []const u8) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         
-        if (symbol.len == 0) return error.TokenSymbolRequired;
-        if (symbol.len > 100) return error.TokenSymbolTooLong;
+        if (symbol.len == 0) @panic("token symbol is required");
+        if (symbol.len > 100) @panic("token symbol too long");
         
         self.symbol = symbol;
+        return self;
+    }
+    
+    // Get token symbol
+    pub fn getTokenSymbol(self: *TokenCreateTransaction) []const u8 {
+        return self.symbol;
     }
     
     // Set decimals
-    pub fn setDecimals(self: *TokenCreateTransaction, decimals: u32) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setDecimals(self: *TokenCreateTransaction, decimals: u32) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         
         if (self.token_type == .non_fungible_unique and decimals != 0) {
-            return error.NftCannotHaveDecimals;
+            @panic("NFT cannot have decimals");
         }
         
         if (decimals > 2147483647) {
-            return error.InvalidTokenDecimals;
+            @panic("invalid token decimals");
         }
         
         self.decimals = decimals;
+        return self;
+    }
+    
+    // Get decimals
+    pub fn getDecimals(self: *TokenCreateTransaction) u32 {
+        return self.decimals;
     }
     
     // Set initial supply
-    pub fn setInitialSupply(self: *TokenCreateTransaction, supply: u64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setInitialSupply(self: *TokenCreateTransaction, supply: u64) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         
         if (self.token_type == .non_fungible_unique and supply != 0) {
-            return error.NftCannotHaveInitialSupply;
+            @panic("NFT cannot have initial supply");
         }
         
         if (supply > 9223372036854775807) {
-            return error.InvalidTokenInitialSupply;
+            @panic("invalid token initial supply");
         }
         
         self.initial_supply = supply;
+        return self;
+    }
+    
+    // Get initial supply
+    pub fn getInitialSupply(self: *TokenCreateTransaction) u64 {
+        return self.initial_supply;
     }
     
     // Set treasury account
-    pub fn setTreasuryAccountId(self: *TokenCreateTransaction, account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTreasuryAccountId(self: *TokenCreateTransaction, account_id: AccountId) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.treasury_account_id = account_id;
-        self.treasury = account_id;  // Update alias
+        self.treasury = account_id;
+        return self;
+    }
+    
+    // Get treasury account ID
+    pub fn getTreasuryAccountId(self: *TokenCreateTransaction) AccountId {
+        return self.treasury_account_id orelse AccountId{};
     }
     
     // Set admin key
-    pub fn setAdminKey(self: *TokenCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAdminKey(self: *TokenCreateTransaction, key: Key) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.admin_key = key;
+        return self;
+    }
+    
+    // Get admin key
+    pub fn getAdminKey(self: *TokenCreateTransaction) ?Key {
+        return self.admin_key;
     }
     
     // Set KYC key
-    pub fn setKycKey(self: *TokenCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setKycKey(self: *TokenCreateTransaction, key: Key) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.kyc_key = key;
+        return self;
+    }
+    
+    // Get KYC key
+    pub fn getKycKey(self: *TokenCreateTransaction) ?Key {
+        return self.kyc_key;
     }
     
     // Set freeze key
-    pub fn setFreezeKey(self: *TokenCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setFreezeKey(self: *TokenCreateTransaction, key: Key) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.freeze_key = key;
+        return self;
+    }
+    
+    // Get freeze key
+    pub fn getFreezeKey(self: *TokenCreateTransaction) ?Key {
+        return self.freeze_key;
     }
     
     // Set wipe key
-    pub fn setWipeKey(self: *TokenCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setWipeKey(self: *TokenCreateTransaction, key: Key) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.wipe_key = key;
+        return self;
+    }
+    
+    // Get wipe key
+    pub fn getWipeKey(self: *TokenCreateTransaction) ?Key {
+        return self.wipe_key;
     }
     
     // Set supply key
-    pub fn setSupplyKey(self: *TokenCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setSupplyKey(self: *TokenCreateTransaction, key: Key) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.supply_key = key;
+        return self;
+    }
+    
+    // Get supply key
+    pub fn getSupplyKey(self: *TokenCreateTransaction) ?Key {
+        return self.supply_key;
     }
     
     // Set freeze default
-    pub fn setFreezeDefault(self: *TokenCreateTransaction, freeze: bool) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setFreezeDefault(self: *TokenCreateTransaction, freeze: bool) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         
         if (freeze and self.freeze_key == null) {
-            return error.FreezeKeyRequiredForFreezeDefault;
+            @panic("freeze key required for freeze default");
         }
         
         self.freeze_default = freeze;
+        return self;
+    }
+    
+    // Get freeze default
+    pub fn getFreezeDefault(self: *TokenCreateTransaction) bool {
+        return self.freeze_default;
     }
     
     // Set expiration time
-    pub fn setExpirationTime(self: *TokenCreateTransaction, time: Timestamp) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setExpirationTime(self: *TokenCreateTransaction, time: Timestamp) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
+        self.auto_renew_period = null;
         self.expiration_time = time;
+        return self;
+    }
+    
+    // Get expiration time
+    pub fn getExpirationTime(self: *TokenCreateTransaction) ?Timestamp {
+        return self.expiration_time;
     }
     
     // Set auto renew account
-    pub fn setAutoRenewAccount(self: *TokenCreateTransaction, account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAutoRenewAccount(self: *TokenCreateTransaction, account_id: AccountId) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.auto_renew_account = account_id;
+        return self;
+    }
+    
+    // Get auto renew account
+    pub fn getAutoRenewAccount(self: *TokenCreateTransaction) AccountId {
+        return self.auto_renew_account orelse AccountId{};
     }
     
     // Set auto renew period
-    pub fn setAutoRenewPeriod(self: *TokenCreateTransaction, period: Duration) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAutoRenewPeriod(self: *TokenCreateTransaction, period: Duration) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         
         const min_period = Duration.fromDays(1);
         const max_period = Duration.fromDays(3653);
         
         if (period.seconds < min_period.seconds or period.seconds > max_period.seconds) {
-            return error.InvalidAutoRenewPeriod;
+            @panic("invalid auto renew period");
         }
         
         self.auto_renew_period = period;
+        return self;
+    }
+    
+    // Get auto renew period
+    pub fn getAutoRenewPeriod(self: *TokenCreateTransaction) ?Duration {
+        return self.auto_renew_period;
     }
     
     // Set token memo
-    pub fn setTokenMemo(self: *TokenCreateTransaction, memo: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTokenMemo(self: *TokenCreateTransaction, memo: []const u8) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         
-        if (memo.len > 100) return error.MemoTooLong;
+        if (memo.len > 100) @panic("memo too long");
         
         self.memo = memo;
+        return self;
+    }
+    
+    // Get token memo
+    pub fn getTokenMemo(self: *TokenCreateTransaction) []const u8 {
+        return self.memo;
     }
     
     // Set token type
-    pub fn setTokenType(self: *TokenCreateTransaction, token_type: TokenType) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTokenType(self: *TokenCreateTransaction, token_type: TokenType) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         
         if (token_type == .non_fungible_unique) {
-            if (self.decimals != 0) return error.NftCannotHaveDecimals;
-            if (self.initial_supply != 0) return error.NftCannotHaveInitialSupply;
+            if (self.decimals != 0) @panic("NFT cannot have decimals");
+            if (self.initial_supply != 0) @panic("NFT cannot have initial supply");
         }
         
         self.token_type = token_type;
+        return self;
+    }
+    
+    // Get token type
+    pub fn getTokenType(self: *TokenCreateTransaction) TokenType {
+        return self.token_type;
     }
     
     // Set supply type
-    pub fn setSupplyType(self: *TokenCreateTransaction, supply_type: TokenSupplyType) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setSupplyType(self: *TokenCreateTransaction, supply_type: TokenSupplyType) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.supply_type = supply_type;
+        return self;
+    }
+    
+    // Get supply type
+    pub fn getSupplyType(self: *TokenCreateTransaction) TokenSupplyType {
+        return self.supply_type;
     }
     
     // Set max supply
-    pub fn setMaxSupply(self: *TokenCreateTransaction, max_supply: i64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setMaxSupply(self: *TokenCreateTransaction, max_supply: i64) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         
         if (self.supply_type == .finite and max_supply <= 0) {
-            return error.finiteTokenRequiresMaxSupply;
+            @panic("finite token requires max supply");
         }
         
         if (self.supply_type == .infinite and max_supply > 0) {
-            return error.infiniteTokenCannotHaveMaxSupply;
+            @panic("infinite token cannot have max supply");
         }
         
         self.max_supply = max_supply;
+        return self;
+    }
+    
+    // Get max supply
+    pub fn getMaxSupply(self: *TokenCreateTransaction) i64 {
+        return self.max_supply;
     }
     
     // Set fee schedule key
-    pub fn setFeeScheduleKey(self: *TokenCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setFeeScheduleKey(self: *TokenCreateTransaction, key: Key) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.fee_schedule_key = key;
+        return self;
     }
     
-    // Includes a custom fee for the token
-    pub fn addCustomFee(self: *TokenCreateTransaction, fee: CustomFee) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    // Get fee schedule key
+    pub fn getFeeScheduleKey(self: *TokenCreateTransaction) ?Key {
+        return self.fee_schedule_key;
+    }
+    
+    // Set custom fees
+    pub fn setCustomFees(self: *TokenCreateTransaction, custom_fees: []const CustomFee) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
+        
+        self.custom_fees.clearRetainingCapacity();
+        for (custom_fees) |fee| {
+            self.custom_fees.append(fee) catch @panic("failed to add custom fee");
+        }
+        return self;
+    }
+    
+    // Get custom fees
+    pub fn getCustomFees(self: *TokenCreateTransaction) []const CustomFee {
+        return self.custom_fees.items;
+    }
+    
+    // Add a custom fee for the token
+    pub fn addCustomFee(self: *TokenCreateTransaction, fee: CustomFee) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         
         if (self.custom_fees.items.len >= 10) {
-            return error.TooManyCustomFees;
+            @panic("too many custom fees");
         }
         
-        try self.custom_fees.append(fee);
+        self.custom_fees.append(fee) catch @panic("failed to add custom fee");
+        return self;
     }
     
     // Set pause key
-    pub fn setPauseKey(self: *TokenCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setPauseKey(self: *TokenCreateTransaction, key: Key) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.pause_key = key;
+        return self;
     }
     
-    // Set metadata
-    pub fn setMetadata(self: *TokenCreateTransaction, metadata: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    // Get pause key
+    pub fn getPauseKey(self: *TokenCreateTransaction) ?Key {
+        return self.pause_key;
+    }
+    
+    // Set token metadata
+    pub fn setTokenMetadata(self: *TokenCreateTransaction, metadata: []const u8) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         
-        if (metadata.len > 100) return error.MetadataTooLong;
+        if (metadata.len > 100) @panic("metadata too long");
         
         self.metadata = metadata;
+        return self;
+    }
+    
+    // Get token metadata
+    pub fn getTokenMetadata(self: *TokenCreateTransaction) []const u8 {
+        return self.metadata;
     }
     
     // Set metadata key
-    pub fn setMetadataKey(self: *TokenCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setMetadataKey(self: *TokenCreateTransaction, key: Key) *TokenCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.metadata_key = key;
+        return self;
+    }
+    
+    // Get metadata key
+    pub fn getMetadataKey(self: *TokenCreateTransaction) ?Key {
+        return self.metadata_key;
     }
     
     // Execute the transaction
     pub fn execute(self: *TokenCreateTransaction, client: *Client) !TransactionResponse {
         // Validate required fields
-        if (self.name.len == 0) return error.TokenNameRequired;
-        if (self.symbol.len == 0) return error.TokenSymbolRequired;
-        if (self.treasury_account_id == null) return error.TreasuryAccountRequired;
+        if (self.name.len == 0) @panic("token name is required");
+        if (self.symbol.len == 0) @panic("token symbol is required");
+        if (self.treasury_account_id == null) @panic("treasury account is required");
         
         // Validate supply configuration
         if (self.supply_type == .finite and self.max_supply <= 0) {
-            return error.finiteTokenRequiresMaxSupply;
+            @panic("finite token requires max supply");
         }
         
         if (self.initial_supply > 0 and self.supply_key == null) {
-            return error.SupplyKeyRequiredForInitialSupply;
+            @panic("supply key required for initial supply");
         }
         
         return try self.base.execute(client);
@@ -525,9 +677,9 @@ pub const TokenCreateTransaction = struct {
         if (self.treasury_account_id) |treasury| {
             var treasury_writer = ProtoWriter.init(self.base.allocator);
             defer treasury_writer.deinit();
-            try treasury_writer.writeInt64(1, @intCast(treasury.entity.shard));
-            try treasury_writer.writeInt64(2, @intCast(treasury.entity.realm));
-            try treasury_writer.writeInt64(3, @intCast(treasury.entity.num));
+            try treasury_writer.writeInt64(1, @intCast(treasury.shard));
+            try treasury_writer.writeInt64(2, @intCast(treasury.realm));
+            try treasury_writer.writeInt64(3, @intCast(treasury.account));
             const treasury_bytes = try treasury_writer.toOwnedSlice();
             defer self.base.allocator.free(treasury_bytes);
             try create_writer.writeMessage(5, treasury_bytes);
@@ -588,9 +740,9 @@ pub const TokenCreateTransaction = struct {
         if (self.auto_renew_account) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(account.entity.shard));
-            try account_writer.writeInt64(2, @intCast(account.entity.realm));
-            try account_writer.writeInt64(3, @intCast(account.entity.num));
+            try account_writer.writeInt64(1, @intCast(account.shard));
+            try account_writer.writeInt64(2, @intCast(account.realm));
+            try account_writer.writeInt64(3, @intCast(account.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try create_writer.writeMessage(14, account_bytes);
@@ -676,3 +828,4 @@ pub const TokenCreateTransaction = struct {
         return key.toProtobuf(self.base.allocator);
     }
 };
+

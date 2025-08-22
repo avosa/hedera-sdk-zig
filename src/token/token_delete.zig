@@ -23,9 +23,15 @@ pub const TokenDeleteTransaction = struct {
     }
     
     // Set the token to delete
-    pub fn setTokenId(self: *TokenDeleteTransaction, token_id: TokenId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTokenId(self: *TokenDeleteTransaction, token_id: TokenId) *TokenDeleteTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.token_id = token_id;
+        return self;
+    }
+    
+    // Getter method for uniformity with Go SDK
+    pub fn getTokenId(self: *const TokenDeleteTransaction) ?TokenId {
+        return self.token_id;
     }
     
     // Execute the transaction
@@ -53,9 +59,9 @@ pub const TokenDeleteTransaction = struct {
         if (self.token_id) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(token.entity.shard));
-            try token_writer.writeInt64(2, @intCast(token.entity.realm));
-            try token_writer.writeInt64(3, @intCast(token.entity.num));
+            try token_writer.writeInt64(1, @intCast(token.shard));
+            try token_writer.writeInt64(2, @intCast(token.realm));
+            try token_writer.writeInt64(3, @intCast(token.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try delete_writer.writeMessage(1, token_bytes);
@@ -84,9 +90,9 @@ pub const TokenDeleteTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -105,9 +111,9 @@ pub const TokenDeleteTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

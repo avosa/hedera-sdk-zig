@@ -46,42 +46,47 @@ pub const FreezeTransaction = struct {
     }
     
     // Set freeze start time
-    pub fn setStartTime(self: *FreezeTransaction, hour: u8, min: u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (hour >= 24) return error.InvalidHour;
-        if (min >= 60) return error.InvalidMinute;
+    pub fn setStartTime(self: *FreezeTransaction, hour: u8, min: u8) *FreezeTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        if (hour >= 24) @panic("Invalid hour");
+        if (min >= 60) @panic("Invalid minute");
         
         self.start_hour = hour;
         self.start_min = min;
+        return self;
     }
     
     // Set freeze end time
-    pub fn setEndTime(self: *FreezeTransaction, hour: u8, min: u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (hour >= 24) return error.InvalidHour;
-        if (min >= 60) return error.InvalidMinute;
+    pub fn setEndTime(self: *FreezeTransaction, hour: u8, min: u8) *FreezeTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        if (hour >= 24) @panic("Invalid hour");
+        if (min >= 60) @panic("Invalid minute");
         
         self.end_hour = hour;
         self.end_min = min;
+        return self;
     }
     
     // Set update file
-    pub fn setUpdateFile(self: *FreezeTransaction, file_id: FileId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setUpdateFile(self: *FreezeTransaction, file_id: FileId) *FreezeTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.update_file = file_id;
+        return self;
     }
     
     // Set file hash
-    pub fn setFileHash(self: *FreezeTransaction, hash: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (hash.len != 48) return error.InvalidFileHash; // SHA-384 hash
+    pub fn setFileHash(self: *FreezeTransaction, hash: []const u8) *FreezeTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        if (hash.len != 48) @panic("Invalid file hash"); // SHA-384 hash
         self.file_hash = hash;
+        return self;
     }
     
     // Set freeze type
-    pub fn setFreezeType(self: *FreezeTransaction, freeze_type: FreezeType) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setFreezeType(self: *FreezeTransaction, freeze_type: FreezeType) *FreezeTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.freeze_type = freeze_type;
+        return self;
     }
     
     // Execute the transaction
@@ -138,9 +143,9 @@ pub const FreezeTransaction = struct {
         if (self.update_file) |file| {
             var file_writer = ProtoWriter.init(self.base.allocator);
             defer file_writer.deinit();
-            try file_writer.writeInt64(1, @intCast(file.entity.shard));
-            try file_writer.writeInt64(2, @intCast(file.entity.realm));
-            try file_writer.writeInt64(3, @intCast(file.entity.num));
+            try file_writer.writeInt64(1, @intCast(file.shard));
+            try file_writer.writeInt64(2, @intCast(file.realm));
+            try file_writer.writeInt64(3, @intCast(file.num));
             const file_bytes = try file_writer.toOwnedSlice();
             defer self.base.allocator.free(file_bytes);
             try freeze_writer.writeMessage(5, file_bytes);
@@ -177,9 +182,9 @@ pub const FreezeTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -198,9 +203,9 @@ pub const FreezeTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

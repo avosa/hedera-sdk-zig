@@ -1,9 +1,9 @@
 const std = @import("std");
 const testing = std.testing;
 const AccountBalanceQuery = @import("account_balance_query.zig").AccountBalanceQuery;
-const AccountId = @import("account_id.zig").AccountId;
-const ContractId = @import("../contract/contract_id.zig").ContractId;
-const Client = @import("../network/client.zig").Client;
+const hedera.AccountId = @import("delete_account_id.zig").hedera.AccountId;
+const hedera.ContractId = @import("../contract/contract_id.zig").hedera.ContractId;
+const hedera.Client = @import("../network/client.zig").hedera.Client;
 
 test "AccountBalanceQuery initialization" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
@@ -14,9 +14,9 @@ test "AccountBalanceQuery initialization" {
     defer query.deinit();
     
     const account_id = AccountId.init(0, 0, 100);
-    query.setAccountId(account_id);
+    _ = query.setAccountId(delete_account_id);
     
-    try testing.expectEqual(account_id.num, query.account_id.?.num);
+    try testing.expectEqual(delete_account_id.account, query.account_id.?.account);
     try testing.expect(query.contract_id == null);
 }
 
@@ -29,9 +29,9 @@ test "AccountBalanceQuery with contract ID" {
     defer query.deinit();
     
     const contract_id = ContractId.init(0, 0, 200);
-    query.setContractId(contract_id);
+    _ = query.setContractId(contract_id);
     
-    try testing.expectEqual(contract_id.num, query.contract_id.?.num);
+    try testing.expectEqual(contract_id.num(), query.contract_id.?.num());
     try testing.expect(query.account_id == null);
 }
 
@@ -100,7 +100,7 @@ test "AccountBalanceQuery response parsing" {
     const balance = try query.parseResponse(allocator, response_bytes);
     defer balance.deinit();
     
-    try testing.expectEqual(@as(u64, 100), balance.account_id.?.num);
+    try testing.expectEqual(@as(u64, 100), balance.account_id.?.account);
     try testing.expectEqual(@as(i64, 50000000000), balance.hbars.tinybar);
 }
 
@@ -125,7 +125,7 @@ test "AccountBalanceQuery with token balances" {
         }
     }.write);
     
-    // Hbar balance
+    // hedera.Hbar balance
     try writer.writeUint64(2, 50000000000);
     
     // Token balances
@@ -176,3 +176,4 @@ test "AccountBalanceQuery caching" {
     // After setting cache, should be marked as cacheable
     try testing.expect(query.cache_duration > 0);
 }
+

@@ -37,20 +37,22 @@ pub const ScheduleCreateTransaction = struct {
     }
     
     // Set the payer account ID for the scheduled transaction
-    pub fn setPayerAccountId(self: *ScheduleCreateTransaction, payer_account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setPayerAccountId(self: *ScheduleCreateTransaction, payer_account_id: AccountId) *ScheduleCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.payer_account_id = payer_account_id;
+        return self;
     }
     
     // Set the admin key that can delete the schedule
-    pub fn setAdminKey(self: *ScheduleCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAdminKey(self: *ScheduleCreateTransaction, key: Key) *ScheduleCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.admin_key = key;
+        return self;
     }
     
     // Set the transaction to be scheduled
-    pub fn setScheduledTransaction(self: *ScheduleCreateTransaction, transaction: *Transaction) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setScheduledTransaction(self: *ScheduleCreateTransaction, transaction: *Transaction) *ScheduleCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.schedulable_transaction) |old_tx| {
             old_tx.deinit();
@@ -59,35 +61,39 @@ pub const ScheduleCreateTransaction = struct {
         
         self.schedulable_transaction = transaction;
         self.scheduled_transaction = transaction;  // Update alias
+        return self;
     }
     
     // Set the memo for the schedule
-    pub fn setMemo(self: *ScheduleCreateTransaction, memo: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (memo.len > 100) return error.MemoTooLong;
+    pub fn setMemo(self: *ScheduleCreateTransaction, memo: []const u8) !*ScheduleCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        if (memo.len > 100) @panic("Memo too long");
         
         if (self.memo) |old_memo| {
             self.base.allocator.free(old_memo);
         }
         
         self.memo = try self.base.allocator.dupe(u8, memo);
+        return self;
     }
     
     // Set the schedule memo (alias for setMemo)
-    pub fn setScheduleMemo(self: *ScheduleCreateTransaction, memo: []const u8) !void {
+    pub fn setScheduleMemo(self: *ScheduleCreateTransaction, memo: []const u8) !*ScheduleCreateTransaction {
         return self.setMemo(memo);
     }
     
     // Set the expiration time for the schedule
-    pub fn setExpirationTime(self: *ScheduleCreateTransaction, expiration_time: Timestamp) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setExpirationTime(self: *ScheduleCreateTransaction, expiration_time: Timestamp) *ScheduleCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.expiration_time = expiration_time;
+        return self;
     }
     
     // Set whether to wait for expiry before execution
-    pub fn setWaitForExpiry(self: *ScheduleCreateTransaction, wait: bool) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setWaitForExpiry(self: *ScheduleCreateTransaction, wait: bool) *ScheduleCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.wait_for_expiry = wait;
+        return self;
     }
     
     // Execute the transaction
@@ -112,6 +118,7 @@ pub const ScheduleCreateTransaction = struct {
             const tx_body = try tx.buildSchedulableBody();
             defer self.base.allocator.free(tx_body);
             try schedule_writer.writeMessage(1, tx_body);
+            return self;
         }
         
         // memo = 2
@@ -130,9 +137,9 @@ pub const ScheduleCreateTransaction = struct {
         if (self.payer_account_id) |payer| {
             var payer_writer = ProtoWriter.init(self.base.allocator);
             defer payer_writer.deinit();
-            try payer_writer.writeInt64(1, @intCast(payer.entity.shard));
-            try payer_writer.writeInt64(2, @intCast(payer.entity.realm));
-            try payer_writer.writeInt64(3, @intCast(payer.entity.num));
+            try payer_writer.writeInt64(1, @intCast(payer.shard));
+            try payer_writer.writeInt64(2, @intCast(payer.realm));
+            try payer_writer.writeInt64(3, @intCast(payer.account));
             const payer_bytes = try payer_writer.toOwnedSlice();
             defer self.base.allocator.free(payer_bytes);
             try schedule_writer.writeMessage(4, payer_bytes);

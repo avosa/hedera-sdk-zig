@@ -4,7 +4,7 @@ const Client = @import("../network/client.zig").Client;
 const AccountId = @import("../core/id.zig").AccountId;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
-const LiveHash = @import("live_hash_add_transaction.zig").LiveHash;
+const LiveHash = @import("live_hash.zig").LiveHash;
 
 // LiveHashQuery gets a live hash from the network
 pub const LiveHashQuery = struct {
@@ -35,6 +35,7 @@ pub const LiveHashQuery = struct {
     pub fn setHash(self: *LiveHashQuery, hash: []const u8) !*LiveHashQuery {
         if (self.hash) |old_hash| {
             self.base.allocator.free(old_hash);
+            return self;
         }
         self.hash = try self.base.allocator.dupe(u8, hash);
         return self;
@@ -63,9 +64,9 @@ pub const LiveHashQuery = struct {
         // accountID = 1
         var account_writer = ProtoWriter.init(self.base.allocator);
         defer account_writer.deinit();
-        try account_writer.writeInt64(1, @intCast(self.account_id.?.entity.shard));
-        try account_writer.writeInt64(2, @intCast(self.account_id.?.entity.realm));
-        try account_writer.writeInt64(3, @intCast(self.account_id.?.entity.num));
+        try account_writer.writeInt64(1, @intCast(self.account_id.?.shard));
+        try account_writer.writeInt64(2, @intCast(self.account_id.?.realm));
+        try account_writer.writeInt64(3, @intCast(self.account_id.?.account));
         const account_bytes = try account_writer.toOwnedSlice();
         defer self.base.allocator.free(account_bytes);
         try query_writer.writeMessage(1, account_bytes);
@@ -155,11 +156,9 @@ pub const LiveHashQuery = struct {
         }
         
         return AccountId{
-            .entity = .{
-                .shard = shard,
-                .realm = realm,
-                .num = num,
-            },
+            .shard = shard,
+            .realm = realm,
+            .account = num,
         };
     }
     

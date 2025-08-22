@@ -145,17 +145,17 @@ pub const ManagedNetwork = struct {
         pub fn hash(self: @This(), account_id: AccountId) u64 {
             _ = self;
             var hasher = std.hash.Wyhash.init(0);
-            hasher.update(std.mem.asBytes(&account_id.entity.shard));
-            hasher.update(std.mem.asBytes(&account_id.entity.realm));
-            hasher.update(std.mem.asBytes(&account_id.entity.num));
+            hasher.update(std.mem.asBytes(&account_id.shard));
+            hasher.update(std.mem.asBytes(&account_id.realm));
+            hasher.update(std.mem.asBytes(&account_id.account));
             return hasher.final();
         }
 
         pub fn eql(self: @This(), a: AccountId, b: AccountId) bool {
             _ = self;
-            return a.entity.shard == b.entity.shard and
-                   a.entity.realm == b.entity.realm and
-                   a.entity.num == b.entity.num;
+            return a.shard == b.shard and
+                   a.realm == b.realm and
+                   a.account == b.account;
         }
     };
 

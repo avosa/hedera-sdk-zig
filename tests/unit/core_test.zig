@@ -7,13 +7,13 @@ test "AccountId parsing and formatting" {
     
     // Test fromString
     const account_id = try hedera.AccountId.fromString(allocator, "0.0.1234");
-    try testing.expectEqual(@as(u64, 0), account_id.entity.shard);
-    try testing.expectEqual(@as(u64, 0), account_id.entity.realm);
-    try testing.expectEqual(@as(u64, 1234), account_id.entity.num);
+    try testing.expectEqual(@as(u64, 0), account_id.shard);
+    try testing.expectEqual(@as(u64, 0), account_id.realm);
+    try testing.expectEqual(@as(u64, 1234), account_id.account);
     
     // Test Go SDK compatible function
-    const account_id2 = try hedera.account_id_from_string(allocator, "0.0.5678");
-    try testing.expectEqual(@as(u64, 5678), account_id2.entity.num);
+    const account_id2 = try hedera.AccountId.fromString(allocator, "0.0.5678");
+    try testing.expectEqual(@as(u64, 5678), account_id2.account);
     
     // Test toString
     const str = try account_id.toString(allocator);
@@ -22,16 +22,16 @@ test "AccountId parsing and formatting" {
     
     // Test with checksum
     const account_with_checksum = try hedera.AccountId.fromString(allocator, "0.0.1234-abcde");
-    try testing.expectEqual(@as(u64, 1234), account_with_checksum.entity.num);
-    try testing.expectEqualStrings("abcde", account_with_checksum.entity.checksum.?);
-    if (account_with_checksum.entity.checksum) |cs| {
+    try testing.expectEqual(@as(u64, 1234), account_with_checksum.account);
+    try testing.expectEqualStrings("abcde", account_with_checksum.checksum.?);
+    if (account_with_checksum.checksum) |cs| {
         allocator.free(cs);
     }
     
     // Test EVM address
     const evm_account = try hedera.AccountId.fromString(allocator, "0x1234567890123456789012345678901234567890");
-    try testing.expect(evm_account.evm_address != null);
-    if (evm_account.evm_address) |addr| {
+    try testing.expect(evm_account.alias_evm_address != null);
+    if (evm_account.alias_evm_address) |addr| {
         allocator.free(addr);
     }
 }
@@ -73,7 +73,7 @@ test "TransactionId generation and parsing" {
     const account_id = hedera.AccountId.init(0, 0, 100);
     const tx_id = hedera.TransactionId.generate(account_id);
     
-    try testing.expectEqual(account_id.entity.num, tx_id.account_id.entity.num);
+    try testing.expectEqual(account_id.account, tx_id.account_id.account);
     try testing.expect(tx_id.valid_start.seconds > 0);
     
     // Test toString
@@ -154,7 +154,7 @@ test "EntityId operations" {
     
     // Test ContractId
     const contract_id = hedera.ContractId.init(0, 0, 5000);
-    try testing.expectEqual(@as(u64, 5000), contract_id.entity.num);
+    try testing.expectEqual(@as(u64, 5000), contract_id.num());
     
     const contract_str = try contract_id.toString(allocator);
     defer allocator.free(contract_str);
@@ -162,25 +162,26 @@ test "EntityId operations" {
     
     // Test FileId
     const file_id = hedera.FileId.init(0, 0, 111);
-    try testing.expectEqual(@as(u64, 111), file_id.entity.num);
+    try testing.expectEqual(@as(u64, 111), file_id.num());
     
     // Test TokenId
     const token_id = hedera.TokenId.init(0, 0, 999);
-    try testing.expectEqual(@as(u64, 999), token_id.entity.num);
+    try testing.expectEqual(@as(u64, 999), token_id.num());
     
     // Test TopicId
     const topic_id = hedera.TopicId.init(0, 0, 777);
-    try testing.expectEqual(@as(u64, 777), topic_id.entity.num);
+    try testing.expectEqual(@as(u64, 777), topic_id.num());
     
     // Test ScheduleId
     const schedule_id = hedera.ScheduleId.init(0, 0, 333);
-    try testing.expectEqual(@as(u64, 333), schedule_id.entity.num);
+    try testing.expectEqual(@as(u64, 333), schedule_id.num());
     
     // Test NftId
     const nft_id = hedera.NftId{
         .token_id = token_id,
         .serial_number = 42,
     };
-    try testing.expectEqual(@as(u64, 999), nft_id.token_id.entity.num);
+    try testing.expectEqual(@as(u64, 999), nft_id.token_id.num());
     try testing.expectEqual(@as(u64, 42), nft_id.serial_number);
 }
+

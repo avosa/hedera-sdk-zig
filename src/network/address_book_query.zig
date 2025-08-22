@@ -23,12 +23,12 @@ pub const AddressBookQuery = struct {
     }
     
     // Set the file ID of the address book to query
-    pub fn setFileId(self: *AddressBookQuery, file_id: FileId) void {
+    pub fn setFileId(self: *AddressBookQuery, file_id: FileId) *AddressBookQuery {
         self.file_id = file_id;
     }
     
     // Set the maximum number of node addresses to return
-    pub fn setLimit(self: *AddressBookQuery, limit: i32) void {
+    pub fn setLimit(self: *AddressBookQuery, limit: i32) *AddressBookQuery {
         self.limit = limit;
     }
     
@@ -53,12 +53,13 @@ pub const AddressBookQuery = struct {
         if (self.file_id) |file_id| {
             var file_writer = ProtoWriter.init(self.base.allocator);
             defer file_writer.deinit();
-            try file_writer.writeInt64(1, @intCast(file_id.entity.shard));
-            try file_writer.writeInt64(2, @intCast(file_id.entity.realm));
-            try file_writer.writeInt64(3, @intCast(file_id.entity.num));
+            try file_writer.writeInt64(1, @intCast(file_id.shard));
+            try file_writer.writeInt64(2, @intCast(file_id.realm));
+            try file_writer.writeInt64(3, @intCast(file_id.num));
             const file_bytes = try file_writer.toOwnedSlice();
             defer self.base.allocator.free(file_bytes);
             try query_writer.writeMessage(1, file_bytes);
+            return self;
         }
         
         // limit = 2

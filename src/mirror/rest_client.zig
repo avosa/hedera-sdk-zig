@@ -28,7 +28,7 @@ pub const MirrorNodeRestClient = struct {
     
     // Get account information from mirror node
     pub fn getAccount(self: *MirrorNodeRestClient, account_id: AccountId) !AccountInfo {
-        const url = try std.fmt.allocPrint(self.allocator, "{s}/api/v1/accounts/{d}.{d}.{d}", .{ self.base_url, account_id.entity.shard, account_id.entity.realm, account_id.entity.num });
+        const url = try std.fmt.allocPrint(self.allocator, "{s}/api/v1/accounts/{d}.{d}.{d}", .{ self.base_url, account_id.shard, account_id.realm, account_id.account });
         defer self.allocator.free(url);
         
         const response = try self.makeRequest(url);
@@ -48,7 +48,7 @@ pub const MirrorNodeRestClient = struct {
         var first_param = true;
         if (account_id) |acc| {
             try url_buffer.appendSlice(if (first_param) "?" else "&");
-            try std.fmt.format(url_buffer.writer(), "account.id={d}.{d}.{d}", .{ acc.entity.shard, acc.entity.realm, acc.entity.num });
+            try std.fmt.format(url_buffer.writer(), "account.id={d}.{d}.{d}", .{ acc.shard, acc.realm, acc.account });
             first_param = false;
         }
         
@@ -74,7 +74,7 @@ pub const MirrorNodeRestClient = struct {
         var first_param = true;
         if (account_id) |acc| {
             try url_buffer.appendSlice(if (first_param) "?" else "&");
-            try std.fmt.format(url_buffer.writer(), "account.id={d}.{d}.{d}", .{ acc.entity.shard, acc.entity.realm, acc.entity.num });
+            try std.fmt.format(url_buffer.writer(), "account.id={d}.{d}.{d}", .{ acc.shard, acc.realm, acc.account });
             first_param = false;
         }
         
@@ -111,7 +111,7 @@ pub const MirrorNodeRestClient = struct {
     
     // Get token information
     pub fn getToken(self: *MirrorNodeRestClient, token_id: TokenId) !TokenInfo {
-        const url = try std.fmt.allocPrint(self.allocator, "{s}/api/v1/tokens/{d}.{d}.{d}", .{ self.base_url, token_id.entity.shard, token_id.entity.realm, token_id.entity.num });
+        const url = try std.fmt.allocPrint(self.allocator, "{s}/api/v1/tokens/{d}.{d}.{d}", .{ self.base_url, token_id.shard, token_id.realm, token_id.num });
         defer self.allocator.free(url);
         
         const response = try self.makeRequest(url);
@@ -125,7 +125,7 @@ pub const MirrorNodeRestClient = struct {
         var url_buffer = std.ArrayList(u8).init(self.allocator);
         defer url_buffer.deinit();
         
-        try std.fmt.format(url_buffer.writer(), "{s}/api/v1/topics/{d}.{d}.{d}/messages", .{ self.base_url, topic_id.entity.shard, topic_id.entity.realm, topic_id.entity.num });
+        try std.fmt.format(url_buffer.writer(), "{s}/api/v1/topics/{d}.{d}.{d}/messages", .{ self.base_url, topic_id.shard, topic_id.realm, topic_id.num });
         
         var first_param = true;
         if (sequence_number) |seq| {
@@ -147,7 +147,7 @@ pub const MirrorNodeRestClient = struct {
     
     // Get contract information
     pub fn getContract(self: *MirrorNodeRestClient, contract_id: ContractId) !ContractInfo {
-        const url = try std.fmt.allocPrint(self.allocator, "{s}/api/v1/contracts/{d}.{d}.{d}", .{ self.base_url, contract_id.entity.shard, contract_id.entity.realm, contract_id.entity.num });
+        const url = try std.fmt.allocPrint(self.allocator, "{s}/api/v1/contracts/{d}.{d}.{d}", .{ self.base_url, contract_id.shard, contract_id.realm, contract_id.num });
         defer self.allocator.free(url);
         
         const response = try self.makeRequest(url);
@@ -167,7 +167,7 @@ pub const MirrorNodeRestClient = struct {
         var first_param = true;
         if (contract_id) |contract| {
             try url_buffer.appendSlice("?");
-            try std.fmt.format(url_buffer.writer(), "contract.id={d}.{d}.{d}", .{ contract.entity.shard, contract.entity.realm, contract.entity.num });
+            try std.fmt.format(url_buffer.writer(), "contract.id={d}.{d}.{d}", .{ contract.shard, contract.realm, contract.num });
             first_param = false;
         }
         

@@ -22,10 +22,11 @@ pub const PrngTransaction = struct {
     }
     
     // Set the range for the random number (0 to range-1)
-    pub fn setRange(self: *PrngTransaction, range: i32) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (range <= 0) return error.InvalidRange;
+    pub fn setRange(self: *PrngTransaction, range: i32) *PrngTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        if (range <= 0) @panic("Invalid range");
         self.range = range;
+        return self;
     }
     
     // Execute the transaction
@@ -48,6 +49,7 @@ pub const PrngTransaction = struct {
         // range = 1
         if (self.range) |range| {
             try prng_writer.writeInt32(1, range);
+            return self;
         }
         
         const prng_bytes = try prng_writer.toOwnedSlice();
@@ -73,9 +75,9 @@ pub const PrngTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -94,9 +96,9 @@ pub const PrngTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

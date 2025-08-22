@@ -101,6 +101,7 @@ pub const NetworkManager = struct {
                     });
                 }
             }
+            return self;
         }
     }
     
@@ -436,8 +437,8 @@ const AccountIdContext = struct {
     
     pub fn eql(self: @This(), a: AccountId, b: AccountId) bool {
         _ = self;
-        return a.entity.shard == b.entity.shard and
-               a.entity.realm == b.entity.realm and
-               a.entity.num == b.entity.num;
+        return a.shard == b.shard and
+               a.realm == b.realm and
+               a.account == b.account;
     }
 };

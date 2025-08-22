@@ -95,9 +95,9 @@ pub const ProxyStaker = struct {
         // staker_id = 1
         var staker_writer = ProtoWriter.init(allocator);
         defer staker_writer.deinit();
-        try staker_writer.writeInt64(1, @intCast(self.staker_id.entity.shard));
-        try staker_writer.writeInt64(2, @intCast(self.staker_id.entity.realm));
-        try staker_writer.writeInt64(3, @intCast(self.staker_id.entity.num));
+        try staker_writer.writeInt64(1, @intCast(self.staker_id.shard));
+        try staker_writer.writeInt64(2, @intCast(self.staker_id.realm));
+        try staker_writer.writeInt64(3, @intCast(self.staker_id.account));
         const staker_bytes = try staker_writer.toOwnedSlice();
         defer allocator.free(staker_bytes);
         try writer.writeMessage(1, staker_bytes);
@@ -105,9 +105,9 @@ pub const ProxyStaker = struct {
         // proxy_account_id = 2
         var proxy_writer = ProtoWriter.init(allocator);
         defer proxy_writer.deinit();
-        try proxy_writer.writeInt64(1, @intCast(self.proxy_account_id.entity.shard));
-        try proxy_writer.writeInt64(2, @intCast(self.proxy_account_id.entity.realm));
-        try proxy_writer.writeInt64(3, @intCast(self.proxy_account_id.entity.num));
+        try proxy_writer.writeInt64(1, @intCast(self.proxy_account_id.shard));
+        try proxy_writer.writeInt64(2, @intCast(self.proxy_account_id.realm));
+        try proxy_writer.writeInt64(3, @intCast(self.proxy_account_id.account));
         const proxy_bytes = try proxy_writer.toOwnedSlice();
         defer allocator.free(proxy_bytes);
         try writer.writeMessage(2, proxy_bytes);
@@ -201,15 +201,15 @@ pub const ProxyStaker = struct {
     }
 
     pub fn equals(self: *const ProxyStaker, other: *const ProxyStaker) bool {
-        if (self.staker_id.entity.shard != other.staker_id.entity.shard or
-            self.staker_id.entity.realm != other.staker_id.entity.realm or
-            self.staker_id.entity.num != other.staker_id.entity.num) {
+        if (self.staker_id.shard != other.staker_id.shard or
+            self.staker_id.realm != other.staker_id.realm or
+            self.staker_id.account != other.staker_id.account) {
             return false;
         }
 
-        if (self.proxy_account_id.entity.shard != other.proxy_account_id.entity.shard or
-            self.proxy_account_id.entity.realm != other.proxy_account_id.entity.realm or
-            self.proxy_account_id.entity.num != other.proxy_account_id.entity.num) {
+        if (self.proxy_account_id.shard != other.proxy_account_id.shard or
+            self.proxy_account_id.realm != other.proxy_account_id.realm or
+            self.proxy_account_id.account != other.proxy_account_id.account) {
             return false;
         }
 
@@ -356,9 +356,9 @@ pub const StakingInfo = struct {
         if (self.staked_account_id) |account_id| {
             var account_writer = ProtoWriter.init(allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(account_id.shard));
+            try account_writer.writeInt64(2, @intCast(account_id.realm));
+            try account_writer.writeInt64(3, @intCast(account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer allocator.free(account_bytes);
             try writer.writeMessage(3, account_bytes);

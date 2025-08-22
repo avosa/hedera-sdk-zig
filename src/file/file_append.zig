@@ -33,42 +33,46 @@ pub const FileAppendTransaction = struct {
     }
     
     // Set the file ID to append to
-    pub fn setFileId(self: *FileAppendTransaction, file_id: FileId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setFileId(self: *FileAppendTransaction, file_id: FileId) *FileAppendTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.file_id = file_id;
+        return self;
     }
     
     // Set the contents to append
-    pub fn setContents(self: *FileAppendTransaction, contents: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setContents(self: *FileAppendTransaction, contents: []const u8) *FileAppendTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (contents.len > MAX_CHUNK_SIZE * MAX_CHUNKS) {
-            return error.ContentsTooLarge;
+            @panic("Contents too large");
         }
         
         self.contents = contents;
+        return self;
     }
     
     // Set chunk size for multi-chunk appends
-    pub fn setChunkSize(self: *FileAppendTransaction, size: usize) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setChunkSize(self: *FileAppendTransaction, size: usize) *FileAppendTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (size == 0 or size > MAX_CHUNK_SIZE) {
-            return error.InvalidChunkSize;
+            @panic("Invalid chunk size");
         }
         
         self.chunk_size = size;
+        return self;
     }
     
     // Set max chunks
-    pub fn setMaxChunks(self: *FileAppendTransaction, max_chunks: u32) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setMaxChunks(self: *FileAppendTransaction, max_chunks: u32) *FileAppendTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (max_chunks == 0 or max_chunks > MAX_CHUNKS) {
-            return error.InvalidMaxChunks;
+            @panic("Invalid max chunks");
         }
         
         self.max_chunks = max_chunks;
+        return self;
     }
     
     // Execute the transaction
@@ -152,9 +156,9 @@ pub const FileAppendTransaction = struct {
         if (self.file_id) |file| {
             var file_writer = ProtoWriter.init(self.base.allocator);
             defer file_writer.deinit();
-            try file_writer.writeInt64(1, @intCast(file.entity.shard));
-            try file_writer.writeInt64(2, @intCast(file.entity.realm));
-            try file_writer.writeInt64(3, @intCast(file.entity.num));
+            try file_writer.writeInt64(1, @intCast(file.shard));
+            try file_writer.writeInt64(2, @intCast(file.realm));
+            try file_writer.writeInt64(3, @intCast(file.num));
             const file_bytes = try file_writer.toOwnedSlice();
             defer self.base.allocator.free(file_bytes);
             try append_writer.writeMessage(2, file_bytes);
@@ -188,9 +192,9 @@ pub const FileAppendTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -209,9 +213,9 @@ pub const FileAppendTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

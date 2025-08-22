@@ -82,13 +82,15 @@ pub const ContractInfoQuery = struct {
     }
     
     // Set the contract ID to query
-    pub fn setContractId(self: *ContractInfoQuery, contract_id: ContractId) !void {
+    pub fn setContractId(self: *ContractInfoQuery, contract_id: ContractId) *ContractInfoQuery {
         self.contract_id = contract_id;
+        return self;
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *ContractInfoQuery, payment: Hbar) !void {
+    pub fn setQueryPayment(self: *ContractInfoQuery, payment: Hbar) *ContractInfoQuery {
         self.base.payment_amount = payment;
+        return self;
     }
     
     // Execute the query
@@ -153,9 +155,9 @@ pub const ContractInfoQuery = struct {
         if (self.contract_id) |contract| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
             defer contract_writer.deinit();
-            try contract_writer.writeInt64(1, @intCast(contract.entity.shard));
-            try contract_writer.writeInt64(2, @intCast(contract.entity.realm));
-            try contract_writer.writeInt64(3, @intCast(contract.entity.num));
+            try contract_writer.writeInt64(1, @intCast(contract.shard));
+            try contract_writer.writeInt64(2, @intCast(contract.realm));
+            try contract_writer.writeInt64(3, @intCast(contract.num));
             const contract_bytes = try contract_writer.toOwnedSlice();
             defer self.base.allocator.free(contract_bytes);
             try info_query_writer.writeMessage(1, contract_bytes);

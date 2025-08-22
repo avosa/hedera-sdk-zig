@@ -30,8 +30,8 @@ pub const TokenUpdateNftsTransaction = struct {
     }
     
     // Set the token ID
-    pub fn setTokenId(self: *TokenUpdateNftsTransaction, token_id: TokenId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTokenId(self: *TokenUpdateNftsTransaction, token_id: TokenId) *TokenUpdateNftsTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.token_id = token_id;
     }
     
@@ -41,18 +41,19 @@ pub const TokenUpdateNftsTransaction = struct {
     }
     
     // Set all serials to update
-    pub fn setSerials(self: *TokenUpdateNftsTransaction, serials: []const i64) !void {
+    pub fn setSerials(self: *TokenUpdateNftsTransaction, serials: []const i64) *TokenUpdateNftsTransaction {
         self.serials.clearAndFree();
         try self.serials.appendSlice(serials);
     }
     
     // Set the metadata for the NFTs
-    pub fn setMetadata(self: *TokenUpdateNftsTransaction, metadata: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setMetadata(self: *TokenUpdateNftsTransaction, metadata: []const u8) *TokenUpdateNftsTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         if (metadata.len > 100) return error.MetadataTooLong;
         
         if (self.metadata) |old| {
             self.base.allocator.free(old);
+            return self;
         }
         self.metadata = try self.base.allocator.dupe(u8, metadata);
     }
@@ -78,9 +79,9 @@ pub const TokenUpdateNftsTransaction = struct {
         if (self.token_id) |token_id| {
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(token_id.entity.shard));
-            try token_writer.writeInt64(2, @intCast(token_id.entity.realm));
-            try token_writer.writeInt64(3, @intCast(token_id.entity.num));
+            try token_writer.writeInt64(1, @intCast(token_id.shard));
+            try token_writer.writeInt64(2, @intCast(token_id.realm));
+            try token_writer.writeInt64(3, @intCast(token_id.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try update_writer.writeMessage(1, token_bytes);

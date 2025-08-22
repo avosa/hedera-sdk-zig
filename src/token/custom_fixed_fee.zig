@@ -93,9 +93,9 @@ pub const CustomFixedFee = struct {
             var token_writer = ProtoWriter.init(allocator);
             defer token_writer.deinit();
             
-            try token_writer.writeInt64(1, @intCast(token_id.entity.shard));
-            try token_writer.writeInt64(2, @intCast(token_id.entity.realm));
-            try token_writer.writeInt64(3, @intCast(token_id.entity.num));
+            try token_writer.writeInt64(1, @intCast(token_id.shard));
+            try token_writer.writeInt64(2, @intCast(token_id.realm));
+            try token_writer.writeInt64(3, @intCast(token_id.num));
             
             const token_bytes = try token_writer.toOwnedSlice();
             defer allocator.free(token_bytes);
@@ -106,9 +106,9 @@ pub const CustomFixedFee = struct {
             var collector_writer = ProtoWriter.init(allocator);
             defer collector_writer.deinit();
             
-            try collector_writer.writeInt64(1, @intCast(collector_id.entity.shard));
-            try collector_writer.writeInt64(2, @intCast(collector_id.entity.realm));
-            try collector_writer.writeInt64(3, @intCast(collector_id.entity.num));
+            try collector_writer.writeInt64(1, @intCast(collector_id.shard));
+            try collector_writer.writeInt64(2, @intCast(collector_id.realm));
+            try collector_writer.writeInt64(3, @intCast(collector_id.account));
             
             const collector_bytes = try collector_writer.toOwnedSlice();
             defer allocator.free(collector_bytes);
@@ -210,9 +210,9 @@ pub const CustomFixedFee = struct {
         if (self.denomination_token_id != null and other.denomination_token_id != null) {
             const self_token = self.denomination_token_id.?;
             const other_token = other.denomination_token_id.?;
-            if (self_token.entity.shard != other_token.entity.shard or
-                self_token.entity.realm != other_token.entity.realm or
-                self_token.entity.num != other_token.entity.num) {
+            if (self_token.shard != other_token.shard or
+                self_token.realm != other_token.realm or
+                self_token.num != other_token.num) {
                 return false;
             }
         }
@@ -222,9 +222,9 @@ pub const CustomFixedFee = struct {
         if (self.fee_collector_account_id != null and other.fee_collector_account_id != null) {
             const self_collector = self.fee_collector_account_id.?;
             const other_collector = other.fee_collector_account_id.?;
-            if (self_collector.entity.shard != other_collector.entity.shard or
-                self_collector.entity.realm != other_collector.entity.realm or
-                self_collector.entity.num != other_collector.entity.num) {
+            if (self_collector.shard != other_collector.shard or
+                self_collector.realm != other_collector.realm or
+                self_collector.account != other_collector.account) {
                 return false;
             }
         }

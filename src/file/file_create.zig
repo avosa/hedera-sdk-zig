@@ -38,61 +38,66 @@ pub const FileCreateTransaction = struct {
     }
     
     // Set the expiration time for the file
-    pub fn setExpirationTime(self: *FileCreateTransaction, time: Timestamp) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setExpirationTime(self: *FileCreateTransaction, time: Timestamp) *FileCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.expiration_time = time;
+        return self;
     }
     
     // Includes a key that must sign for modifications
     pub fn addKey(self: *FileCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         try self.keys.append(key);
     }
     
     // Set the keys that must sign for modifications (accepts Key)
-    pub fn setKeys(self: *FileCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setKeys(self: *FileCreateTransaction, key: Key) !*FileCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         self.keys.clearRetainingCapacity();
         
         // Add Key to the keys list
         try self.keys.append(key);
+        return self;
     }
     
     // Set the keys that must sign for modifications (accepts Key array)
-    pub fn setKeysArray(self: *FileCreateTransaction, keys: []const Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setKeysArray(self: *FileCreateTransaction, keys: []const Key) *FileCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         self.keys.clearRetainingCapacity();
         for (keys) |key| {
             try self.keys.append(key);
+            return self;
         }
     }
     
     // Set the file contents
-    pub fn setContents(self: *FileCreateTransaction, contents: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setContents(self: *FileCreateTransaction, contents: []const u8) *FileCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (contents.len > MAX_FILE_SIZE) {
-            return error.FileTooLarge;
+            @panic("File too large");
         }
         
         self.contents = contents;
+        return self;
     }
     
     // Set the file memo
-    pub fn setMemo(self: *FileCreateTransaction, memo: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setMemo(self: *FileCreateTransaction, memo: []const u8) *FileCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (memo.len > 100) {
-            return error.MemoTooLong;
+            @panic("Memo too long");
         }
         
         self.memo = memo;
+        return self;
     }
     
     // Set file memo (alias)
-    pub fn setFileMemo(self: *FileCreateTransaction, memo: []const u8) !void {
+    pub fn setFileMemo(self: *FileCreateTransaction, memo: []const u8) *FileCreateTransaction {
         return self.setMemo(memo);
     }
     
@@ -198,9 +203,9 @@ pub const FileCreateTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -219,9 +224,9 @@ pub const FileCreateTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

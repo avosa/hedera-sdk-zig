@@ -44,12 +44,29 @@ pub const Node = @import("network/node.zig").Node;
 pub const Network = @import("network/network.zig").Network;
 // These will be replaced by the more complete versions below
 
-// Go SDK-style factory functions
+// Factory functions matching Hedera SDK patterns
 pub const client_for_name = @import("network/client.zig").Client.client_for_name;
-pub const account_id_from_string = @import("core/id.zig").AccountId.account_id_from_string;
-pub const private_key_from_string = @import("crypto/private_key.zig").PrivateKey.private_key_from_string;
+pub const account_id_from_string = @import("core/id.zig").AccountId.fromString;
+pub const private_key_from_string = @import("crypto/private_key.zig").PrivateKey.fromString;
 pub const generate_private_key = @import("crypto/private_key.zig").PrivateKey.generate_private_key;
+
+// Transaction factory functions - matching Hedera SDK naming patterns
 pub const new_account_create_transaction = @import("account/account_create.zig").new_account_create_transaction;
+pub const newAccountCreateTransaction = @import("account/account_create.zig").new_account_create_transaction;
+pub const newAccountDeleteTransaction = @import("account/account_delete.zig").newAccountDeleteTransaction;
+pub const newTokenCreateTransaction = @import("token/token_create.zig").newTokenCreateTransaction;
+pub const newTokenUpdateTransaction = @import("token/token_update.zig").newTokenUpdateTransaction;
+pub const newTokenDeleteTransaction = @import("token/token_delete.zig").newTokenDeleteTransaction;
+pub const newTopicCreateTransaction = @import("topic/topic_create.zig").newTopicCreateTransaction;
+pub const newTopicUpdateTransaction = @import("topic/topic_update.zig").newTopicUpdateTransaction;
+pub const newTopicDeleteTransaction = @import("topic/topic_delete.zig").newTopicDeleteTransaction;
+pub const newContractCreateTransaction = @import("contract/contract_create.zig").newContractCreateTransaction;
+pub const newContractUpdateTransaction = @import("contract/contract_update_transaction.zig").newContractUpdateTransaction;
+pub const newContractDeleteTransaction = @import("contract/contract_delete.zig").newContractDeleteTransaction;
+pub const newFileCreateTransaction = @import("file/file_create.zig").newFileCreateTransaction;
+pub const newFileUpdateTransaction = @import("file/file_update_transaction.zig").newFileUpdateTransaction;
+pub const newFileDeleteTransaction = @import("file/file_delete.zig").newFileDeleteTransaction;
+pub const newTransferTransaction = @import("transfer/transfer_transaction.zig").newTransferTransaction;
 
 // Transaction base
 pub const Transaction = @import("transaction/transaction.zig").Transaction;
@@ -64,8 +81,9 @@ pub const NodeCreateTransaction = @import("node/node_create_transaction.zig").No
 // ServiceEndpoint is defined below in managed_node.zig
 
 // NEW LiveHash operations - CRYPTOGRAPHIC PROOF
-pub const LiveHashAddTransaction = @import("crypto/live_hash_add_transaction.zig").LiveHashAddTransaction;
-pub const LiveHash = @import("crypto/live_hash_add_transaction.zig").LiveHash;
+pub const LiveHashAddTransaction = @import("crypto/live_hash.zig").LiveHashAddTransaction;
+pub const LiveHashDeleteTransaction = @import("crypto/live_hash.zig").LiveHashDeleteTransaction;
+pub const LiveHash = @import("crypto/live_hash.zig").LiveHash;
 
 // Query base
 pub const Query = @import("query/query.zig").Query;
@@ -223,8 +241,7 @@ pub const TransactionReceiptQuery = @import("query/receipt_query.zig").Transacti
 pub const TransactionRecord = @import("transaction/transaction_record.zig").TransactionRecord;
 pub const TransactionRecordQuery = @import("query/transaction_record_query.zig").TransactionRecordQuery;
 
-// Live hash operations (LiveHashAddTransaction and LiveHash already exported above)
-pub const LiveHashDeleteTransaction = @import("crypto/live_hash.zig").LiveHashDeleteTransaction;
+// Live hash operations (LiveHashAddTransaction, LiveHashDeleteTransaction and LiveHash already exported above)
 pub const LiveHashQuery = @import("crypto/live_hash_query.zig").LiveHashQuery;
 
 // Ethereum operations
@@ -351,9 +368,9 @@ test "Hedera SDK basic initialization" {
     
     // Test that we can create basic types
     const account = AccountId.init(0, 0, 3);
-    try testing.expectEqual(@as(u64, 0), account.entity.shard);
-    try testing.expectEqual(@as(u64, 0), account.entity.realm);
-    try testing.expectEqual(@as(u64, 3), account.entity.num);
+    try testing.expectEqual(@as(u64, 0), account.shard);
+    try testing.expectEqual(@as(u64, 0), account.realm);
+    try testing.expectEqual(@as(u64, 3), account.account);
     
     // Test Hbar creation
     const amount = try Hbar.from(100);

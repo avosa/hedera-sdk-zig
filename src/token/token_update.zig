@@ -68,123 +68,215 @@ pub const TokenUpdateTransaction = struct {
     }
     
     // Set token to update
-    pub fn setTokenId(self: *TokenUpdateTransaction, token_id: TokenId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTokenId(self: *TokenUpdateTransaction, token_id: TokenId) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.token_id = token_id;
+        return self;
     }
     
     // Set new token name
-    pub fn setTokenName(self: *TokenUpdateTransaction, name: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (name.len > 100) return error.TokenNameTooLong;
+    pub fn setTokenName(self: *TokenUpdateTransaction, name: []const u8) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        if (name.len > 100) @panic("Token name too long");
         self.name = name;
+        return self;
     }
     
     // Set new token symbol
-    pub fn setTokenSymbol(self: *TokenUpdateTransaction, symbol: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (symbol.len > 100) return error.TokenSymbolTooLong;
+    pub fn setTokenSymbol(self: *TokenUpdateTransaction, symbol: []const u8) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        if (symbol.len > 100) @panic("Token symbol too long");
         self.symbol = symbol;
+        return self;
     }
     
     // Set new treasury account
-    pub fn setTreasuryAccountId(self: *TokenUpdateTransaction, account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTreasuryAccountId(self: *TokenUpdateTransaction, account_id: AccountId) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.treasury_account_id = account_id;
         self.treasury = account_id;  // Keep both fields in sync for uniformity
+        return self;
     }
     
     // Set admin key
-    pub fn setAdminKey(self: *TokenUpdateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAdminKey(self: *TokenUpdateTransaction, key: Key) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.admin_key = key;
+        return self;
     }
     
     // Set KYC key
-    pub fn setKycKey(self: *TokenUpdateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setKycKey(self: *TokenUpdateTransaction, key: Key) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.kyc_key = key;
+        return self;
     }
     
     // Set freeze key
-    pub fn setFreezeKey(self: *TokenUpdateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setFreezeKey(self: *TokenUpdateTransaction, key: Key) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.freeze_key = key;
+        return self;
     }
     
     // Set wipe key
-    pub fn setWipeKey(self: *TokenUpdateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setWipeKey(self: *TokenUpdateTransaction, key: Key) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.wipe_key = key;
+        return self;
     }
     
     // Set supply key
-    pub fn setSupplyKey(self: *TokenUpdateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setSupplyKey(self: *TokenUpdateTransaction, key: Key) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.supply_key = key;
+        return self;
     }
     
     // Set auto renew account
-    pub fn setAutoRenewAccount(self: *TokenUpdateTransaction, account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAutoRenewAccount(self: *TokenUpdateTransaction, account_id: AccountId) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.auto_renew_account = account_id;
+        return self;
     }
     
     // Set auto renew period
-    pub fn setAutoRenewPeriod(self: *TokenUpdateTransaction, period: Duration) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAutoRenewPeriod(self: *TokenUpdateTransaction, period: Duration) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.auto_renew_period = period;
+        return self;
     }
     
     // Set expiration time
-    pub fn setExpirationTime(self: *TokenUpdateTransaction, time: Timestamp) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setExpirationTime(self: *TokenUpdateTransaction, time: Timestamp) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.expiration_time = time;
+        return self;
     }
     
     // Set token memo
-    pub fn setTokenMemo(self: *TokenUpdateTransaction, memo: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (memo.len > 100) return error.MemoTooLong;
+    pub fn setTokenMemo(self: *TokenUpdateTransaction, memo: []const u8) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        if (memo.len > 100) @panic("Memo too long");
         self.memo = memo;
+        return self;
     }
     
     // Set fee schedule key
-    pub fn setFeeScheduleKey(self: *TokenUpdateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setFeeScheduleKey(self: *TokenUpdateTransaction, key: Key) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.fee_schedule_key = key;
+        return self;
     }
     
     // Set pause key
-    pub fn setPauseKey(self: *TokenUpdateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setPauseKey(self: *TokenUpdateTransaction, key: Key) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.pause_key = key;
+        return self;
     }
     
     // Set metadata
-    pub fn setMetadata(self: *TokenUpdateTransaction, metadata: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (metadata.len > 100) return error.MetadataTooLong;
+    pub fn setMetadata(self: *TokenUpdateTransaction, metadata: []const u8) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        if (metadata.len > 100) @panic("Metadata too long");
         self.metadata = metadata;
+        return self;
     }
     
     // Set metadata key
-    pub fn setMetadataKey(self: *TokenUpdateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setMetadataKey(self: *TokenUpdateTransaction, key: Key) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.metadata_key = key;
+        return self;
     }
     
     // Set key verification mode
-    pub fn setKeyVerificationMode(self: *TokenUpdateTransaction, mode: KeyVerificationMode) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setKeyVerificationMode(self: *TokenUpdateTransaction, mode: KeyVerificationMode) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.key_verification_mode = mode;
+        return self;
     }
     
     // Set treasury account
-    pub fn setTreasury(self: *TokenUpdateTransaction, treasury: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTreasury(self: *TokenUpdateTransaction, treasury: AccountId) *TokenUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.treasury_account_id = treasury;
         self.treasury = treasury;  // Keep both fields in sync for uniformity
+        return self;
+    }
+    
+    // Getter methods for uniformity with Go SDK
+    pub fn getTokenId(self: *const TokenUpdateTransaction) ?TokenId {
+        return self.token_id;
+    }
+    
+    pub fn getTokenName(self: *const TokenUpdateTransaction) ?[]const u8 {
+        return self.name;
+    }
+    
+    pub fn getTokenSymbol(self: *const TokenUpdateTransaction) ?[]const u8 {
+        return self.symbol;
+    }
+    
+    pub fn getTreasuryAccountID(self: *const TokenUpdateTransaction) ?AccountId {
+        return self.treasury_account_id;
+    }
+    
+    pub fn getAdminKey(self: *const TokenUpdateTransaction) ?Key {
+        return self.admin_key;
+    }
+    
+    pub fn getKycKey(self: *const TokenUpdateTransaction) ?Key {
+        return self.kyc_key;
+    }
+    
+    pub fn getFreezeKey(self: *const TokenUpdateTransaction) ?Key {
+        return self.freeze_key;
+    }
+    
+    pub fn getWipeKey(self: *const TokenUpdateTransaction) ?Key {
+        return self.wipe_key;
+    }
+    
+    pub fn getSupplyKey(self: *const TokenUpdateTransaction) ?Key {
+        return self.supply_key;
+    }
+    
+    pub fn getAutoRenewAccount(self: *const TokenUpdateTransaction) ?AccountId {
+        return self.auto_renew_account;
+    }
+    
+    pub fn getAutoRenewPeriod(self: *const TokenUpdateTransaction) ?Duration {
+        return self.auto_renew_period;
+    }
+    
+    pub fn getExpirationTime(self: *const TokenUpdateTransaction) ?Timestamp {
+        return self.expiration_time;
+    }
+    
+    pub fn getTokenMemo(self: *const TokenUpdateTransaction) ?[]const u8 {
+        return self.memo;
+    }
+    
+    pub fn getFeeScheduleKey(self: *const TokenUpdateTransaction) ?Key {
+        return self.fee_schedule_key;
+    }
+    
+    pub fn getPauseKey(self: *const TokenUpdateTransaction) ?Key {
+        return self.pause_key;
+    }
+    
+    pub fn getMetadata(self: *const TokenUpdateTransaction) ?[]const u8 {
+        return self.metadata;
+    }
+    
+    pub fn getMetadataKey(self: *const TokenUpdateTransaction) ?Key {
+        return self.metadata_key;
+    }
+    
+    pub fn getKeyVerificationMode(self: *const TokenUpdateTransaction) KeyVerificationMode {
+        return self.key_verification_mode;
     }
     
     // Execute the transaction
@@ -212,9 +304,9 @@ pub const TokenUpdateTransaction = struct {
         if (self.token_id) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(token.entity.shard));
-            try token_writer.writeInt64(2, @intCast(token.entity.realm));
-            try token_writer.writeInt64(3, @intCast(token.entity.num));
+            try token_writer.writeInt64(1, @intCast(token.shard));
+            try token_writer.writeInt64(2, @intCast(token.realm));
+            try token_writer.writeInt64(3, @intCast(token.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try update_writer.writeMessage(1, token_bytes);
@@ -234,9 +326,9 @@ pub const TokenUpdateTransaction = struct {
         if (self.treasury_account_id) |treasury| {
             var treasury_writer = ProtoWriter.init(self.base.allocator);
             defer treasury_writer.deinit();
-            try treasury_writer.writeInt64(1, @intCast(treasury.entity.shard));
-            try treasury_writer.writeInt64(2, @intCast(treasury.entity.realm));
-            try treasury_writer.writeInt64(3, @intCast(treasury.entity.num));
+            try treasury_writer.writeInt64(1, @intCast(treasury.shard));
+            try treasury_writer.writeInt64(2, @intCast(treasury.realm));
+            try treasury_writer.writeInt64(3, @intCast(treasury.account));
             const treasury_bytes = try treasury_writer.toOwnedSlice();
             defer self.base.allocator.free(treasury_bytes);
             try update_writer.writeMessage(4, treasury_bytes);
@@ -281,9 +373,9 @@ pub const TokenUpdateTransaction = struct {
         if (self.auto_renew_account) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(account.entity.shard));
-            try account_writer.writeInt64(2, @intCast(account.entity.realm));
-            try account_writer.writeInt64(3, @intCast(account.entity.num));
+            try account_writer.writeInt64(1, @intCast(account.shard));
+            try account_writer.writeInt64(2, @intCast(account.realm));
+            try account_writer.writeInt64(3, @intCast(account.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try update_writer.writeMessage(10, account_bytes);
@@ -372,9 +464,9 @@ pub const TokenUpdateTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -393,9 +485,9 @@ pub const TokenUpdateTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

@@ -30,7 +30,7 @@ pub const ContractCreateTransaction = struct {
     decline_staking_reward: bool,
     
     pub fn init(allocator: std.mem.Allocator) ContractCreateTransaction {
-        return ContractCreateTransaction{
+        var tx = ContractCreateTransaction{
             .base = Transaction.init(allocator),
             .bytecode_file_id = null,
             .bytecode = "",
@@ -38,7 +38,7 @@ pub const ContractCreateTransaction = struct {
             .gas = 100000,
             .initial_balance = Hbar.zero(),
             .proxy_account_id = null,
-            .auto_renew_period = Duration{ .seconds = 7890000, .nanos = 0 }, // ~90 days
+            .auto_renew_period = Duration{ .seconds = 7890000, .nanos = 0 }, // 131500 minutes
             .constructor_parameters = "",
             .memo = "",
             .max_automatic_token_associations = 0,
@@ -47,110 +47,189 @@ pub const ContractCreateTransaction = struct {
             .staked_node_id = null,
             .decline_staking_reward = false,
         };
+        
+        // Set default auto-renew period to 131500 minutes (matching Go SDK)
+        tx.auto_renew_period = Duration{ .seconds = 131500 * 60, .nanos = 0 };
+        // Set default max transaction fee to 20 Hbar (matching Go SDK)
+        tx.base.max_transaction_fee = Hbar.from(20) catch Hbar.zero();
+        
+        return tx;
     }
     
     pub fn deinit(self: *ContractCreateTransaction) void {
         self.base.deinit();
     }
     
-    // Set bytecode file ID
-    pub fn setBytecodeFileId(self: *ContractCreateTransaction, file_id: FileId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (self.bytecode.len > 0) return error.CannotSetBothBytecodeAndFileId;
+    // SetBytecodeFileID sets the file ID containing the contract bytecode
+    pub fn setBytecodeFileId(self: *ContractCreateTransaction, file_id: FileId) *ContractCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.bytecode_file_id = file_id;
+        self.bytecode = ""; // Clear bytecode when setting file ID
+        return self;
     }
     
-    // Set bytecode directly
-    pub fn setBytecode(self: *ContractCreateTransaction, bytecode: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (self.bytecode_file_id != null) return error.CannotSetBothBytecodeAndFileId;
+    // GetBytecodeFileID returns the file ID containing the contract bytecode
+    pub fn getBytecodeFileID(self: *const ContractCreateTransaction) FileId {
+        return self.bytecode_file_id orelse FileId{};
+    }
+    
+    // SetBytecode sets the contract bytecode directly
+    pub fn setBytecode(self: *ContractCreateTransaction, bytecode: []const u8) *ContractCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.bytecode = bytecode;
+        self.bytecode_file_id = null; // Clear file ID when setting bytecode
+        return self;
     }
     
-    // Set admin key
-    pub fn setAdminKey(self: *ContractCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    // GetBytecode returns the contract bytecode
+    pub fn getBytecode(self: *const ContractCreateTransaction) []const u8 {
+        return self.bytecode;
+    }
+    
+    // SetAdminKey sets the admin key for the contract
+    pub fn setAdminKey(self: *ContractCreateTransaction, key: Key) *ContractCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.admin_key = key;
+        return self;
     }
     
-    // Set gas limit
-    pub fn setGas(self: *ContractCreateTransaction, gas: i64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (gas <= 0) return error.InvalidGasLimit;
-        self.gas = gas;
+    // GetAdminKey returns the admin key for the contract
+    pub fn getAdminKey(self: *const ContractCreateTransaction) ?Key {
+        return self.admin_key;
     }
     
-    // Set initial balance
-    pub fn setInitialBalance(self: *ContractCreateTransaction, balance: Hbar) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (balance.toTinybars() < 0) return error.NegativeInitialBalance;
+    // SetGas sets the gas limit for the contract constructor
+    pub fn setGas(self: *ContractCreateTransaction, gas: u64) *ContractCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
+        self.gas = @intCast(gas);
+        return self;
+    }
+    
+    // GetGas returns the gas limit for the contract constructor
+    pub fn getGas(self: *const ContractCreateTransaction) u64 {
+        return @intCast(self.gas);
+    }
+    
+    // SetInitialBalance sets the initial balance for the contract
+    pub fn setInitialBalance(self: *ContractCreateTransaction, balance: Hbar) *ContractCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.initial_balance = balance;
+        return self;
     }
     
-    // Set proxy account ID (deprecated)
-    pub fn setProxyAccountId(self: *ContractCreateTransaction, proxy_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    // GetInitialBalance returns the initial balance for the contract
+    pub fn getInitialBalance(self: *const ContractCreateTransaction) Hbar {
+        return self.initial_balance;
+    }
+    
+    // SetProxyAccountID sets the proxy account ID (deprecated)
+    pub fn setProxyAccountId(self: *ContractCreateTransaction, proxy_id: AccountId) *ContractCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.proxy_account_id = proxy_id;
+        return self;
     }
     
-    // Set auto renew period
-    pub fn setAutoRenewPeriod(self: *ContractCreateTransaction, period: Duration) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (period.seconds < 6999999 or period.seconds > 8000001) {
-            return error.InvalidAutoRenewPeriod;
-        }
+    // GetProxyAccountID returns the proxy account ID (deprecated)
+    pub fn getProxyAccountID(self: *const ContractCreateTransaction) AccountId {
+        return self.proxy_account_id orelse AccountId{};
+    }
+    
+    // SetAutoRenewPeriod sets the auto renew period for the contract
+    pub fn setAutoRenewPeriod(self: *ContractCreateTransaction, period: Duration) *ContractCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.auto_renew_period = period;
+        return self;
     }
     
-    // Set constructor parameters
-    pub fn setConstructorParameters(self: *ContractCreateTransaction, params: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    // GetAutoRenewPeriod returns the auto renew period for the contract
+    pub fn getAutoRenewPeriod(self: *const ContractCreateTransaction) Duration {
+        return self.auto_renew_period;
+    }
+    
+    // SetConstructorParameters sets the constructor parameters for the contract
+    pub fn setConstructorParameters(self: *ContractCreateTransaction, params: []const u8) *ContractCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.constructor_parameters = params;
+        return self;
     }
     
-    // Set contract memo
-    pub fn setContractMemo(self: *ContractCreateTransaction, memo: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (memo.len > 100) return error.MemoTooLong;
+    // GetConstructorParameters returns the constructor parameters for the contract
+    pub fn getConstructorParameters(self: *const ContractCreateTransaction) []const u8 {
+        return self.constructor_parameters;
+    }
+    
+    // SetMemo sets the memo for the contract
+    pub fn setMemo(self: *ContractCreateTransaction, memo: []const u8) *ContractCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.memo = memo;
+        return self;
     }
     
-    // Set memo (alias for Go SDK compatibility)
-    pub fn setMemo(self: *ContractCreateTransaction, memo: []const u8) !void {
-        return self.setContractMemo(memo);
+    // GetContractMemo returns the memo for the contract
+    pub fn getContractMemo(self: *const ContractCreateTransaction) []const u8 {
+        return self.memo;
     }
     
-    // Set max automatic token associations
-    pub fn setMaxAutomaticTokenAssociations(self: *ContractCreateTransaction, max: i32) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (max < 0 or max > 1000) return error.InvalidMaxTokenAssociations;
+    // SetMaxAutomaticTokenAssociations sets the maximum number of automatic token associations
+    pub fn setMaxAutomaticTokenAssociations(self: *ContractCreateTransaction, max: i32) *ContractCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.max_automatic_token_associations = max;
+        return self;
     }
     
-    // Set auto renew account ID
-    pub fn setAutoRenewAccountId(self: *ContractCreateTransaction, account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    // GetMaxAutomaticTokenAssociations returns the maximum number of automatic token associations
+    pub fn getMaxAutomaticTokenAssociations(self: *const ContractCreateTransaction) i32 {
+        return self.max_automatic_token_associations;
+    }
+    
+    // SetAutoRenewAccountID sets the auto renew account ID for the contract
+    pub fn setAutoRenewAccountId(self: *ContractCreateTransaction, account_id: AccountId) *ContractCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.auto_renew_account_id = account_id;
+        return self;
     }
     
-    // Set staked account ID
-    pub fn setStakedAccountId(self: *ContractCreateTransaction, account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (self.staked_node_id != null) return error.CannotSetBothStakedAccountAndNode;
+    // GetAutoRenewAccountID returns the auto renew account ID for the contract
+    pub fn getAutoRenewAccountID(self: *const ContractCreateTransaction) AccountId {
+        return self.auto_renew_account_id orelse AccountId{};
+    }
+    
+    // SetStakedAccountID sets the staked account ID for the contract
+    pub fn setStakedAccountID(self: *ContractCreateTransaction, account_id: AccountId) *ContractCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.staked_account_id = account_id;
+        self.staked_node_id = null; // Clear node ID when setting account ID
+        return self;
     }
     
-    // Set staked node ID
-    pub fn setStakedNodeId(self: *ContractCreateTransaction, node_id: i64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (self.staked_account_id != null) return error.CannotSetBothStakedAccountAndNode;
+    // GetStakedAccountID returns the staked account ID for the contract
+    pub fn getStakedAccountID(self: *const ContractCreateTransaction) AccountId {
+        return self.staked_account_id orelse AccountId{};
+    }
+    
+    // SetStakedNodeID sets the staked node ID for the contract
+    pub fn setStakedNodeId(self: *ContractCreateTransaction, node_id: i64) *ContractCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.staked_node_id = node_id;
+        self.staked_account_id = null; // Clear account ID when setting node ID
+        return self;
     }
     
-    // Set decline staking reward
-    pub fn setDeclineStakingReward(self: *ContractCreateTransaction, decline: bool) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    // GetStakedNodeID returns the staked node ID for the contract
+    pub fn getStakedNodeID(self: *const ContractCreateTransaction) i64 {
+        return self.staked_node_id orelse 0;
+    }
+    
+    // SetDeclineStakingReward sets whether to decline staking rewards
+    pub fn setDeclineStakingReward(self: *ContractCreateTransaction, decline: bool) *ContractCreateTransaction {
+        if (self.base.frozen) @panic("transaction is frozen");
         self.decline_staking_reward = decline;
+        return self;
+    }
+    
+    // GetDeclineStakingReward returns whether to decline staking rewards
+    pub fn getDeclineStakingReward(self: *const ContractCreateTransaction) bool {
+        return self.decline_staking_reward;
     }
     
     // Execute the transaction
@@ -178,9 +257,9 @@ pub const ContractCreateTransaction = struct {
         if (self.bytecode_file_id) |file_id| {
             var file_writer = ProtoWriter.init(self.base.allocator);
             defer file_writer.deinit();
-            try file_writer.writeInt64(1, @intCast(file_id.entity.shard));
-            try file_writer.writeInt64(2, @intCast(file_id.entity.realm));
-            try file_writer.writeInt64(3, @intCast(file_id.entity.num));
+            try file_writer.writeInt64(1, @intCast(file_id.shard));
+            try file_writer.writeInt64(2, @intCast(file_id.realm));
+            try file_writer.writeInt64(3, @intCast(file_id.num));
             const file_bytes = try file_writer.toOwnedSlice();
             defer self.base.allocator.free(file_bytes);
             try create_writer.writeMessage(1, file_bytes);
@@ -203,9 +282,9 @@ pub const ContractCreateTransaction = struct {
         if (self.proxy_account_id) |proxy| {
             var proxy_writer = ProtoWriter.init(self.base.allocator);
             defer proxy_writer.deinit();
-            try proxy_writer.writeInt64(1, @intCast(proxy.entity.shard));
-            try proxy_writer.writeInt64(2, @intCast(proxy.entity.realm));
-            try proxy_writer.writeInt64(3, @intCast(proxy.entity.num));
+            try proxy_writer.writeInt64(1, @intCast(proxy.shard));
+            try proxy_writer.writeInt64(2, @intCast(proxy.realm));
+            try proxy_writer.writeInt64(3, @intCast(proxy.account));
             const proxy_bytes = try proxy_writer.toOwnedSlice();
             defer self.base.allocator.free(proxy_bytes);
             try create_writer.writeMessage(6, proxy_bytes);
@@ -238,9 +317,9 @@ pub const ContractCreateTransaction = struct {
         if (self.auto_renew_account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(account.entity.shard));
-            try account_writer.writeInt64(2, @intCast(account.entity.realm));
-            try account_writer.writeInt64(3, @intCast(account.entity.num));
+            try account_writer.writeInt64(1, @intCast(account.shard));
+            try account_writer.writeInt64(2, @intCast(account.realm));
+            try account_writer.writeInt64(3, @intCast(account.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try create_writer.writeMessage(15, account_bytes);
@@ -255,9 +334,9 @@ pub const ContractCreateTransaction = struct {
         if (self.staked_account_id) |staked| {
             var staked_writer = ProtoWriter.init(self.base.allocator);
             defer staked_writer.deinit();
-            try staked_writer.writeInt64(1, @intCast(staked.entity.shard));
-            try staked_writer.writeInt64(2, @intCast(staked.entity.realm));
-            try staked_writer.writeInt64(3, @intCast(staked.entity.num));
+            try staked_writer.writeInt64(1, @intCast(staked.shard));
+            try staked_writer.writeInt64(2, @intCast(staked.realm));
+            try staked_writer.writeInt64(3, @intCast(staked.account));
             const staked_bytes = try staked_writer.toOwnedSlice();
             defer self.base.allocator.free(staked_bytes);
             try create_writer.writeMessage(17, staked_bytes);
@@ -293,9 +372,9 @@ pub const ContractCreateTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -314,9 +393,9 @@ pub const ContractCreateTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

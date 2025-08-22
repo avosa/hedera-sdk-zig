@@ -2,7 +2,7 @@ const std = @import("std");
 const testing = std.testing;
 const MirrorNode = @import("../network/mirror_node.zig").MirrorNode;
 const ContractId = @import("../contract/contract_id.zig").ContractId;
-const AccountId = @import("../account/account_id.zig").AccountId;
+const AccountId = @import("../account/delete_account_id.zig").AccountId;
 const TokenId = @import("../token/token_id.zig").TokenId;
 const TopicId = @import("../topic/topic_id.zig").TopicId;
 const Timestamp = @import("../core/timestamp.zig").Timestamp;
@@ -27,7 +27,7 @@ test "ContractQuery through Mirror Node" {
     defer query.deinit();
     
     query.setContractId(ContractId.init(0, 0, 1000));
-    query.setFunction("balanceOf");
+    _ = query.setFunction("balanceOf");
     
     // Add address parameter
     var params = std.ArrayList(u8).init(allocator);
@@ -40,7 +40,7 @@ test "ContractQuery through Mirror Node" {
     
     query.setFunctionParameters(try params.toOwnedSlice());
     
-    try testing.expectEqual(@as(u64, 1000), query.contract_id.?.num);
+    try testing.expectEqual(@as(u64, 1000), query.contract_id.?.num());
     try testing.expectEqualStrings("balanceOf", query.function_name.?);
     try testing.expectEqual(@as(usize, 32), query.function_parameters.?.len);
 }
@@ -63,18 +63,18 @@ test "MirrorQuery for transactions" {
     );
     
     // Set transaction type filter
-    query.setTransactionType(.CRYPTO_TRANSFER);
+    _ = query.setTransactionType(.CRYPTO_TRANSFER);
     
     // Set result filter
-    query.setResult(.SUCCESS);
+    _ = query.setResult(.SUCCESS);
     
     // Set limit
-    query.setLimit(100);
+    _ = query.setLimit(100);
     
     // Set order
-    query.setOrder(.DESC);
+    _ = query.setOrder(.DESC);
     
-    try testing.expectEqual(@as(u64, 100), query.account_id.?.num);
+    try testing.expectEqual(@as(u64, 100), query.account_id.?.account);
     try testing.expectEqual(@as(usize, 100), query.limit);
     try testing.expectEqual(.DESC, query.order);
 }
@@ -112,7 +112,7 @@ test "MirrorQuery for account balances" {
     const result = try query.parseResponse(allocator, mock_response);
     defer result.deinit();
     
-    try testing.expectEqual(@as(u64, 100), result.account_id.?.num);
+    try testing.expectEqual(@as(u64, 100), result.account_id.?.account);
     try testing.expectEqual(@as(i64, 50000000000), result.hbars.tinybar);
     
     const token_balance = result.getTokenBalance(TokenId.init(0, 0, 500));
@@ -132,9 +132,9 @@ test "MirrorQuery for NFT info" {
         .serial_number = 1,
     };
     
-    query.setNftId(nft_id);
+    _ = query.setNftId(nft_id);
     
-    try testing.expectEqual(@as(u64, 500), query.nft_id.?.token_id.num);
+    try testing.expectEqual(@as(u64, 500), query.nft_id.?.token_id.num());
     try testing.expectEqual(@as(i64, 1), query.nft_id.?.serial_number);
 }
 
@@ -149,9 +149,9 @@ test "TopicMessageQuery through Mirror Node" {
     query.setTopicId(TopicId.init(0, 0, 200));
     query.setStartTime(Timestamp.fromSeconds(1234567890));
     query.setEndTime(Timestamp.fromSeconds(1234567900));
-    query.setLimit(100);
+    _ = query.setLimit(100);
     
-    try testing.expectEqual(@as(u64, 200), query.topic_id.?.num);
+    try testing.expectEqual(@as(u64, 200), query.topic_id.?.num());
     try testing.expectEqual(@as(u32, 100), query.limit.?);
 }
 
@@ -196,9 +196,9 @@ test "MirrorNode subscription" {
         }
     };
     
-    subscription.setCallback(Callback.onMessage);
+    _ = subscription.setCallback(Callback.onMessage);
     
-    try testing.expectEqual(@as(u64, 200), subscription.topic_id.?.num);
+    try testing.expectEqual(@as(u64, 200), subscription.topic_id.?.num());
     try testing.expect(subscription.callback != null);
 }
 
@@ -226,3 +226,4 @@ test "MirrorNode error handling" {
     const result = node.parseErrorResponse(error_response);
     try testing.expectError(error.AccountNotFound, result);
 }
+

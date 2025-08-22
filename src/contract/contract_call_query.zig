@@ -37,23 +37,26 @@ pub const ContractCallQuery = struct {
     }
     
     // Set the contract to call
-    pub fn setContractId(self: *ContractCallQuery, contract_id: ContractId) !void {
+    pub fn setContractId(self: *ContractCallQuery, contract_id: ContractId) *ContractCallQuery {
         self.contract_id = contract_id;
+        return self;
     }
     
     // Set gas limit for the call
-    pub fn setGas(self: *ContractCallQuery, gas: i64) !void {
-        if (gas <= 0) return error.InvalidGasLimit;
+    pub fn setGas(self: *ContractCallQuery, gas: i64) *ContractCallQuery {
+        if (gas <= 0) @panic("Invalid gas limit");
         self.gas = gas;
+        return self;
     }
     
     // Set function parameters
-    pub fn setFunctionParameters(self: *ContractCallQuery, params: []const u8) !void {
+    pub fn setFunctionParameters(self: *ContractCallQuery, params: []const u8) *ContractCallQuery {
         self.function_parameters = params;
+        return self;
     }
     
     // Set function with parameters using builder
-    pub fn setFunction(self: *ContractCallQuery, name: []const u8, params: ?ContractFunctionParameters) !void {
+    pub fn setFunction(self: *ContractCallQuery, name: []const u8, params: ?ContractFunctionParameters) *ContractCallQuery {
         var full_params = std.ArrayList(u8).init(self.base.allocator);
         defer full_params.deinit();
         
@@ -68,114 +71,114 @@ pub const ContractCallQuery = struct {
             defer type_string.deinit();
             
             for (p.arguments.items, 0..) |arg, i| {
-                if (i > 0) try type_string.append(',');
+                if (i > 0) type_string.append(',') catch @panic("Failed to append to string");
                 
                 switch (arg) {
-                    .uint256 => try type_string.appendSlice("uint256"),
-                    .int256 => try type_string.appendSlice("int256"),
-                    .uint64 => try type_string.appendSlice("uint64"),
-                    .int64 => try type_string.appendSlice("int64"),
-                    .uint32 => try type_string.appendSlice("uint32"),
-                    .int32 => try type_string.appendSlice("int32"),
-                    .uint16 => try type_string.appendSlice("uint16"),
-                    .int16 => try type_string.appendSlice("int16"),
-                    .uint8 => try type_string.appendSlice("uint8"),
-                    .int8 => try type_string.appendSlice("int8"),
-                    .address => try type_string.appendSlice("address"),
-                    .bool_val => try type_string.appendSlice("bool"),
-                    .bytes_val => try type_string.appendSlice("bytes"),
-                    .bytes32 => try type_string.appendSlice("bytes32"),
-                    .string_val => try type_string.appendSlice("string"),
+                    .uint256 => type_string.appendSlice("uint256") catch @panic("Failed to append"),
+                    .int256 => type_string.appendSlice("int256") catch @panic("Failed to append"),
+                    .uint64 => type_string.appendSlice("uint64") catch @panic("Failed to append"),
+                    .int64 => type_string.appendSlice("int64") catch @panic("Failed to append"),
+                    .uint32 => type_string.appendSlice("uint32") catch @panic("Failed to append"),
+                    .int32 => type_string.appendSlice("int32") catch @panic("Failed to append"),
+                    .uint16 => type_string.appendSlice("uint16") catch @panic("Failed to append"),
+                    .int16 => type_string.appendSlice("int16") catch @panic("Failed to append"),
+                    .uint8 => type_string.appendSlice("uint8") catch @panic("Failed to append"),
+                    .int8 => type_string.appendSlice("int8") catch @panic("Failed to append"),
+                    .address => type_string.appendSlice("address") catch @panic("Failed to append"),
+                    .bool_val => type_string.appendSlice("bool") catch @panic("Failed to append"),
+                    .bytes_val => type_string.appendSlice("bytes") catch @panic("Failed to append"),
+                    .bytes32 => type_string.appendSlice("bytes32") catch @panic("Failed to append"),
+                    .string_val => type_string.appendSlice("string") catch @panic("Failed to append"),
                     .uint_array => |arr| {
-                        try type_string.appendSlice("uint256[");
-                        const len_str = try std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len});
+                        type_string.appendSlice("uint256[") catch @panic("Failed to append");
+                        const len_str = std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len}) catch @panic("Failed to format");
                         defer self.base.allocator.free(len_str);
-                        try type_string.appendSlice(len_str);
-                        try type_string.append(']');
+                        type_string.appendSlice(len_str) catch @panic("Failed to append");
+                        type_string.append(']') catch @panic("Failed to append");
                     },
                     .address_array => |arr| {
-                        try type_string.appendSlice("address[");
-                        const len_str = try std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len});
+                        type_string.appendSlice("address[") catch @panic("Failed to append");
+                        const len_str = std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len}) catch @panic("Failed to format");
                         defer self.base.allocator.free(len_str);
-                        try type_string.appendSlice(len_str);
-                        try type_string.append(']');
+                        type_string.appendSlice(len_str) catch @panic("Failed to append");
+                        type_string.append(']') catch @panic("Failed to append");
                     },
                     .uint8_array => |arr| {
-                        try type_string.appendSlice("uint8[");
-                        const len_str = try std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len});
+                        type_string.appendSlice("uint8[") catch @panic("Failed to append");
+                        const len_str = std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len}) catch @panic("Failed to format");
                         defer self.base.allocator.free(len_str);
-                        try type_string.appendSlice(len_str);
-                        try type_string.append(']');
+                        type_string.appendSlice(len_str) catch @panic("Failed to append");
+                        type_string.append(']') catch @panic("Failed to append");
                     },
                     .int8_array => |arr| {
-                        try type_string.appendSlice("int8[");
-                        const len_str = try std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len});
+                        type_string.appendSlice("int8[") catch @panic("Failed to append");
+                        const len_str = std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len}) catch @panic("Failed to format");
                         defer self.base.allocator.free(len_str);
-                        try type_string.appendSlice(len_str);
-                        try type_string.append(']');
+                        type_string.appendSlice(len_str) catch @panic("Failed to append");
+                        type_string.append(']') catch @panic("Failed to append");
                     },
                     .uint32_array => |arr| {
-                        try type_string.appendSlice("uint32[");
-                        const len_str = try std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len});
+                        type_string.appendSlice("uint32[") catch @panic("Failed to append");
+                        const len_str = std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len}) catch @panic("Failed to format");
                         defer self.base.allocator.free(len_str);
-                        try type_string.appendSlice(len_str);
-                        try type_string.append(']');
+                        type_string.appendSlice(len_str) catch @panic("Failed to append");
+                        type_string.append(']') catch @panic("Failed to append");
                     },
                     .int32_array => |arr| {
-                        try type_string.appendSlice("int32[");
-                        const len_str = try std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len});
+                        type_string.appendSlice("int32[") catch @panic("Failed to append");
+                        const len_str = std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len}) catch @panic("Failed to format");
                         defer self.base.allocator.free(len_str);
-                        try type_string.appendSlice(len_str);
-                        try type_string.append(']');
+                        type_string.appendSlice(len_str) catch @panic("Failed to append");
+                        type_string.append(']') catch @panic("Failed to append");
                     },
                     .uint64_array => |arr| {
-                        try type_string.appendSlice("uint64[");
-                        const len_str = try std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len});
+                        type_string.appendSlice("uint64[") catch @panic("Failed to append");
+                        const len_str = std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len}) catch @panic("Failed to format");
                         defer self.base.allocator.free(len_str);
-                        try type_string.appendSlice(len_str);
-                        try type_string.append(']');
+                        type_string.appendSlice(len_str) catch @panic("Failed to append");
+                        type_string.append(']') catch @panic("Failed to append");
                     },
                     .int64_array => |arr| {
-                        try type_string.appendSlice("int64[");
-                        const len_str = try std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len});
+                        type_string.appendSlice("int64[") catch @panic("Failed to append");
+                        const len_str = std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len}) catch @panic("Failed to format");
                         defer self.base.allocator.free(len_str);
-                        try type_string.appendSlice(len_str);
-                        try type_string.append(']');
+                        type_string.appendSlice(len_str) catch @panic("Failed to append");
+                        type_string.append(']') catch @panic("Failed to append");
                     },
                     .uint256_array => |arr| {
-                        try type_string.appendSlice("uint256[");
-                        const len_str = try std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len});
+                        type_string.appendSlice("uint256[") catch @panic("Failed to append");
+                        const len_str = std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len}) catch @panic("Failed to format");
                         defer self.base.allocator.free(len_str);
-                        try type_string.appendSlice(len_str);
-                        try type_string.append(']');
+                        type_string.appendSlice(len_str) catch @panic("Failed to append");
+                        type_string.append(']') catch @panic("Failed to append");
                     },
                     .int256_array => |arr| {
-                        try type_string.appendSlice("int256[");
-                        const len_str = try std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len});
+                        type_string.appendSlice("int256[") catch @panic("Failed to append");
+                        const len_str = std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len}) catch @panic("Failed to format");
                         defer self.base.allocator.free(len_str);
-                        try type_string.appendSlice(len_str);
-                        try type_string.append(']');
+                        type_string.appendSlice(len_str) catch @panic("Failed to append");
+                        type_string.append(']') catch @panic("Failed to append");
                     },
                     .bool_array => |arr| {
-                        try type_string.appendSlice("bool[");
-                        const len_str = try std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len});
+                        type_string.appendSlice("bool[") catch @panic("Failed to append");
+                        const len_str = std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len}) catch @panic("Failed to format");
                         defer self.base.allocator.free(len_str);
-                        try type_string.appendSlice(len_str);
-                        try type_string.append(']');
+                        type_string.appendSlice(len_str) catch @panic("Failed to append");
+                        type_string.append(']') catch @panic("Failed to append");
                     },
                     .bytes32_array => |arr| {
-                        try type_string.appendSlice("bytes32[");
-                        const len_str = try std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len});
+                        type_string.appendSlice("bytes32[") catch @panic("Failed to append");
+                        const len_str = std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len}) catch @panic("Failed to format");
                         defer self.base.allocator.free(len_str);
-                        try type_string.appendSlice(len_str);
-                        try type_string.append(']');
+                        type_string.appendSlice(len_str) catch @panic("Failed to append");
+                        type_string.append(']') catch @panic("Failed to append");
                     },
                     .string_array => |arr| {
-                        try type_string.appendSlice("string[");
-                        const len_str = try std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len});
+                        type_string.appendSlice("string[") catch @panic("Failed to append");
+                        const len_str = std.fmt.allocPrint(self.base.allocator, "{d}", .{arr.len}) catch @panic("Failed to format");
                         defer self.base.allocator.free(len_str);
-                        try type_string.appendSlice(len_str);
-                        try type_string.append(']');
+                        type_string.appendSlice(len_str) catch @panic("Failed to append");
+                        type_string.append(']') catch @panic("Failed to append");
                     },
                 }
             }
@@ -183,9 +186,9 @@ pub const ContractCallQuery = struct {
             hasher.update(type_string.items);
             
             // Encode parameters
-            const encoded_params = try p.encode(self.base.allocator);
+            const encoded_params = p.encode(self.base.allocator) catch @panic("Failed to encode params");
             defer self.base.allocator.free(encoded_params);
-            try full_params.appendSlice(encoded_params);
+            full_params.appendSlice(encoded_params) catch @panic("Failed to append");
         }
         
         hasher.update(")");
@@ -194,26 +197,30 @@ pub const ContractCallQuery = struct {
         hasher.final(&hash);
         
         // Function selector is first 4 bytes
-        try full_params.insertSlice(0, hash[0..4]);
+        full_params.insertSlice(0, hash[0..4]) catch @panic("Failed to insert");
         
-        self.function_parameters = try self.base.allocator.dupe(u8, full_params.items);
-        self.function_name = name;
+        self.function_parameters = self.base.allocator.dupe(u8, full_params.items) catch @panic("Failed to dupe");
+        self.function_name = self.base.allocator.dupe(u8, name) catch @panic("Failed to dupe function name");
+        return self;
     }
     
     // Set maximum result size
-    pub fn setMaxResultSize(self: *ContractCallQuery, size: i64) !void {
-        if (size <= 0) return error.InvalidMaxResultSize;
+    pub fn setMaxResultSize(self: *ContractCallQuery, size: i64) *ContractCallQuery {
+        if (size <= 0) @panic("Invalid max result size");
         self.max_result_size = size;
+        return self;
     }
     
     // Set sender account ID
-    pub fn setSenderId(self: *ContractCallQuery, sender_id: AccountId) !void {
+    pub fn setSenderId(self: *ContractCallQuery, sender_id: AccountId) *ContractCallQuery {
         self.sender_id = sender_id;
+        return self;
     }
     
     // Set query payment
-    pub fn setQueryPayment(self: *ContractCallQuery, payment: Hbar) !void {
+    pub fn setQueryPayment(self: *ContractCallQuery, payment: Hbar) *ContractCallQuery {
         self.base.payment_amount = payment;
+        return self;
     }
     
     // Execute the query
@@ -282,9 +289,9 @@ pub const ContractCallQuery = struct {
         if (self.contract_id) |contract| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
             defer contract_writer.deinit();
-            try contract_writer.writeInt64(1, @intCast(contract.entity.shard));
-            try contract_writer.writeInt64(2, @intCast(contract.entity.realm));
-            try contract_writer.writeInt64(3, @intCast(contract.entity.num));
+            try contract_writer.writeInt64(1, @intCast(contract.shard));
+            try contract_writer.writeInt64(2, @intCast(contract.realm));
+            try contract_writer.writeInt64(3, @intCast(contract.num));
             const contract_bytes = try contract_writer.toOwnedSlice();
             defer self.base.allocator.free(contract_bytes);
             try call_query_writer.writeMessage(2, contract_bytes);
@@ -305,9 +312,9 @@ pub const ContractCallQuery = struct {
         if (self.sender_id) |sender| {
             var sender_writer = ProtoWriter.init(self.base.allocator);
             defer sender_writer.deinit();
-            try sender_writer.writeInt64(1, @intCast(sender.entity.shard));
-            try sender_writer.writeInt64(2, @intCast(sender.entity.realm));
-            try sender_writer.writeInt64(3, @intCast(sender.entity.num));
+            try sender_writer.writeInt64(1, @intCast(sender.shard));
+            try sender_writer.writeInt64(2, @intCast(sender.realm));
+            try sender_writer.writeInt64(3, @intCast(sender.account));
             const sender_bytes = try sender_writer.toOwnedSlice();
             defer self.base.allocator.free(sender_bytes);
             try call_query_writer.writeMessage(6, sender_bytes);

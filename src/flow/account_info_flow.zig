@@ -310,9 +310,9 @@ pub const AccountSummary = struct {
             "Deleted: {}\n" ++
             "Recent Transactions: {}",
             .{
-                self.account_id.entity.shard,
-                self.account_id.entity.realm,
-                self.account_id.entity.num,
+                self.account_id.shard,
+                self.account_id.realm,
+                self.account_id.account,
                 self.exists,
                 self.balance_hbars,
                 self.token_count,

@@ -20,8 +20,8 @@ pub const NodeDeleteTransaction = struct {
     }
     
     // Set the node ID to delete
-    pub fn setNodeId(self: *NodeDeleteTransaction, node_id: u64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setNodeId(self: *NodeDeleteTransaction, node_id: u64) *NodeDeleteTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.node_id = node_id;
     }
     
@@ -45,6 +45,7 @@ pub const NodeDeleteTransaction = struct {
         // nodeId = 1
         if (self.node_id) |node_id| {
             try node_writer.writeUint64(1, node_id);
+            return self;
         }
         
         const node_bytes = try node_writer.toOwnedSlice();

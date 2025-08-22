@@ -1,6 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
-const AccountId = @import("../account/account_id.zig").AccountId;
+const AccountId = @import("../account/delete_account_id.zig").AccountId;
 const Timestamp = @import("../core/timestamp.zig").Timestamp;
 const Hbar = @import("../core/hbar.zig").Hbar;
 
@@ -29,7 +29,7 @@ test "StakingInfo initialization and fields" {
     info.staked_account_id = AccountId.init(0, 0, 800);
     
     try testing.expect(info.staked_node_id == null);
-    try testing.expectEqual(@as(u64, 800), info.staked_account_id.?.num);
+    try testing.expectEqual(@as(u64, 800), info.staked_account_id.?.account);
 }
 
 test "ProxyStaker" {
@@ -42,7 +42,7 @@ test "ProxyStaker" {
         .amount = 50000000000, // 500 hbar
     };
     
-    try testing.expectEqual(@as(u64, 100), staker.account_id.num);
+    try testing.expectEqual(@as(u64, 100), staker.account_id.account);
     try testing.expectEqual(@as(i64, 50000000000), staker.amount);
     
     // Test serialization
@@ -87,12 +87,12 @@ test "StakeTransferTransaction" {
     const from_account = AccountId.init(0, 0, 100);
     const to_account = AccountId.init(0, 0, 200);
     
-    tx.setFromAccountId(from_account);
-    tx.setToAccountId(to_account);
+    _ = tx.setFromAccountId(from_account);
+    _ = tx.setToAccountId(to_account);
     tx.setAmount(try Hbar.from(1000));
     
-    try testing.expectEqual(from_account.num, tx.from_account_id.?.num);
-    try testing.expectEqual(to_account.num, tx.to_account_id.?.num);
+    try testing.expectEqual(from_account.num(), tx.from_delete_account_id.?.account);
+    try testing.expectEqual(to_account.num(), tx.to_delete_account_id.?.account);
     try testing.expectEqual(@as(i64, 100000000000), tx.amount.?.tinybar);
 }
 
@@ -105,7 +105,7 @@ test "NodeStakeUpdateTransaction" {
     defer tx.deinit();
     
     // Update node stake settings
-    tx.setNodeId(3);
+    _ = tx.setNodeId(3);
     tx.setMaxStake(try Hbar.from(100000));
     tx.setMinStake(try Hbar.from(1000));
     tx.setRewardRate(10000); // 10%
@@ -141,3 +141,4 @@ test "StakingRewardsInfo" {
     const apr = rewards.calculateAPR();
     try testing.expect(apr > 0);
 }
+

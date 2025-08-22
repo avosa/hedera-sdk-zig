@@ -53,29 +53,30 @@ pub const NodeUpdateTransaction = struct {
     }
     
     // Set the node ID to update
-    pub fn setNodeId(self: *NodeUpdateTransaction, node_id: u64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setNodeId(self: *NodeUpdateTransaction, node_id: u64) *NodeUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.node_id = node_id;
     }
     
     // Set the account ID for the node
-    pub fn setAccountId(self: *NodeUpdateTransaction, account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAccountId(self: *NodeUpdateTransaction, account_id: AccountId) *NodeUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.account_id = account_id;
     }
     
     // Set the description
-    pub fn setDescription(self: *NodeUpdateTransaction, description: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setDescription(self: *NodeUpdateTransaction, description: []const u8) *NodeUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         if (self.description) |old| {
             self.base.allocator.free(old);
+            return self;
         }
         self.description = try self.base.allocator.dupe(u8, description);
     }
     
     // Set gossip endpoints (replaces all)
-    pub fn setGossipEndpoints(self: *NodeUpdateTransaction, endpoints: []const ServiceEndpoint) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setGossipEndpoints(self: *NodeUpdateTransaction, endpoints: []const ServiceEndpoint) *NodeUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.gossip_endpoints) |*old| {
             for (old.items) |endpoint| {
@@ -83,6 +84,7 @@ pub const NodeUpdateTransaction = struct {
                 self.base.allocator.free(endpoint.domain_name);
             }
             old.deinit();
+            return self;
         }
         
         var new_endpoints = std.ArrayList(ServiceEndpoint).init(self.base.allocator);
@@ -97,8 +99,8 @@ pub const NodeUpdateTransaction = struct {
     }
     
     // Set service endpoints (replaces all)
-    pub fn setServiceEndpoints(self: *NodeUpdateTransaction, endpoints: []const ServiceEndpoint) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setServiceEndpoints(self: *NodeUpdateTransaction, endpoints: []const ServiceEndpoint) *NodeUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.service_endpoints) |*old| {
             for (old.items) |endpoint| {
@@ -106,6 +108,7 @@ pub const NodeUpdateTransaction = struct {
                 self.base.allocator.free(endpoint.domain_name);
             }
             old.deinit();
+            return self;
         }
         
         var new_endpoints = std.ArrayList(ServiceEndpoint).init(self.base.allocator);
@@ -120,26 +123,28 @@ pub const NodeUpdateTransaction = struct {
     }
     
     // Set the gossip CA certificate
-    pub fn setGossipCaCertificate(self: *NodeUpdateTransaction, certificate: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setGossipCaCertificate(self: *NodeUpdateTransaction, certificate: []const u8) *NodeUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         if (self.gossip_ca_certificate) |old| {
             self.base.allocator.free(old);
+            return self;
         }
         self.gossip_ca_certificate = try self.base.allocator.dupe(u8, certificate);
     }
     
     // Set the gRPC certificate hash
-    pub fn setGrpcCertificateHash(self: *NodeUpdateTransaction, hash: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setGrpcCertificateHash(self: *NodeUpdateTransaction, hash: []const u8) *NodeUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         if (self.grpc_certificate_hash) |old| {
             self.base.allocator.free(old);
+            return self;
         }
         self.grpc_certificate_hash = try self.base.allocator.dupe(u8, hash);
     }
     
     // Set the admin key
-    pub fn setAdminKey(self: *NodeUpdateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAdminKey(self: *NodeUpdateTransaction, key: Key) *NodeUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.admin_key = key;
     }
     
@@ -163,15 +168,16 @@ pub const NodeUpdateTransaction = struct {
         // nodeId = 1
         if (self.node_id) |node_id| {
             try node_writer.writeUint64(1, node_id);
+            return self;
         }
         
         // accountId = 2
         if (self.account_id) |account_id| {
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(account_id.shard));
+            try account_writer.writeInt64(2, @intCast(account_id.realm));
+            try account_writer.writeInt64(3, @intCast(account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try node_writer.writeMessage(2, account_bytes);

@@ -23,9 +23,10 @@ pub const FileDeleteTransaction = struct {
     }
     
     // Set the file ID to delete
-    pub fn setFileId(self: *FileDeleteTransaction, file_id: FileId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setFileId(self: *FileDeleteTransaction, file_id: FileId) *FileDeleteTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.file_id = file_id;
+        return self;
     }
     
     // Execute the transaction
@@ -53,9 +54,9 @@ pub const FileDeleteTransaction = struct {
         if (self.file_id) |file| {
             var file_writer = ProtoWriter.init(self.base.allocator);
             defer file_writer.deinit();
-            try file_writer.writeInt64(1, @intCast(file.entity.shard));
-            try file_writer.writeInt64(2, @intCast(file.entity.realm));
-            try file_writer.writeInt64(3, @intCast(file.entity.num));
+            try file_writer.writeInt64(1, @intCast(file.shard));
+            try file_writer.writeInt64(2, @intCast(file.realm));
+            try file_writer.writeInt64(3, @intCast(file.num));
             const file_bytes = try file_writer.toOwnedSlice();
             defer self.base.allocator.free(file_bytes);
             try delete_writer.writeMessage(2, file_bytes);
@@ -84,9 +85,9 @@ pub const FileDeleteTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -105,9 +106,9 @@ pub const FileDeleteTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

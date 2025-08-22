@@ -34,12 +34,12 @@ pub const AccountCreateTransaction = struct {
     alias: ?[]const u8,
     
     pub fn init(allocator: std.mem.Allocator) AccountCreateTransaction {
-        return AccountCreateTransaction{
+        var tx = AccountCreateTransaction{
             .base = Transaction.init(allocator),
             .key = null,
             .initial_balance = Hbar.zero(),
             .receiver_signature_required = false,
-            .auto_renew_period = Duration.fromDays(90),
+            .auto_renew_period = Duration.fromSeconds(7890000), // Match Go SDK default
             .send_record_threshold = Hbar.max(),
             .receive_record_threshold = Hbar.max(),
             .proxy_account_id = null,
@@ -52,6 +52,11 @@ pub const AccountCreateTransaction = struct {
             .alias_evm_address = null,
             .alias = null,
         };
+        
+        // Set default max transaction fee to 5 HBAR like Go SDK
+        tx.base.max_transaction_fee = Hbar.from(5) catch Hbar.zero();
+        
+        return tx;
     }
     
     pub fn deinit(self: *AccountCreateTransaction) void {
@@ -59,22 +64,74 @@ pub const AccountCreateTransaction = struct {
     }
     
     // Set the key for the new account
-    pub fn setKey(self: *AccountCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        self.key = key;
-    }
-    
-    // Match Go SDK's SetKey chaining pattern
-    pub fn set_key(self: *AccountCreateTransaction, key: Key) !*AccountCreateTransaction {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setKey(self: *AccountCreateTransaction, key: Key) *AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.key = key;
         return self;
     }
     
-    // Match Go SDK's SetKeyWithAlias
-    pub fn set_key_with_alias(self: *AccountCreateTransaction, key: Key) !*AccountCreateTransaction {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        self.alias_key = key;
+    // Match Go SDK's SetKey chaining pattern
+    pub fn set_key(self: *AccountCreateTransaction, key: Key) !*AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        self.key = key;
+        return self;
+    }
+    
+    // Match Go SDK's SetKeyWithAlias - sets account key and ECDSA key for alias
+    pub fn set_key_with_alias(self: *AccountCreateTransaction, key: Key, ecdsa_key: Key) !*AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        self.key = key;
+        
+        // Extract EVM address from ECDSA key
+        const evm_address = try ecdsa_key.toEvmAddress(self.base.allocator);
+        defer self.base.allocator.free(evm_address);
+        
+        // Convert hex string to bytes (remove 0x prefix if present)
+        var start_idx: usize = 0;
+        if (std.mem.startsWith(u8, evm_address, "0x")) {
+            start_idx = 2;
+            return self;
+        }
+        
+        const hex_str = evm_address[start_idx..];
+        const alias_bytes = try self.base.allocator.alloc(u8, hex_str.len / 2);
+        _ = try std.fmt.hexToBytes(alias_bytes, hex_str);
+        
+        if (self.alias) |old_alias| {
+            self.base.allocator.free(old_alias);
+        }
+        self.alias = alias_bytes;
+        
+        return self;
+    }
+    
+    // Match Go SDK's SetECDSAKeyWithAlias - sets ECDSA key and derives EVM address
+    pub fn set_ecdsa_key_with_alias(self: *AccountCreateTransaction, ecdsa_key: Key) !*AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        
+        // Set the key
+        self.key = ecdsa_key;
+        
+        // Extract EVM address from ECDSA key
+        const evm_address = try ecdsa_key.toEvmAddress(self.base.allocator);
+        defer self.base.allocator.free(evm_address);
+        
+        // Convert hex string to bytes (remove 0x prefix if present)
+        var start_idx: usize = 0;
+        if (std.mem.startsWith(u8, evm_address, "0x")) {
+            start_idx = 2;
+            return self;
+        }
+        
+        const hex_str = evm_address[start_idx..];
+        const alias_bytes = try self.base.allocator.alloc(u8, hex_str.len / 2);
+        _ = try std.fmt.hexToBytes(alias_bytes, hex_str);
+        
+        if (self.alias) |old_alias| {
+            self.base.allocator.free(old_alias);
+        }
+        self.alias = alias_bytes;
+        
         return self;
     }
     
@@ -84,96 +141,201 @@ pub const AccountCreateTransaction = struct {
     }
     
     // Set initial balance for the new account
-    pub fn setInitialBalance(self: *AccountCreateTransaction, balance: Hbar) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setInitialBalance(self: *AccountCreateTransaction, balance: Hbar) *AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.initial_balance = balance;
+        return self;
     }
     
     // Match Go SDK's SetInitialBalance chaining pattern
     pub fn set_initial_balance(self: *AccountCreateTransaction, balance: Hbar) !*AccountCreateTransaction {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.initial_balance = balance;
         return self;
     }
     
     // Set whether receiver signature is required
-    pub fn setReceiverSignatureRequired(self: *AccountCreateTransaction, required: bool) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setReceiverSignatureRequired(self: *AccountCreateTransaction, required: bool) *AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.receiver_signature_required = required;
+        return self;
     }
     
     // Match Go SDK's SetReceiverSignatureRequired chaining pattern
     pub fn set_receiver_signature_required(self: *AccountCreateTransaction, required: bool) !*AccountCreateTransaction {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.receiver_signature_required = required;
         return self;
     }
     
     // Set auto renew period
     pub fn set_auto_renew_period(self: *AccountCreateTransaction, period: Duration) !*AccountCreateTransaction {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.auto_renew_period = period;
         return self;
     }
     
-    // Set alias
-    pub fn set_alias(self: *AccountCreateTransaction, alias_value: []const u8) !*AccountCreateTransaction {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    // Match Go SDK's SetAlias - accepts EVM address string or raw bytes
+    pub fn set_alias(self: *AccountCreateTransaction, input: []const u8) !*AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.alias) |old_alias| {
             self.base.allocator.free(old_alias);
         }
         
-        self.alias = try self.base.allocator.dupe(u8, alias_value);
+        // Check if input is hex string (starts with 0x or is all hex chars)
+        if (std.mem.startsWith(u8, input, "0x")) {
+            // Hex string with 0x prefix
+            const hex_str = input[2..];
+            const alias_bytes = try self.base.allocator.alloc(u8, hex_str.len / 2);
+            _ = try std.fmt.hexToBytes(alias_bytes, hex_str);
+            self.alias = alias_bytes;
+        } else if (isHexString(input)) {
+            // Hex string without prefix
+            const alias_bytes = try self.base.allocator.alloc(u8, input.len / 2);
+            _ = try std.fmt.hexToBytes(alias_bytes, input);
+            self.alias = alias_bytes;
+        } else {
+            // Raw bytes - just copy
+            self.alias = try self.base.allocator.dupe(u8, input);
+        }
+        
         return self;
     }
     
-    pub fn setAlias(self: *AccountCreateTransaction, alias_value: []const u8) !*AccountCreateTransaction {
-        return self.set_alias(alias_value);
+    fn isHexString(str: []const u8) bool {
+        if (str.len == 0 or str.len % 2 != 0) return false;
+        for (str) |c| {
+            if (!std.ascii.isHex(c)) return false;
+        }
+        return true;
+    }
+    
+    pub fn setAlias(self: *AccountCreateTransaction, evm_address: []const u8) !*AccountCreateTransaction {
+        return self.set_alias(evm_address);
     }
     
     // Set auto renew period
-    pub fn setAutoRenewPeriod(self: *AccountCreateTransaction, period: Duration) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAutoRenewPeriod(self: *AccountCreateTransaction, period: Duration) *AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         const min_period = Duration.fromDays(1);
         const max_period = Duration.fromDays(3653); // ~10 years
         
         if (period.seconds < min_period.seconds or period.seconds > max_period.seconds) {
-            return error.InvalidAutoRenewPeriod;
+            @panic("Invalid auto renew period");
         }
         
         self.auto_renew_period = period;
+        return self;
     }
     
     // Set account memo
-    pub fn setAccountMemo(self: *AccountCreateTransaction, memo: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAccountMemo(self: *AccountCreateTransaction, memo: []const u8) *AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (memo.len > 100) {
-            return error.MemoTooLong;
+            @panic("Memo too long");
         }
         
         self.memo = memo;
+        return self;
+    }
+    
+    // Match Go SDK's SetAccountMemo chaining pattern
+    pub fn set_account_memo(self: *AccountCreateTransaction, memo: []const u8) !*AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        
+        if (memo.len > 100) {
+            @panic("Memo too long");
+        }
+        
+        self.memo = memo;
+        return self;
     }
     
     // Set max automatic token associations
-    pub fn setMaxAutomaticTokenAssociations(self: *AccountCreateTransaction, max: i32) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setMaxAutomaticTokenAssociations(self: *AccountCreateTransaction, max: i32) *AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (max < 0 or max > 5000) {
-            return error.InvalidMaxAutomaticTokenAssociations;
+            @panic("Invalid max automatic token associations");
         }
         
         self.max_automatic_token_associations = max;
+        return self;
+    }
+    
+    // SetProxyAccountID sets the ID of the account to which this account is proxy staked
+    // Deprecated but kept for compatibility with Go SDK
+    pub fn setProxyAccountId(self: *AccountCreateTransaction, id: AccountId) *AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        self.proxy_account_id = id;
+        return self;
+    }
+    
+    // Match Go SDK's SetProxyAccountID chaining pattern
+    pub fn set_proxy_account_id(self: *AccountCreateTransaction, id: AccountId) !*AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        self.proxy_account_id = id;
+        return self;
+    }
+    
+    // Getter methods matching Go SDK
+    pub fn get_key(self: *const AccountCreateTransaction) ?Key {
+        return self.key;
+    }
+    
+    pub fn get_initial_balance(self: *const AccountCreateTransaction) Hbar {
+        return self.initial_balance;
+    }
+    
+    pub fn get_max_automatic_token_associations(self: *const AccountCreateTransaction) i32 {
+        return self.max_automatic_token_associations;
+    }
+    
+    pub fn get_auto_renew_period(self: *const AccountCreateTransaction) Duration {
+        return self.auto_renew_period;
+    }
+    
+    pub fn get_proxy_account_id(self: *const AccountCreateTransaction) ?AccountId {
+        return self.proxy_account_id;
+    }
+    
+    pub fn getProxyAccountID(self: *const AccountCreateTransaction) ?AccountId {
+        return self.proxy_account_id;
+    }
+    
+    pub fn get_account_memo(self: *const AccountCreateTransaction) []const u8 {
+        return self.memo;
+    }
+    
+    pub fn get_staked_account_id(self: *const AccountCreateTransaction) ?AccountId {
+        return self.staked_account_id;
+    }
+    
+    pub fn get_staked_node_id(self: *const AccountCreateTransaction) ?i64 {
+        return self.staked_node_id;
+    }
+    
+    pub fn get_decline_staking_reward(self: *const AccountCreateTransaction) bool {
+        return self.decline_staking_reward;
+    }
+    
+    pub fn get_alias(self: *const AccountCreateTransaction) ?[]const u8 {
+        return self.alias;
+    }
+    
+    pub fn get_receiver_signature_required(self: *const AccountCreateTransaction) bool {
+        return self.receiver_signature_required;
     }
     
     // Match Go SDK's SetMaxAutomaticTokenAssociations chaining pattern
     pub fn set_max_automatic_token_associations(self: *AccountCreateTransaction, max: i32) !*AccountCreateTransaction {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (max < 0 or max > 5000) {
-            return error.InvalidMaxAutomaticTokenAssociations;
+            @panic("Invalid max automatic token associations");
         }
         
         self.max_automatic_token_associations = max;
@@ -181,59 +343,76 @@ pub const AccountCreateTransaction = struct {
     }
     
     // Set staked account ID
-    pub fn setStakedAccountId(self: *AccountCreateTransaction, account_id: AccountId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setStakedAccountId(self: *AccountCreateTransaction, account_id: AccountId) *AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.staked_node_id != null) {
             return error.CannotSetBothStakedAccountAndNode;
         }
         
         self.staked_account_id = account_id;
+        return self;
+    }
+    
+    // Match Go SDK's SetStakedAccountID chaining pattern
+    pub fn set_staked_account_id(self: *AccountCreateTransaction, account_id: AccountId) !*AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        
+        self.staked_account_id = account_id;
+        self.staked_node_id = null; // Clear node ID like Go SDK
+        return self;
     }
     
     // Set staked node ID
-    pub fn setStakedNodeId(self: *AccountCreateTransaction, node_id: i64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setStakedNodeId(self: *AccountCreateTransaction, node_id: i64) *AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.staked_account_id != null) {
-            return error.CannotSetBothStakedAccountAndNode;
+            @panic("Cannot set both staked account and node");
         }
         
         self.staked_node_id = node_id;
+        return self;
     }
     
-    // Set staked node ID (alias with underscore for Go SDK compatibility)
-    pub fn set_staked_node_id(self: *AccountCreateTransaction, node_id: i64) !void {
-        return self.setStakedNodeId(node_id);
+    // Match Go SDK's SetStakedNodeID chaining pattern
+    pub fn set_staked_node_id(self: *AccountCreateTransaction, node_id: i64) !*AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        
+        self.staked_node_id = node_id;
+        self.staked_account_id = null; // Clear account ID like Go SDK
+        return self;
     }
     
     // Set decline staking reward
-    pub fn setDeclineStakingReward(self: *AccountCreateTransaction, decline: bool) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setDeclineStakingReward(self: *AccountCreateTransaction, decline: bool) *AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.decline_staking_reward = decline;
+        return self;
     }
     
     // Set decline staking reward (alias with underscore for Go SDK compatibility)
     pub fn set_decline_staking_reward(self: *AccountCreateTransaction, decline: bool) !*AccountCreateTransaction {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.decline_staking_reward = decline;
         return self;
     }
     
     // Set alias key
-    pub fn setAliasKey(self: *AccountCreateTransaction, key: Key) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAliasKey(self: *AccountCreateTransaction, key: Key) *AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (self.alias_evm_address != null) {
             return error.CannotSetBothAliasKeyAndEvmAddress;
         }
         
         self.alias_key = key;
+        return self;
     }
     
     // Set alias EVM address
-    pub fn setAliasEvmAddress(self: *AccountCreateTransaction, address: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setAliasEvmAddress(self: *AccountCreateTransaction, address: []const u8) *AccountCreateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         
         if (address.len != 20) {
             return error.InvalidEvmAddress;
@@ -244,6 +423,7 @@ pub const AccountCreateTransaction = struct {
         }
         
         self.alias_evm_address = address;
+        return self;
     }
     
     // Freeze the transaction
@@ -268,9 +448,9 @@ pub const AccountCreateTransaction = struct {
     
     // Set transaction memo matching Go SDK chaining pattern
     pub fn set_transaction_memo(self: *AccountCreateTransaction, memo: []const u8) !*AccountCreateTransaction {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.memo = memo;
-        try self.base.setTransactionMemo(memo);
+        _ = self.base.setTransactionMemo(memo);
         return self;
     }
     
@@ -306,9 +486,9 @@ pub const AccountCreateTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -331,9 +511,9 @@ pub const AccountCreateTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);
@@ -388,9 +568,9 @@ pub const AccountCreateTransaction = struct {
         if (self.proxy_account_id) |proxy| {
             var proxy_writer = ProtoWriter.init(self.base.allocator);
             defer proxy_writer.deinit();
-            try proxy_writer.writeInt64(1, @intCast(proxy.entity.shard));
-            try proxy_writer.writeInt64(2, @intCast(proxy.entity.realm));
-            try proxy_writer.writeInt64(3, @intCast(proxy.entity.num));
+            try proxy_writer.writeInt64(1, @intCast(proxy.shard));
+            try proxy_writer.writeInt64(2, @intCast(proxy.realm));
+            try proxy_writer.writeInt64(3, @intCast(proxy.account));
             const proxy_bytes = try proxy_writer.toOwnedSlice();
             defer self.base.allocator.free(proxy_bytes);
             try create_writer.writeMessage(5, proxy_bytes);
@@ -416,9 +596,9 @@ pub const AccountCreateTransaction = struct {
         if (self.staked_account_id) |staked| {
             var staked_writer = ProtoWriter.init(self.base.allocator);
             defer staked_writer.deinit();
-            try staked_writer.writeInt64(1, @intCast(staked.entity.shard));
-            try staked_writer.writeInt64(2, @intCast(staked.entity.realm));
-            try staked_writer.writeInt64(3, @intCast(staked.entity.num));
+            try staked_writer.writeInt64(1, @intCast(staked.shard));
+            try staked_writer.writeInt64(2, @intCast(staked.realm));
+            try staked_writer.writeInt64(3, @intCast(staked.account));
             const staked_bytes = try staked_writer.toOwnedSlice();
             defer self.base.allocator.free(staked_bytes);
             try create_writer.writeMessage(10, staked_bytes);
@@ -431,13 +611,9 @@ pub const AccountCreateTransaction = struct {
             try create_writer.writeBool(12, true);
         }
         
-        // alias = 13
-        if (self.alias_key) |alias| {
-            const alias_bytes = try self.encodeKey(alias);
-            defer self.base.allocator.free(alias_bytes);
-            try create_writer.writeMessage(13, alias_bytes);
-        } else if (self.alias_evm_address) |evm| {
-            try create_writer.writeString(13, evm);
+        // alias = 18 (bytes field for EVM address)
+        if (self.alias) |alias_bytes| {
+            try create_writer.writeBytes(18, alias_bytes);
         }
         
         const create_bytes = try create_writer.toOwnedSlice();

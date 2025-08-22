@@ -65,9 +65,9 @@ pub const TokenNftInfosQuery = struct {
         // tokenID = 1
         var token_writer = ProtoWriter.init(self.base.allocator);
         defer token_writer.deinit();
-        try token_writer.writeInt64(1, @intCast(self.token_id.?.entity.shard));
-        try token_writer.writeInt64(2, @intCast(self.token_id.?.entity.realm));
-        try token_writer.writeInt64(3, @intCast(self.token_id.?.entity.num));
+        try token_writer.writeInt64(1, @intCast(self.token_id.?.shard));
+        try token_writer.writeInt64(2, @intCast(self.token_id.?.realm));
+        try token_writer.writeInt64(3, @intCast(self.token_id.?.num));
         const token_bytes = try token_writer.toOwnedSlice();
         defer self.base.allocator.free(token_bytes);
         try query_writer.writeMessage(1, token_bytes);
@@ -75,6 +75,7 @@ pub const TokenNftInfosQuery = struct {
         // start = 2 (optional)
         if (self.start_serial) |start| {
             try query_writer.writeInt64(2, start);
+            return self;
         }
         
         // end = 3 (optional)
@@ -300,9 +301,9 @@ pub const TokenGetAccountNftInfosQuery = struct {
         // accountID = 1
         var account_writer = ProtoWriter.init(self.base.allocator);
         defer account_writer.deinit();
-        try account_writer.writeInt64(1, @intCast(self.account_id.?.entity.shard));
-        try account_writer.writeInt64(2, @intCast(self.account_id.?.entity.realm));
-        try account_writer.writeInt64(3, @intCast(self.account_id.?.entity.num));
+        try account_writer.writeInt64(1, @intCast(self.account_id.?.shard));
+        try account_writer.writeInt64(2, @intCast(self.account_id.?.realm));
+        try account_writer.writeInt64(3, @intCast(self.account_id.?.num));
         const account_bytes = try account_writer.toOwnedSlice();
         defer self.base.allocator.free(account_bytes);
         try query_writer.writeMessage(1, account_bytes);
@@ -315,9 +316,9 @@ pub const TokenGetAccountNftInfosQuery = struct {
             // tokenId
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(start.token_id.entity.shard));
-            try token_writer.writeInt64(2, @intCast(start.token_id.entity.realm));
-            try token_writer.writeInt64(3, @intCast(start.token_id.entity.num));
+            try token_writer.writeInt64(1, @intCast(start.token_id.shard));
+            try token_writer.writeInt64(2, @intCast(start.token_id.realm));
+            try token_writer.writeInt64(3, @intCast(start.token_id.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try start_writer.writeMessage(1, token_bytes);
@@ -338,9 +339,9 @@ pub const TokenGetAccountNftInfosQuery = struct {
             // tokenId
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(end.token_id.entity.shard));
-            try token_writer.writeInt64(2, @intCast(end.token_id.entity.realm));
-            try token_writer.writeInt64(3, @intCast(end.token_id.entity.num));
+            try token_writer.writeInt64(1, @intCast(end.token_id.shard));
+            try token_writer.writeInt64(2, @intCast(end.token_id.realm));
+            try token_writer.writeInt64(3, @intCast(end.token_id.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try end_writer.writeMessage(1, token_bytes);

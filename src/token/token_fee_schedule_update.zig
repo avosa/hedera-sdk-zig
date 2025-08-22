@@ -30,34 +30,47 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
     }
     
     // Set the token ID for fee schedule update
-    pub fn setTokenId(self: *TokenFeeScheduleUpdateTransaction, token_id: TokenId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setTokenId(self: *TokenFeeScheduleUpdateTransaction, token_id: TokenId) *TokenFeeScheduleUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.token_id = token_id;
+        return self;
     }
     
     // Set custom fees for the token
-    pub fn setCustomFees(self: *TokenFeeScheduleUpdateTransaction, fees: []const CustomFee) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (fees.len > 10) return error.TooManyCustomFees; // Maximum 10 custom fees per token
+    pub fn setCustomFees(self: *TokenFeeScheduleUpdateTransaction, fees: []const CustomFee) *TokenFeeScheduleUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        if (fees.len > 10) @panic("Too many custom fees"); // Maximum 10 custom fees per token
         
         // Clear existing fees
         for (self.custom_fees.items) |*fee| {
             fee.deinit();
+            return self;
         }
         self.custom_fees.clearRetainingCapacity();
         
         // Copy new fees
         for (fees) |fee| {
-            try self.custom_fees.append(try fee.clone(self.base.allocator));
+            self.custom_fees.append(fee.clone(self.base.allocator) catch @panic("Failed to clone custom fee")) catch @panic("Failed to append custom fee");
         }
+        return self;
     }
     
     // Includes a custom fee for the token
-    pub fn addCustomFee(self: *TokenFeeScheduleUpdateTransaction, fee: CustomFee) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
-        if (self.custom_fees.items.len >= 10) return error.TooManyCustomFees;
+    pub fn addCustomFee(self: *TokenFeeScheduleUpdateTransaction, fee: CustomFee) *TokenFeeScheduleUpdateTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
+        if (self.custom_fees.items.len >= 10) @panic("Too many custom fees");
         
-        try self.custom_fees.append(try fee.clone(self.base.allocator));
+        self.custom_fees.append(fee.clone(self.base.allocator) catch @panic("Failed to clone custom fee")) catch @panic("Failed to append custom fee");
+        return self;
+    }
+    
+    // Getter methods for uniformity with Go SDK
+    pub fn getTokenId(self: *const TokenFeeScheduleUpdateTransaction) ?TokenId {
+        return self.token_id;
+    }
+    
+    pub fn getCustomFees(self: *const TokenFeeScheduleUpdateTransaction) []const CustomFee {
+        return self.custom_fees.items;
     }
     
     // Execute the transaction
@@ -85,9 +98,9 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
         if (self.token_id) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(token.entity.shard));
-            try token_writer.writeInt64(2, @intCast(token.entity.realm));
-            try token_writer.writeInt64(3, @intCast(token.entity.num));
+            try token_writer.writeInt64(1, @intCast(token.shard));
+            try token_writer.writeInt64(2, @intCast(token.realm));
+            try token_writer.writeInt64(3, @intCast(token.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try update_writer.writeMessage(1, token_bytes);
@@ -123,9 +136,9 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -144,9 +157,9 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);

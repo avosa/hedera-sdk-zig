@@ -227,7 +227,7 @@ test "Contract ID key" {
     
     try testing.expect(contract_key == .contract_id);
     if (contract_key == .contract_id) {
-        try testing.expectEqual(@as(u64, 1234), contract_key.contract_id.entity.num);
+        try testing.expectEqual(@as(i64, 1234), contract_key.contract_id.num);
     }
 }
 
@@ -237,7 +237,7 @@ test "Delegatable contract ID key" {
     
     try testing.expect(delegatable_key == .delegatable_contract_id);
     if (delegatable_key == .delegatable_contract_id) {
-        try testing.expectEqual(@as(u64, 5678), delegatable_key.delegatable_contract_id.entity.num);
+        try testing.expectEqual(@as(i64, 5678), delegatable_key.delegatable_contract_id.num);
     }
 }
 
@@ -278,8 +278,8 @@ test "Transaction signing with multiple keys" {
     const account1 = hedera.AccountId.init(0, 0, 100);
     const account2 = hedera.AccountId.init(0, 0, 200);
     
-    try tx.addHbarTransfer(account1, try hedera.Hbar.from(-10));
-    try tx.addHbarTransfer(account2, try hedera.Hbar.from(10));
+    _ = try tx.addHbarTransfer(account1, try hedera.Hbar.from(-10));
+    _ = try tx.addHbarTransfer(account2, try hedera.Hbar.from(10));
     
     // Generate multiple signers
     var signer1 = try hedera.generate_private_key(allocator);
@@ -358,7 +358,7 @@ test "Freeze transaction with key" {
     defer freeze_tx.deinit();
     
     // Set freeze type
-    try freeze_tx.setFreezeType(.freeze_only);
+    _ = freeze_tx.setFreezeType(.freeze_only);
     
     // Generate freeze key
     var freeze_key = try hedera.generate_private_key(allocator);
@@ -372,3 +372,4 @@ test "Freeze transaction with key" {
     
     try testing.expectEqual(@as(usize, 1), freeze_tx.base.signatures.items.len);
 }
+

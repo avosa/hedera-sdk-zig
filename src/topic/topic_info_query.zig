@@ -87,13 +87,15 @@ pub const TopicInfoQuery = struct {
     }
     
     // Set the topic ID to query
-    pub fn setTopicId(self: *TopicInfoQuery, topic_id: TopicId) !void {
+    pub fn setTopicId(self: *TopicInfoQuery, topic_id: TopicId) *TopicInfoQuery {
         self.topic_id = topic_id;
+        return self;
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *TopicInfoQuery, payment: Hbar) !void {
+    pub fn setQueryPayment(self: *TopicInfoQuery, payment: Hbar) *TopicInfoQuery {
         self.base.payment_amount = payment;
+        return self;
     }
     
     // Execute the query
@@ -158,9 +160,9 @@ pub const TopicInfoQuery = struct {
         if (self.topic_id) |topic| {
             var topic_writer = ProtoWriter.init(self.base.allocator);
             defer topic_writer.deinit();
-            try topic_writer.writeInt64(1, @intCast(topic.entity.shard));
-            try topic_writer.writeInt64(2, @intCast(topic.entity.realm));
-            try topic_writer.writeInt64(3, @intCast(topic.entity.num));
+            try topic_writer.writeInt64(1, @intCast(topic.shard));
+            try topic_writer.writeInt64(2, @intCast(topic.realm));
+            try topic_writer.writeInt64(3, @intCast(topic.num));
             const topic_bytes = try topic_writer.toOwnedSlice();
             defer self.base.allocator.free(topic_bytes);
             try info_query_writer.writeMessage(1, topic_bytes);

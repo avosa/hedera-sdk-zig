@@ -194,34 +194,39 @@ pub const AccountInfoQuery = struct {
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *AccountInfoQuery, payment: Hbar) !void {
+    pub fn setQueryPayment(self: *AccountInfoQuery, payment: Hbar) *AccountInfoQuery {
         self.base.payment_amount = payment;
+        return self;
     }
     
     // Set max retry attempts
-    pub fn setMaxRetry(self: *AccountInfoQuery, max_retry: u32) void {
+    pub fn setMaxRetry(self: *AccountInfoQuery, max_retry: u32) *AccountInfoQuery {
         self.max_retry = max_retry;
-        self.base.setMaxRetry(max_retry);
+        _ = self.base.setMaxRetry(max_retry);
+        return self;
     }
     
     // Set max backoff
-    pub fn setMaxBackoff(self: *AccountInfoQuery, max_backoff: Duration) void {
+    pub fn setMaxBackoff(self: *AccountInfoQuery, max_backoff: Duration) *AccountInfoQuery {
         self.max_backoff = max_backoff;
-        self.base.setMaxBackoff(max_backoff.toMilliseconds());
+        _ = self.base.setMaxBackoff(max_backoff.toMilliseconds());
+        return self;
     }
     
-    pub fn setMinBackoff(self: *AccountInfoQuery, min_backoff: Duration) void {
+    pub fn setMinBackoff(self: *AccountInfoQuery, min_backoff: Duration) *AccountInfoQuery {
         self.min_backoff = min_backoff;
-        self.base.setMinBackoff(min_backoff.toMilliseconds());
+        _ = self.base.setMinBackoff(min_backoff.toMilliseconds());
+        return self;
     }
     
     // Set node account IDs
-    pub fn setNodeAccountIds(self: *AccountInfoQuery, node_ids: []const AccountId) !void {
-        try self.base.setNodeAccountIds(node_ids);
+    pub fn setNodeAccountIds(self: *AccountInfoQuery, node_ids: []const AccountId) !*AccountInfoQuery {
+        _ = try self.base.setNodeAccountIds(node_ids);
         self.node_account_ids.clearRetainingCapacity();
         for (node_ids) |node_id| {
             try self.node_account_ids.append(node_id);
         }
+        return self;
     }
     
     // Execute the query
@@ -288,9 +293,9 @@ pub const AccountInfoQuery = struct {
         if (self.account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(account.entity.shard));
-            try account_writer.writeInt64(2, @intCast(account.entity.realm));
-            try account_writer.writeInt64(3, @intCast(account.entity.num));
+            try account_writer.writeInt64(1, @intCast(account.shard));
+            try account_writer.writeInt64(2, @intCast(account.realm));
+            try account_writer.writeInt64(3, @intCast(account.account));
             
             if (account.alias_key) |alias| {
                 try account_writer.writeString(4, alias);

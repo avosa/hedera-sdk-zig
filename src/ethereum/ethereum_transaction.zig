@@ -31,11 +31,11 @@ pub const EthereumTransactionData = struct {
         }
     }
     
-    pub fn setCallData(self: *EthereumTransactionData, file_id: FileId) void {
+    pub fn setCallData(self: *EthereumTransactionData, file_id: FileId) *EthereumTransactionData {
         self.call_data = file_id;
     }
     
-    pub fn setMaxGasAllowance(self: *EthereumTransactionData, gas: i64) void {
+    pub fn setMaxGasAllowance(self: *EthereumTransactionData, gas: i64) *EthereumTransactionData {
         self.max_gas_allowance = gas;
     }
 };
@@ -60,12 +60,13 @@ pub const EthereumTransaction = struct {
         self.base.deinit();
         if (self.ethereum_data.len > 0) {
             self.base.allocator.free(self.ethereum_data);
+            return self;
         }
     }
     
     // Set the raw Ethereum transaction data
-    pub fn setEthereumData(self: *EthereumTransaction, data: []const u8) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setEthereumData(self: *EthereumTransaction, data: []const u8) *EthereumTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         if (data.len == 0) return error.InvalidEthereumData;
         
         if (self.ethereum_data.len > 0) {
@@ -75,14 +76,14 @@ pub const EthereumTransaction = struct {
     }
     
     // Set the file ID containing call data for large transactions
-    pub fn setCallData(self: *EthereumTransaction, file_id: FileId) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setCallData(self: *EthereumTransaction, file_id: FileId) *EthereumTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         self.call_data = file_id;
     }
     
     // Set the maximum gas allowance for the transaction
-    pub fn setMaxGasAllowance(self: *EthereumTransaction, gas: i64) !void {
-        if (self.base.frozen) return error.TransactionIsFrozen;
+    pub fn setMaxGasAllowance(self: *EthereumTransaction, gas: i64) *EthereumTransaction {
+        if (self.base.frozen) @panic("Transaction is frozen");
         if (gas < 0) return error.InvalidGasAllowance;
         self.max_gas_allowance = gas;
     }
@@ -130,9 +131,9 @@ pub const EthereumTransaction = struct {
         if (self.call_data) |call_data| {
             var file_writer = ProtoWriter.init(self.base.allocator);
             defer file_writer.deinit();
-            try file_writer.writeInt64(1, @intCast(call_data.entity.shard));
-            try file_writer.writeInt64(2, @intCast(call_data.entity.realm));
-            try file_writer.writeInt64(3, @intCast(call_data.entity.num));
+            try file_writer.writeInt64(1, @intCast(call_data.shard));
+            try file_writer.writeInt64(2, @intCast(call_data.realm));
+            try file_writer.writeInt64(3, @intCast(call_data.account));
             const file_bytes = try file_writer.toOwnedSlice();
             defer self.base.allocator.free(file_bytes);
             try ethereum_writer.writeMessage(2, file_bytes);
@@ -166,9 +167,9 @@ pub const EthereumTransaction = struct {
             
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            try account_writer.writeInt64(1, @intCast(tx_id.account_id.entity.shard));
-            try account_writer.writeInt64(2, @intCast(tx_id.account_id.entity.realm));
-            try account_writer.writeInt64(3, @intCast(tx_id.account_id.entity.num));
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
@@ -187,9 +188,9 @@ pub const EthereumTransaction = struct {
             var node_writer = ProtoWriter.init(self.base.allocator);
             defer node_writer.deinit();
             const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.entity.shard));
-            try node_writer.writeInt64(2, @intCast(node.entity.realm));
-            try node_writer.writeInt64(3, @intCast(node.entity.num));
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
             const node_bytes = try node_writer.toOwnedSlice();
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);
