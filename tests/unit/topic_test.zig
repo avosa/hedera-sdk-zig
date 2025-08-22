@@ -14,10 +14,10 @@ test "Topic create transaction" {
     _ = tx.setTopicMemo("Test consensus topic");
     
     // Generate keys
-    var admin_key = try hedera.generate_private_key(allocator);
+    var admin_key = try hedera.generatePrivateKey(allocator);
     defer admin_key.deinit();
     
-    var submit_key = try hedera.generate_private_key(allocator);
+    var submit_key = try hedera.generatePrivateKey(allocator);
     defer submit_key.deinit();
     
     // Set keys
@@ -52,10 +52,10 @@ test "Topic update transaction" {
     _ = tx.setTopicMemo("Updated topic memo");
     
     // Update keys
-    var new_admin_key = try hedera.generate_private_key(allocator);
+    var new_admin_key = try hedera.generatePrivateKey(allocator);
     defer new_admin_key.deinit();
     
-    var new_submit_key = try hedera.generate_private_key(allocator);
+    var new_submit_key = try hedera.generatePrivateKey(allocator);
     defer new_submit_key.deinit();
     
     _ = tx.setAdminKey(hedera.Key.fromPublicKey(new_admin_key.getPublicKey()));
@@ -170,10 +170,10 @@ test "Topic info structure" {
     info.expiration_time = hedera.Timestamp.fromSeconds(1234567890);
     
     // Set keys
-    var admin_key = try hedera.generate_private_key(allocator);
+    var admin_key = try hedera.generatePrivateKey(allocator);
     defer admin_key.deinit();
     
-    var submit_key = try hedera.generate_private_key(allocator);
+    var submit_key = try hedera.generatePrivateKey(allocator);
     defer submit_key.deinit();
     
     info.admin_key = hedera.Key.fromPublicKey(admin_key.getPublicKey());
@@ -296,17 +296,17 @@ test "Topic submit key requirements" {
     try testing.expect(tx.submit_key == null);
     
     // Topic with submit key (restricted topic)
-    var submit_key = try hedera.generate_private_key(allocator);
+    var submit_key = try hedera.generatePrivateKey(allocator);
     defer submit_key.deinit();
     
     _ = tx.setSubmitKey(hedera.Key.fromPublicKey(submit_key.getPublicKey()));
     try testing.expect(tx.submit_key != null);
     
     // Topic with threshold submit key
-    var key1 = try hedera.generate_private_key(allocator);
+    var key1 = try hedera.generatePrivateKey(allocator);
     defer key1.deinit();
     
-    var key2 = try hedera.generate_private_key(allocator);
+    var key2 = try hedera.generatePrivateKey(allocator);
     defer key2.deinit();
     
     var threshold_key = hedera.KeyList.init(allocator);

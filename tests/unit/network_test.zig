@@ -27,22 +27,22 @@ test "Client network initialization" {
 
 test "Client for name (Go SDK compatible)" {
     // Test mainnet by name
-    var mainnet = try hedera.client_for_name("mainnet");
+    var mainnet = try hedera.clientForName("mainnet");
     defer mainnet.deinit();
     try testing.expect(mainnet.network == .Mainnet);
     
     // Test testnet by name
-    var testnet = try hedera.client_for_name("testnet");
+    var testnet = try hedera.clientForName("testnet");
     defer testnet.deinit();
     try testing.expect(testnet.network == .Testnet);
     
     // Test previewnet by name
-    var previewnet = try hedera.client_for_name("previewnet");
+    var previewnet = try hedera.clientForName("previewnet");
     defer previewnet.deinit();
     try testing.expect(previewnet.network == .Previewnet);
     
     // Test invalid network name
-    try testing.expectError(error.InvalidNetworkName, hedera.client_for_name("invalid"));
+    try testing.expectError(error.InvalidNetworkName, hedera.clientForName("invalid"));
 }
 
 test "Client operator configuration" {
@@ -55,10 +55,11 @@ test "Client operator configuration" {
     
     // Set operator
     const operator_id = hedera.AccountId.init(0, 0, 1001);
-    var operator_key = try hedera.generate_private_key(allocator);
+    var operator_key = try hedera.generatePrivateKey(allocator);
     defer operator_key.deinit();
     
-    _ = try client.set_operator(operator_id, operator_key);
+    const op_key = try operator_key.toOperatorKey();
+    _ = client.setOperator(operator_id, op_key);
     
     // Get operator account ID
     const retrieved_id = client.getOperatorAccountId();

@@ -26,7 +26,7 @@ test "Schedule create transaction" {
     _ = schedule.setPayerAccountId(account1);
     
     // Set admin key
-    var admin_key = try hedera.generate_private_key(allocator);
+    var admin_key = try hedera.generatePrivateKey(allocator);
     defer admin_key.deinit();
     _ = schedule.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
     
@@ -102,17 +102,17 @@ test "Schedule info structure" {
     info.scheduled_transaction = &transfer.base;
     
     // Set signatories
-    var key1 = try hedera.generate_private_key(allocator);
+    var key1 = try hedera.generatePrivateKey(allocator);
     defer key1.deinit();
     
-    var key2 = try hedera.generate_private_key(allocator);
+    var key2 = try hedera.generatePrivateKey(allocator);
     defer key2.deinit();
     
     try info.signatories.append(hedera.Key.fromPublicKey(key1.getPublicKey()));
     try info.signatories.append(hedera.Key.fromPublicKey(key2.getPublicKey()));
     
     // Set admin key
-    var admin_key = try hedera.generate_private_key(allocator);
+    var admin_key = try hedera.generatePrivateKey(allocator);
     defer admin_key.deinit();
     info.admin_key = hedera.Key.fromPublicKey(admin_key.getPublicKey());
     
@@ -225,7 +225,7 @@ test "Schedule with account operations" {
     _ = account_update.setAccountId(account_id);
     
     // Generate new key
-    var new_key = try hedera.generate_private_key(allocator);
+    var new_key = try hedera.generatePrivateKey(allocator);
     defer new_key.deinit();
     _ = account_update.setKey(hedera.Key.fromPublicKey(new_key.getPublicKey()));
     
@@ -301,13 +301,13 @@ test "Schedule signature requirements" {
     _ = try schedule.setScheduleMemo("Multi-sig required");
     
     // Create threshold key for admin
-    var key1 = try hedera.generate_private_key(allocator);
+    var key1 = try hedera.generatePrivateKey(allocator);
     defer key1.deinit();
     
-    var key2 = try hedera.generate_private_key(allocator);
+    var key2 = try hedera.generatePrivateKey(allocator);
     defer key2.deinit();
     
-    var key3 = try hedera.generate_private_key(allocator);
+    var key3 = try hedera.generatePrivateKey(allocator);
     defer key3.deinit();
     
     var threshold_key = hedera.KeyList.init(allocator);

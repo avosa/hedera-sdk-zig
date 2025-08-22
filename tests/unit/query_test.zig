@@ -378,10 +378,11 @@ test "Query cost estimation" {
     
     // Set operator
     const operator_id = hedera.AccountId.init(0, 0, 1001);
-    var operator_key = try hedera.generate_private_key(allocator);
+    var operator_key = try hedera.generatePrivateKey(allocator);
     defer operator_key.deinit();
     
-    _ = try client.set_operator(operator_id, operator_key);
+    const op_key = try operator_key.toOperatorKey();
+    _ = client.setOperator(operator_id, op_key);
     
     // Create query
     var query = hedera.AccountBalanceQuery.init(allocator);

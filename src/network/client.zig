@@ -257,7 +257,7 @@ pub const Client = struct {
     }
     
     // Match Go's ClientForName function
-    pub fn client_for_name(network_name: []const u8) !Client {
+    pub fn clientForName(network_name: []const u8) !Client {
         if (std.mem.eql(u8, network_name, "mainnet")) {
             return Client.forMainnet();
         } else if (std.mem.eql(u8, network_name, "testnet")) {
@@ -271,13 +271,9 @@ pub const Client = struct {
     
     pub fn setOperator(self: *Client, account_id: AccountId, private_key: Operator.PrivateKey) *Client {
         self.operator = Operator.fromAccountId(account_id, private_key);
+        return self;
     }
     
-    // Match Go SDK's SetOperator that takes the PrivateKey from private_key.zig
-    pub fn set_operator(self: *Client, account_id: AccountId, private_key: @import("../crypto/private_key.zig").PrivateKey) !void {
-        const operator_key = try private_key.toOperatorKey();
-        self.operator = Operator.fromAccountId(account_id, operator_key);
-    }
     
     pub fn getOperatorAccountId(self: Client) ?AccountId {
         if (self.operator) |op| {

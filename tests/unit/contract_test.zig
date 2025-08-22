@@ -30,7 +30,7 @@ test "ContractInfo initialization and fields" {
     info.contract_id = hedera.ContractId.init(0, 0, 1000);
     info.account_id = hedera.AccountId.init(0, 0, 1000);
     
-    var admin_key = try hedera.generate_private_key(allocator);
+    var admin_key = try hedera.generatePrivateKey(allocator);
     defer admin_key.deinit();
     info.admin_key = hedera.Key.fromPublicKey(admin_key.getPublicKey());
     
@@ -254,7 +254,7 @@ test "Contract creation transaction" {
     _ = tx.setInitialBalance(try hedera.Hbar.from(10));
     
     // Set admin key
-    var admin_key = try hedera.generate_private_key(allocator);
+    var admin_key = try hedera.generatePrivateKey(allocator);
     defer admin_key.deinit();
     _ = tx.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
     

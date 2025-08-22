@@ -7,15 +7,15 @@ test "Account create transaction" {
     defer arena.deinit();
     const allocator = arena.allocator();
     
-    var tx = hedera.new_account_create_transaction(allocator);
+    var tx = hedera.newAccountCreateTransaction(allocator);
     defer tx.deinit();
     
     // Generate key for new account
-    var key = try hedera.generate_private_key(allocator);
+    var key = try hedera.generatePrivateKey(allocator);
     defer key.deinit();
     
     // Set all parameters
-    _ = try tx.set_key_without_alias(hedera.Key.fromPublicKey(key.getPublicKey()));
+    _ = tx.setKey(hedera.Key.fromPublicKey(key.getPublicKey()));
     _ = tx.setInitialBalance(try hedera.Hbar.from(100));
     _ = tx.setReceiverSignatureRequired(true);
     _ = tx.setMaxAutomaticTokenAssociations(10);
@@ -40,7 +40,7 @@ test "Account create with alias" {
     defer arena.deinit();
     const allocator = arena.allocator();
     
-    var tx = hedera.new_account_create_transaction(allocator);
+    var tx = hedera.newAccountCreateTransaction(allocator);
     defer tx.deinit();
     
     // Generate ECDSA key for alias
@@ -71,7 +71,7 @@ test "Account update transaction" {
     _ = tx.setAccountId(account_id);
     
     // Generate new key
-    var new_key = try hedera.generate_private_key(allocator);
+    var new_key = try hedera.generatePrivateKey(allocator);
     defer new_key.deinit();
     
     // Update various properties
@@ -196,10 +196,10 @@ test "Live hash add transaction" {
     _ = tx.setDuration(duration);
     
     // Add keys
-    var key1 = try hedera.generate_private_key(allocator);
+    var key1 = try hedera.generatePrivateKey(allocator);
     defer key1.deinit();
     
-    var key2 = try hedera.generate_private_key(allocator);
+    var key2 = try hedera.generatePrivateKey(allocator);
     defer key2.deinit();
     
     _ = try tx.addKey(hedera.Key.fromPublicKey(key1.getPublicKey()));
@@ -245,7 +245,7 @@ test "Account info structure" {
     info.deleted = false;
     info.proxy_received = (try hedera.Hbar.from(10)).toTinybars();
     
-    var key = try hedera.generate_private_key(allocator);
+    var key = try hedera.generatePrivateKey(allocator);
     defer key.deinit();
     info.key = key.getPublicKey();
     

@@ -18,17 +18,18 @@ test "Client initialization and configuration" {
     try testing.expectEqualStrings("testnet", client.ledger_id);
     
     // Test client_for_name (Go SDK compatible)
-    var client2 = try hedera.client_for_name("mainnet");
+    var client2 = try hedera.clientForName("mainnet");
     defer client2.deinit();
     
     try testing.expect(client2.network == .Mainnet);
     
     // Test operator setting
-    const operator_id = try hedera.account_id_from_string(allocator, "0.0.1001");
-    var operator_key = try hedera.generate_private_key(allocator);
+    const operator_id = try hedera.accountIdFromString(allocator, "0.0.1001");
+    var operator_key = try hedera.generatePrivateKey(allocator);
     defer operator_key.deinit();
     
-    try client.set_operator(operator_id, operator_key);
+    const op_key = try operator_key.toOperatorKey();
+    _ = client.setOperator(operator_id, op_key);
     
     const retrieved_id = client.getOperatorAccountId();
     try testing.expect(retrieved_id != null);
@@ -44,20 +45,21 @@ test "Transaction building and signing flow" {
     defer client.deinit();
     
     // Set up operator
-    const operator_id = try hedera.account_id_from_string(allocator, "0.0.1001");
-    var operator_key = try hedera.generate_private_key(allocator);
+    const operator_id = try hedera.accountIdFromString(allocator, "0.0.1001");
+    var operator_key = try hedera.generatePrivateKey(allocator);
     defer operator_key.deinit();
     
-    try client.set_operator(operator_id, operator_key);
+    const op_key = try operator_key.toOperatorKey();
+    _ = client.setOperator(operator_id, op_key);
     
     // Create a transaction
-    var tx = hedera.new_account_create_transaction(allocator);
+    var tx = hedera.newAccountCreateTransaction(allocator);
     defer tx.deinit();
     
     // Test method chaining
-    _ = try tx.set_key_without_alias(hedera.Key.fromPublicKey(operator_key.getPublicKey()));
+    _ = tx.setKey(hedera.Key.fromPublicKey(operator_key.getPublicKey()));
     _ = tx.setInitialBalance(try hedera.Hbar.from(10));
-    _ = try tx.set_receiver_signature_required(false);
+    _ = tx.setReceiverSignatureRequired(false);
     _ = tx.setMaxAutomaticTokenAssociations(5);
     _ = tx.setAccountMemo("Integration test account");
     
@@ -79,7 +81,7 @@ test "Query building and configuration" {
     var balance_query = hedera.AccountBalanceQuery.init(allocator);
     defer balance_query.deinit();
     
-    const account_id = try hedera.account_id_from_string(allocator, "0.0.98");
+    const account_id = try hedera.accountIdFromString(allocator, "0.0.98");
     _ = balance_query.setAccountId(account_id);
     
     // Verify query configuration
@@ -102,9 +104,9 @@ test "Transfer transaction with multiple transfers" {
     var transfer = hedera.TransferTransaction.init(allocator);
     defer transfer.deinit();
     
-    const account1 = try hedera.account_id_from_string(allocator, "0.0.100");
-    const account2 = try hedera.account_id_from_string(allocator, "0.0.200");
-    const account3 = try hedera.account_id_from_string(allocator, "0.0.300");
+    const account1 = try hedera.accountIdFromString(allocator, "0.0.100");
+    const account2 = try hedera.accountIdFromString(allocator, "0.0.200");
+    const account3 = try hedera.accountIdFromString(allocator, "0.0.300");
     
     // Add HBAR transfers
     try transfer.addHbarTransfer(account1, try hedera.Hbar.from(-100));
@@ -147,7 +149,7 @@ test "Token operations flow" {
     _ = token_create.setDecimals(2);
     _ = token_create.setInitialSupply(1000000);
     
-    var admin_key = try hedera.generate_private_key(allocator);
+    var admin_key = try hedera.generatePrivateKey(allocator);
     defer admin_key.deinit();
     
     _ = token_create.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
@@ -163,7 +165,7 @@ test "Token operations flow" {
     var token_associate = hedera.TokenAssociateTransaction.init(allocator);
     defer token_associate.deinit();
     
-    const account_id = try hedera.account_id_from_string(allocator, "0.0.1234");
+    const account_id = try hedera.accountIdFromString(allocator, "0.0.1234");
     const token_id = hedera.TokenId.init(0, 0, 999);
     
     _ = token_associate.setAccountId(account_id);
@@ -233,7 +235,7 @@ test "Topic operations" {
     
     _ = topic_create.setTopicMemo("Test Topic");
     
-    var admin_key = try hedera.generate_private_key(allocator);
+    var admin_key = try hedera.generatePrivateKey(allocator);
     defer admin_key.deinit();
     
     _ = topic_create.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
@@ -259,8 +261,8 @@ test "Schedule operations" {
     var transfer = hedera.TransferTransaction.init(allocator);
     defer transfer.deinit();
     
-    const account1 = try hedera.account_id_from_string(allocator, "0.0.100");
-    const account2 = try hedera.account_id_from_string(allocator, "0.0.200");
+    const account1 = try hedera.accountIdFromString(allocator, "0.0.100");
+    const account2 = try hedera.accountIdFromString(allocator, "0.0.200");
     
     try transfer.addHbarTransfer(account1, try hedera.Hbar.from(-10));
     try transfer.addHbarTransfer(account2, try hedera.Hbar.from(10));
