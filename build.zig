@@ -105,6 +105,22 @@ pub fn build(b: *std.Build) void {
         run_example_step.dependOn(&run_example.step);
     }
 
+    // TCK Server
+    const tck_exe = b.addExecutable(.{
+        .name = "tck-server",
+        .root_source_file = b.path("tck/server.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    tck_exe.root_module.addImport("hedera", hedera_sdk);
+    tck_exe.linkLibC();
+    
+    const install_tck = b.addInstallArtifact(tck_exe, .{});
+    const run_tck = b.addRunArtifact(tck_exe);
+    const run_tck_step = b.step("tck", "Run TCK server");
+    run_tck_step.dependOn(&install_tck.step);
+    run_tck_step.dependOn(&run_tck.step);
+    
     // Documentation generation step
     const docs = b.addStaticLibrary(.{
         .name = "hedera-sdk-docs",

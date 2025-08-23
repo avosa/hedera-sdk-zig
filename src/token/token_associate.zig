@@ -11,6 +11,13 @@ const errors = @import("../core/errors.zig");
 // Maximum number of tokens that can be associated in a single transaction
 pub const MAX_TOKEN_ASSOCIATIONS: usize = 100;
 
+// Factory function for TokenAssociateTransaction
+pub fn newTokenAssociateTransaction(allocator: std.mem.Allocator) *TokenAssociateTransaction {
+    const tx = allocator.create(TokenAssociateTransaction) catch @panic("Out of memory");
+    tx.* = TokenAssociateTransaction.init(allocator);
+    return tx;
+}
+
 // TokenAssociateTransaction associates tokens with an account
 pub const TokenAssociateTransaction = struct {
     base: Transaction,
@@ -86,6 +93,11 @@ pub const TokenAssociateTransaction = struct {
     
     pub fn getTokenIDs(self: *const TokenAssociateTransaction) []const TokenId {
         return self.token_ids.items;
+    }
+    
+    // Freeze the transaction with client for execution
+    pub fn freezeWith(self: *TokenAssociateTransaction, client: *Client) !void {
+        try self.base.freezeWith(client);
     }
     
     // Execute the transaction

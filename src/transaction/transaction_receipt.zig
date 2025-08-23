@@ -210,9 +210,9 @@ pub const TransactionReceipt = struct {
     
     pub fn validateStatus(self: *const Self) !void {
         switch (self.status) {
-            .Success => return,
-            .ReceiptStatusUnknown => return error.ReceiptStatusUnknown,
-            .ReceiptStatusBusy => return error.ReceiptStatusBusy,
+            .OK, .SUCCESS => return,
+            .UNKNOWN => return error.ReceiptStatusUnknown,
+            .BUSY => return error.ReceiptStatusBusy,
             else => return error.TransactionFailed,
         }
     }
@@ -405,69 +405,69 @@ pub const TransactionReceipt = struct {
         // Protobuf deserialization implementation
         // This would use a full protobuf library in production
         
-        var receipt = Self.init(allocator, .Success);
+        var receipt = Self.init(allocator, .OK);
         
         var reader = ProtobufReader.init(allocator, bytes);
         
         while (try reader.nextField()) |field| {
             switch (field.tag) {
-                1 => receipt.status = try Status.fromInt(try field.readVarint()),
+                1 => receipt.status = try Status.fromInt(@intCast(try @constCast(&field).readVarint())),
                 2 => {
-                    const account_bytes = try field.readBytes(allocator);
+                    const account_bytes = try @constCast(&field).readBytes(allocator);
                     defer allocator.free(account_bytes);
                     receipt.account_id = try AccountId.fromProtobufBytes(allocator, account_bytes);
                 },
                 3 => {
-                    const file_bytes = try field.readBytes(allocator);
+                    const file_bytes = try @constCast(&field).readBytes(allocator);
                     defer allocator.free(file_bytes);
                     receipt.file_id = try FileId.fromProtobufBytes(allocator, file_bytes);
                 },
                 4 => {
-                    const contract_bytes = try field.readBytes(allocator);
+                    const contract_bytes = try @constCast(&field).readBytes(allocator);
                     defer allocator.free(contract_bytes);
                     receipt.contract_id = try ContractId.fromProtobufBytes(allocator, contract_bytes);
                 },
                 5 => {
-                    const exchange_rate_bytes = try field.readBytes(allocator);
+                    const exchange_rate_bytes = try @constCast(&field).readBytes(allocator);
                     defer allocator.free(exchange_rate_bytes);
                     receipt.exchange_rate = try ExchangeRate.fromProtobufBytes(allocator, exchange_rate_bytes);
                 },
                 6 => {
-                    const token_bytes = try field.readBytes(allocator);
+                    const token_bytes = try @constCast(&field).readBytes(allocator);
                     defer allocator.free(token_bytes);
                     receipt.token_id = try TokenId.fromProtobufBytes(allocator, token_bytes);
                 },
                 7 => {
-                    const topic_bytes = try field.readBytes(allocator);
+                    const topic_bytes = try @constCast(&field).readBytes(allocator);
                     defer allocator.free(topic_bytes);
                     receipt.topic_id = try TopicId.fromProtobufBytes(allocator, topic_bytes);
                 },
-                8 => receipt.topic_sequence_number = try field.readVarint(),
+                8 => receipt.topic_sequence_number = try @constCast(&field).readVarint(),
                 9 => {
-                    const hash_bytes = try field.readBytes(allocator);
+                    const hash_bytes = try @constCast(&field).readBytes(allocator);
                     receipt.topic_running_hash = hash_bytes; // Takes ownership
                 },
-                10 => receipt.topic_running_hash_version = try field.readVarint(),
+                10 => receipt.topic_running_hash_version = try @constCast(&field).readVarint(),
                 11 => {
-                    const schedule_bytes = try field.readBytes(allocator);
+                    const schedule_bytes = try @constCast(&field).readBytes(allocator);
                     defer allocator.free(schedule_bytes);
                     receipt.schedule_id = try ScheduleId.fromProtobufBytes(allocator, schedule_bytes);
                 },
                 12 => {
-                    const tx_bytes = try field.readBytes(allocator);
+                    const tx_bytes = try @constCast(&field).readBytes(allocator);
                     defer allocator.free(tx_bytes);
                     receipt.scheduled_transaction_id = try TransactionId.fromProtobufBytes(allocator, tx_bytes);
                 },
                 13 => {
                     // Serial numbers (repeated)
-                    const serial = @as(i64, @intCast(try field.readVarint()));
+                    const serial = @as(i64, @intCast(try @constCast(&field).readVarint()));
                     // For simplicity, we'll just handle the last one
                     // In a full implementation, we'd collect all serial numbers
                     receipt.serial_numbers = try allocator.dupe(i64, &[_]i64{serial});
                 },
-                14 => receipt.total_supply = try field.readVarint(),
-                15 => receipt.node_id = try field.readVarint(),
-                else => try field.skip(),
+                14 => receipt.total_supply = try @constCast(&field).readVarint(),
+                15 => receipt.node_id = try @constCast(&field).readVarint(),
+                else => try @constCast(&field).skip(),
             }
         }
         

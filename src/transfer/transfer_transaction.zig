@@ -592,3 +592,8 @@ pub const TransferTransaction = struct {
         }
     }
 };
+
+// Factory function matching Hedera SDK patterns
+pub fn newTransferTransaction(allocator: std.mem.Allocator) TransferTransaction {
+    return TransferTransaction.init(allocator);
+}

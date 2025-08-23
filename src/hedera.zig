@@ -52,10 +52,22 @@ pub const generatePrivateKey = @import("crypto/private_key.zig").PrivateKey.gene
 
 // Transaction factory functions - matching Hedera SDK naming patterns
 pub const newAccountCreateTransaction = @import("account/account_create.zig").newAccountCreateTransaction;
+pub const newAccountUpdateTransaction = @import("account/account_update.zig").newAccountUpdateTransaction;
 pub const newAccountDeleteTransaction = @import("account/account_delete.zig").newAccountDeleteTransaction;
+pub const newAccountAllowanceApproveTransaction = @import("account/account_allowance_approve_transaction.zig").newAccountAllowanceApproveTransaction;
+pub const newAccountAllowanceDeleteTransaction = @import("account/account_allowance_delete_transaction.zig").newAccountAllowanceDeleteTransaction;
 pub const newTokenCreateTransaction = @import("token/token_create.zig").newTokenCreateTransaction;
+pub const newTokenMintTransaction = @import("token/token_mint.zig").newTokenMintTransaction;
+pub const newTokenBurnTransaction = @import("token/token_burn.zig").newTokenBurnTransaction;
 pub const newTokenUpdateTransaction = @import("token/token_update.zig").newTokenUpdateTransaction;
 pub const newTokenDeleteTransaction = @import("token/token_delete.zig").newTokenDeleteTransaction;
+pub const newTokenFreezeTransaction = @import("token/token_freeze.zig").newTokenFreezeTransaction;
+pub const newTokenUnfreezeTransaction = @import("token/token_unfreeze.zig").newTokenUnfreezeTransaction;
+pub const newTokenWipeTransaction = @import("token/token_wipe.zig").newTokenWipeTransaction;
+pub const newTokenPauseTransaction = @import("token/token_pause.zig").newTokenPauseTransaction;
+pub const newTokenUnpauseTransaction = @import("token/token_unpause.zig").newTokenUnpauseTransaction;
+pub const newTokenAssociateTransaction = @import("token/token_associate.zig").newTokenAssociateTransaction;
+pub const newTokenDissociateTransaction = @import("token/token_dissociate.zig").newTokenDissociateTransaction;
 pub const newTopicCreateTransaction = @import("topic/topic_create.zig").newTopicCreateTransaction;
 pub const newTopicUpdateTransaction = @import("topic/topic_update.zig").newTopicUpdateTransaction;
 pub const newTopicDeleteTransaction = @import("topic/topic_delete.zig").newTopicDeleteTransaction;
@@ -139,6 +151,10 @@ pub const TokenInfo = @import("token/token_info_query.zig").TokenInfo;
 pub const TokenNftInfoQuery = @import("token/token_nft_info_query.zig").TokenNftInfoQuery;
 pub const TokenNftInfo = @import("token/token_nft_info_query.zig").TokenNftInfo;
 pub const TokenType = @import("token/token_create.zig").TokenType;
+// Token constants
+pub const MAX_METADATA_SIZE = @import("token/token_mint.zig").MAX_METADATA_SIZE;
+pub const MAX_NFT_MINT_BATCH_SIZE = @import("token/token_mint.zig").MAX_NFT_MINT_BATCH_SIZE;
+pub const MAX_NFT_BURN_BATCH_SIZE = @import("token/token_burn.zig").MAX_NFT_BURN_BATCH_SIZE;
 pub const TokenSupplyType = @import("token/token_create.zig").TokenSupplyType;
 pub const CustomFee = @import("token/custom_fee.zig").CustomFee;
 pub const TokenRelationship = @import("token/token_info_query.zig").TokenRelationship;

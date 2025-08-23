@@ -54,7 +54,7 @@ test "Transaction memo validation" {
     // Long memo (exactly 100 bytes)
     const long_memo = "a" ** 100;
     _ = try tx.base.setTransactionMemo(long_memo);
-    try testing.expectEqualStrings(long_memo, tx.base.memo);
+    try testing.expectEqualStrings(long_memo, tx.base.transaction_memo);
     
     // Too long memo would panic (removed test as setters use @panic not errors)
 }
@@ -124,11 +124,9 @@ test "Transaction freeze and sign" {
     
     // Set operator
     const operator_id = hedera.AccountId.init(0, 0, 1001);
-    var operator_key = try hedera.generatePrivateKey(allocator);
-    defer operator_key.deinit();
+    const operator_key = try hedera.Ed25519PrivateKey.generate();
     
-    const op_key = try operator_key.toOperatorKey();
-    _ = client.setOperator(operator_id, op_key);
+    _ = client.setOperator(operator_id, .{ .ed25519 = operator_key });
     
     // Create transaction
     var tx = hedera.TransferTransaction.init(allocator);
@@ -167,14 +165,11 @@ test "Transaction signature map" {
     _ = try tx.addHbarTransfer(account2, try hedera.Hbar.from(10));
     
     // Generate multiple signers
-    var key1 = try hedera.generatePrivateKey(allocator);
-    defer key1.deinit();
+    const key1 = try hedera.Ed25519PrivateKey.generate();
     
-    var key2 = try hedera.generatePrivateKey(allocator);
-    defer key2.deinit();
+    const key2 = try hedera.Ed25519PrivateKey.generate();
     
-    var key3 = try hedera.generatePrivateKey(allocator);
-    defer key3.deinit();
+    const key3 = try hedera.Ed25519PrivateKey.generate();
     
     // Freeze transaction before signing
     try tx.base.freezeWith(null);
@@ -190,11 +185,11 @@ test "Transaction signature map" {
     // Add public key signature
     const public_key = key1.getPublicKey();
     const signature = try key1.sign("test message");
-    defer allocator.free(signature);
+    // signature is an array [64]u8, not a slice, so no defer free needed
     
     const public_key_bytes = try public_key.toBytes(allocator);
     defer allocator.free(public_key_bytes);
-    try tx.base.addSignature(public_key_bytes, signature);
+    try tx.base.addSignature(public_key_bytes, &signature);
     try testing.expectEqual(@as(usize, 4), tx.base.signatures.items.len);
 }
 
@@ -311,7 +306,7 @@ test "System delete transaction" {
     _ = try delete_tx.setExpirationTime(expiration);
     
     try testing.expect(delete_tx.file_id != null);
-    try testing.expectEqual(@as(u64, 111), delete_tx.file_id.?.num());
+    try testing.expectEqual(@as(u64, 111), delete_tx.file_id.?.entity.num);
     try testing.expectEqual(@as(i64, 1234567890), delete_tx.expiration_time.?.seconds);
     
     // Set contract to delete
@@ -319,7 +314,7 @@ test "System delete transaction" {
     _ = try delete_tx.setContractId(contract_id);
     
     try testing.expect(delete_tx.contract_id != null);
-    try testing.expectEqual(@as(u64, 222), delete_tx.contract_id.?.num());
+    try testing.expectEqual(@as(u64, 222), delete_tx.contract_id.?.entity.num);
 }
 
 test "System undelete transaction" {
@@ -335,14 +330,14 @@ test "System undelete transaction" {
     _ = try undelete_tx.setFileId(file_id);
     
     try testing.expect(undelete_tx.file_id != null);
-    try testing.expectEqual(@as(u64, 333), undelete_tx.file_id.?.num());
+    try testing.expectEqual(@as(u64, 333), undelete_tx.file_id.?.entity.num);
     
     // Set contract to undelete
     const contract_id = hedera.ContractId.init(0, 0, 444);
     _ = try undelete_tx.setContractId(contract_id);
     
     try testing.expect(undelete_tx.contract_id != null);
-    try testing.expectEqual(@as(u64, 444), undelete_tx.contract_id.?.num());
+    try testing.expectEqual(@as(u64, 444), undelete_tx.contract_id.?.entity.num);
 }
 
 test "Freeze transaction types" {
@@ -465,11 +460,10 @@ test "Transaction builder pattern" {
     var tx = hedera.newAccountCreateTransaction(allocator);
     defer tx.deinit();
     
-    var key = try hedera.generatePrivateKey(allocator);
-    defer key.deinit();
+    const key = try hedera.Ed25519PrivateKey.generate();
     
     // Chain methods
-    _ = try tx.setKey(hedera.Key.fromPublicKey(key.getPublicKey()));
+    _ = try tx.setKey(hedera.Key.fromPublicKey(.{ .ed25519 = key.getPublicKey() }));
     _ = try tx.setInitialBalance(try hedera.Hbar.from(100));
     _ = try tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
     _ = try tx.setAccountMemo("Test account");
@@ -489,3 +483,269 @@ test "Transaction builder pattern" {
     try testing.expect(!tx.decline_staking_reward);
 }
 
+test "Transaction ID comparison and equality" {
+    const account_id1 = hedera.AccountId.init(0, 0, 100);
+    const account_id2 = hedera.AccountId.init(0, 0, 200);
+    
+    // Create two transaction IDs with same account
+    var tx_id1 = hedera.TransactionId.generate(account_id1);
+    // Add small delay to ensure different timestamps
+    std.time.sleep(1000000); // 1ms
+    var tx_id2 = hedera.TransactionId.generate(account_id1);
+    
+    // Should be different due to different timestamps
+    try testing.expect(!tx_id1.equals(tx_id2));
+    
+    // Create transaction ID with same timestamp
+    const tx_id3 = tx_id1;
+    try testing.expect(tx_id1.equals(tx_id3));
+    
+    // Different accounts should be different
+    const tx_id4 = hedera.TransactionId.generate(account_id2);
+    try testing.expect(!tx_id1.equals(tx_id4));
+    
+    // With nonce
+    var tx_id1_copy = tx_id1;
+    tx_id1_copy.nonce = 42;
+    tx_id2.nonce = 42;
+    try testing.expect(!tx_id1_copy.equals(tx_id2)); // Still different due to timestamps
+    
+    tx_id2 = tx_id1_copy; // Copy
+    try testing.expect(tx_id1_copy.equals(tx_id2));
+    
+    tx_id2.nonce = 43; // Different nonce
+    try testing.expect(!tx_id1_copy.equals(tx_id2));
+}
+
+test "Transaction base class functionality" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+    
+    var tx = hedera.TransferTransaction.init(allocator);
+    defer tx.deinit();
+    
+    // Test default values
+    try testing.expect(tx.base.transaction_id == null);
+    try testing.expectEqual(@as(usize, 0), tx.base.node_account_ids.items.len);
+    try testing.expect(tx.base.max_transaction_fee == null);
+    try testing.expectEqual(@as(i64, 120), tx.base.transaction_valid_duration.seconds);
+    try testing.expectEqualStrings("", tx.base.transaction_memo);
+    try testing.expect(!tx.base.frozen);
+    try testing.expectEqual(@as(usize, 0), tx.base.signatures.items.len);
+    
+    // Test setting transaction properties
+    const tx_id = hedera.TransactionId.generate(hedera.AccountId.init(0, 0, 300));
+    tx.base.transaction_id = tx_id;
+    try testing.expect(tx.base.transaction_id.?.equals(tx_id));
+    
+    const fee = try hedera.Hbar.from(15);
+    _ = try tx.base.setMaxTransactionFee(fee);
+    try testing.expect(tx.base.max_transaction_fee.?.equals(fee));
+    
+    const duration = hedera.Duration.fromMinutes(2); // 120 seconds, within 180 second limit
+    _ = try tx.base.setTransactionValidDuration(duration);
+    try testing.expectEqual(duration.seconds, tx.base.transaction_valid_duration.seconds);
+    
+    _ = try tx.base.setTransactionMemo("Test memo for base transaction");
+    try testing.expectEqualStrings("Test memo for base transaction", tx.base.transaction_memo);
+}
+
+test "Transaction network node selection" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+    
+    var tx = hedera.TransferTransaction.init(allocator);
+    defer tx.deinit();
+    
+    // Set multiple node account IDs
+    const nodes = [_]hedera.AccountId{
+        hedera.AccountId.init(0, 0, 3),
+        hedera.AccountId.init(0, 0, 4),
+        hedera.AccountId.init(0, 0, 5),
+        hedera.AccountId.init(0, 0, 6),
+        hedera.AccountId.init(0, 0, 7),
+    };
+    
+    _ = try tx.base.setNodeAccountIds(&nodes);
+    try testing.expectEqual(@as(usize, 5), tx.base.node_account_ids.items.len);
+    
+    // Verify all nodes were set correctly
+    for (nodes, 0..) |node, i| {
+        try testing.expect(tx.base.node_account_ids.items[i].equals(node));
+    }
+    
+    // Test clearing nodes
+    const empty_nodes: []const hedera.AccountId = &.{};
+    _ = try tx.base.setNodeAccountIds(empty_nodes);
+    try testing.expectEqual(@as(usize, 0), tx.base.node_account_ids.items.len);
+}
+
+test "Transaction signature management" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+    
+    var tx = hedera.TransferTransaction.init(allocator);
+    defer tx.deinit();
+    
+    // Add transfers to make transaction valid
+    const account1 = hedera.AccountId.init(0, 0, 100);
+    const account2 = hedera.AccountId.init(0, 0, 200);
+    _ = try tx.addHbarTransfer(account1, try hedera.Hbar.from(-50));
+    _ = try tx.addHbarTransfer(account2, try hedera.Hbar.from(50));
+    
+    // Freeze before signing
+    try tx.base.freezeWith(null);
+    
+    // Generate keys for testing
+    const key1 = try hedera.Ed25519PrivateKey.generate();
+    const key2 = try hedera.Ed25519PrivateKey.generate();
+    
+    // Test signing with private keys
+    try tx.base.sign(key1);
+    try testing.expectEqual(@as(usize, 1), tx.base.signatures.items.len);
+    
+    try tx.base.sign(key2);
+    try testing.expectEqual(@as(usize, 2), tx.base.signatures.items.len);
+    
+    // Test adding signature manually
+    const message = "test signature message";
+    const signature = try key1.sign(message);
+    // signature is an array [64]u8, not a slice, so no defer free needed
+    
+    const public_key_bytes = try key1.getPublicKey().toBytes(allocator);
+    defer allocator.free(public_key_bytes);
+    
+    try tx.base.addSignature(public_key_bytes, &signature);
+    try testing.expectEqual(@as(usize, 3), tx.base.signatures.items.len);
+    
+    // Test signature verification by checking signature count
+    try testing.expect(tx.base.signatures.items.len > 0);
+}
+
+test "Transaction with different Hbar amounts" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+    
+    var tx = hedera.TransferTransaction.init(allocator);
+    defer tx.deinit();
+    
+    const account1 = hedera.AccountId.init(0, 0, 1);
+    const account2 = hedera.AccountId.init(0, 0, 2);
+    const account3 = hedera.AccountId.init(0, 0, 3);
+    const account4 = hedera.AccountId.init(0, 0, 4);
+    
+    // Test different Hbar amounts
+    _ = try tx.addHbarTransfer(account1, try hedera.Hbar.fromTinybars(-100000000000)); // -1000 HBAR
+    _ = try tx.addHbarTransfer(account2, try hedera.Hbar.fromTinybars(50000000000));   // 500 HBAR
+    _ = try tx.addHbarTransfer(account3, try hedera.Hbar.fromTinybars(30000000000));   // 300 HBAR  
+    _ = try tx.addHbarTransfer(account4, try hedera.Hbar.fromTinybars(20000000000));   // 200 HBAR
+    
+    try testing.expectEqual(@as(usize, 4), tx.hbar_transfers.items.len);
+    
+    // Verify balance is zero
+    var total_tinybars: i64 = 0;
+    for (tx.hbar_transfers.items) |transfer| {
+        total_tinybars += transfer.amount.toTinybars();
+    }
+    try testing.expectEqual(@as(i64, 0), total_tinybars);
+}
+
+test "Transaction freeze state edge cases" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+    
+    var tx = hedera.TransferTransaction.init(allocator);
+    defer tx.deinit();
+    
+    // Initially not frozen
+    try testing.expect(!tx.base.frozen);
+    
+    // Add transfers
+    const account1 = hedera.AccountId.init(0, 0, 100);
+    const account2 = hedera.AccountId.init(0, 0, 200);
+    _ = try tx.addHbarTransfer(account1, try hedera.Hbar.from(-25));
+    _ = try tx.addHbarTransfer(account2, try hedera.Hbar.from(25));
+    
+    // Freeze with null client (should use defaults)
+    try tx.base.freezeWith(null);
+    try testing.expect(tx.base.frozen);
+    try testing.expect(tx.base.transaction_id != null);
+    
+    // Test that transaction ID was generated
+    const generated_id = tx.base.transaction_id.?;
+    try testing.expect(generated_id.valid_start.seconds > 0);
+    // Default account ID should be set
+    try testing.expect(generated_id.account_id.account >= 0); // Just check it's a valid ID
+    
+    // Verify default node was set if none existed
+    try testing.expect(tx.base.node_account_ids.items.len > 0);
+}
+
+test "Transaction with maximum values" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+    
+    var tx = hedera.TransferTransaction.init(allocator);
+    defer tx.deinit();
+    
+    // Test with maximum Hbar values
+    const max_hbar = try hedera.Hbar.fromTinybars(std.math.maxInt(i32));
+    const min_hbar = try hedera.Hbar.fromTinybars(-std.math.maxInt(i32));
+    
+    const account1 = hedera.AccountId.init(0, 0, 1);
+    const account2 = hedera.AccountId.init(0, 0, 2);
+    
+    _ = try tx.addHbarTransfer(account1, min_hbar);
+    _ = try tx.addHbarTransfer(account2, max_hbar);
+    
+    try testing.expectEqual(@as(usize, 2), tx.hbar_transfers.items.len);
+    try testing.expectEqual(min_hbar.toTinybars(), tx.hbar_transfers.items[0].amount.toTinybars());
+    try testing.expectEqual(max_hbar.toTinybars(), tx.hbar_transfers.items[1].amount.toTinybars());
+    
+    // Test with maximum transaction duration
+    const max_duration = hedera.Duration{ .seconds = 180, .nanos = 0 }; // Max allowed is 180 seconds
+    _ = try tx.base.setTransactionValidDuration(max_duration);
+    try testing.expectEqual(max_duration.seconds, tx.base.transaction_valid_duration.seconds);
+}
+
+test "Transaction memory management stress test" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+    
+    // Create multiple transactions to test memory management
+    var transactions = std.ArrayList(*hedera.TransferTransaction).init(allocator);
+    defer {
+        for (transactions.items) |tx| {
+            tx.deinit();
+        }
+        transactions.deinit();
+    }
+    
+    // Create many transactions
+    for (0..10) |i| {
+        const tx = try allocator.create(hedera.TransferTransaction);
+        tx.* = hedera.TransferTransaction.init(allocator);
+        
+        const account1 = hedera.AccountId.init(0, 0, @intCast(i * 2 + 1));
+        const account2 = hedera.AccountId.init(0, 0, @intCast(i * 2 + 2));
+        
+        _ = try tx.addHbarTransfer(account1, try hedera.Hbar.from(@as(i64, @intCast(i)) - 5));
+        _ = try tx.addHbarTransfer(account2, try hedera.Hbar.from(5 - @as(i64, @intCast(i))));
+        
+        try transactions.append(tx);
+    }
+    
+    try testing.expectEqual(@as(usize, 10), transactions.items.len);
+    
+    // Verify all transactions are properly configured
+    for (transactions.items) |tx| {
+        try testing.expectEqual(@as(usize, 2), tx.hbar_transfers.items.len);
+    }
+}

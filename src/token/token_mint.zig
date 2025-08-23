@@ -11,6 +11,13 @@ const errors = @import("../core/errors.zig");
 pub const MAX_METADATA_SIZE: usize = 100;
 pub const MAX_NFT_MINT_BATCH_SIZE: usize = 10;
 
+// Factory function for TokenMintTransaction
+pub fn newTokenMintTransaction(allocator: std.mem.Allocator) *TokenMintTransaction {
+    const tx = allocator.create(TokenMintTransaction) catch @panic("Out of memory");
+    tx.* = TokenMintTransaction.init(allocator);
+    return tx;
+}
+
 // TokenMintTransaction mints new fungible tokens or NFTs
 pub const TokenMintTransaction = struct {
     base: Transaction,
@@ -116,6 +123,11 @@ pub const TokenMintTransaction = struct {
     
     pub fn getMetadata(self: *const TokenMintTransaction) []const []const u8 {
         return self.metadata_list.items;
+    }
+    
+    // Freeze the transaction with client
+    pub fn freezeWith(self: *TokenMintTransaction, client: *Client) !void {
+        try self.base.freezeWith(client);
     }
     
     // Execute the transaction

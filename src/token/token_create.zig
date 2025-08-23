@@ -212,6 +212,13 @@ pub const CustomFee = struct {
     }
 };
 
+// Factory function for creating a new TokenCreateTransaction
+pub fn newTokenCreateTransaction(allocator: std.mem.Allocator) *TokenCreateTransaction {
+    const tx = allocator.create(TokenCreateTransaction) catch @panic("Out of memory");
+    tx.* = TokenCreateTransaction.init(allocator);
+    return tx;
+}
+
 // TokenCreateTransaction creates a new token on Hedera
 pub const TokenCreateTransaction = struct {
     base: Transaction,
@@ -629,6 +636,11 @@ pub const TokenCreateTransaction = struct {
     // Get metadata key
     pub fn getMetadataKey(self: *TokenCreateTransaction) ?Key {
         return self.metadata_key;
+    }
+    
+    // Freeze the transaction with a client
+    pub fn freezeWith(self: *TokenCreateTransaction, client: *Client) !void {
+        try self.base.freezeWith(client);
     }
     
     // Execute the transaction

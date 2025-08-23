@@ -58,6 +58,10 @@ pub const AccountDeleteTransaction = struct {
     }
     
     // Execute the transaction
+    pub fn freezeWith(self: *AccountDeleteTransaction, client: ?*Client) !void {
+        try self.base.freezeWith(client);
+    }
+    
     pub fn execute(self: *AccountDeleteTransaction, client: *Client) !TransactionResponse {
         if (self.delete_account_id == null) {
             return error.DeleteAccountIdRequired;
@@ -177,3 +181,8 @@ pub const AccountDeleteTransaction = struct {
         }
     }
 };
+
+// Factory function matching Hedera SDK patterns
+pub fn newAccountDeleteTransaction(allocator: std.mem.Allocator) AccountDeleteTransaction {
+    return AccountDeleteTransaction.init(allocator);
+}

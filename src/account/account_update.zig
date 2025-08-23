@@ -212,6 +212,10 @@ pub const AccountUpdateTransaction = struct {
     }
     
     // Execute the transaction
+    pub fn freezeWith(self: *AccountUpdateTransaction, client: ?*Client) !void {
+        try self.base.freezeWith(client);
+    }
+    
     pub fn execute(self: *AccountUpdateTransaction, client: *Client) !TransactionResponse {
         return try self.base.execute(client);
     }
@@ -405,3 +409,8 @@ pub const AccountUpdateTransaction = struct {
         }
     }
 };
+
+// Factory function matching Hedera SDK patterns
+pub fn newAccountUpdateTransaction(allocator: std.mem.Allocator) AccountUpdateTransaction {
+    return AccountUpdateTransaction.init(allocator);
+}

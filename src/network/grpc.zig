@@ -6,7 +6,7 @@ const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
 
 // HPACK Huffman encoding tables (RFC 7541 Appendix B)
-const huffman_codes = [256]u32{
+const huffman_codes = [257]u32{
     0x1ff8, 0x7fffd8, 0xfffffe2, 0xfffffe3, 0xfffffe4, 0xfffffe5, 0xfffffe6, 0xfffffe7,
     0xfffffe8, 0xffffea, 0x3ffffffc, 0xfffffe9, 0xfffffea, 0x3ffffffd, 0xfffffeb, 0xfffffec,
     0xfffffed, 0xfffffee, 0xfffffef, 0xffffff0, 0xffffff1, 0xffffff2, 0x3ffffffe, 0xffffff3,
@@ -174,6 +174,7 @@ pub const Frame = struct {
 
 // HPACK encoder for HTTP/2 headers
 pub const HpackEncoder = struct {
+    allocator: std.mem.Allocator,
     dynamic_table: std.ArrayList(Header),
     max_dynamic_table_size: usize,
     current_table_size: usize,
@@ -185,6 +186,7 @@ pub const HpackEncoder = struct {
     
     pub fn init(allocator: std.mem.Allocator) HpackEncoder {
         return HpackEncoder{
+            .allocator = allocator,
             .dynamic_table = std.ArrayList(Header).init(allocator),
             .max_dynamic_table_size = 4096,
             .current_table_size = 0,
@@ -264,7 +266,7 @@ pub const HpackEncoder = struct {
             
             // Write huffman flag (1) and length
             try self.encodeInteger(writer, @intCast(encoded_len), 7);
-            const first_byte = try writer.context.items[writer.context.items.len - encoded_len - 1];
+            const first_byte = writer.context.items[writer.context.items.len - encoded_len - 1];
             writer.context.items[writer.context.items.len - encoded_len - 1] = first_byte | 0x80;
             try writer.writeAll(encoded[0..encoded_len]);
         } else {

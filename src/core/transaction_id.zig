@@ -261,4 +261,51 @@ pub const TransactionId = struct {
     pub fn isValid(self: TransactionId) bool {
         return !self.account_id.isZero() and self.valid_start.seconds > 0;
     }
+    
+    pub fn fromBytes(bytes: []const u8) !TransactionId {
+        return fromProtobufBytes(std.heap.page_allocator, bytes);
+    }
+    
+    pub fn fromProtobufBytes(allocator: std.mem.Allocator, bytes: []const u8) !TransactionId {
+        var reader = @import("../protobuf/encoding.zig").ProtoReader.init(bytes);
+        
+        var account_bytes: []const u8 = undefined;
+        var timestamp_bytes: []const u8 = undefined;
+        var scheduled = false;
+        var nonce: ?u32 = null;
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            switch (tag.field_number) {
+                1 => account_bytes = try reader.readMessage(),
+                2 => timestamp_bytes = try reader.readMessage(),
+                3 => scheduled = try reader.readBool(),
+                4 => nonce = @intCast(try reader.readVarint()),
+                else => try reader.skipField(tag.wire_type),
+            }
+        }
+        
+        const account_id = try AccountId.fromProtobufBytes(allocator, account_bytes);
+        
+        // Parse timestamp
+        var ts_reader = @import("../protobuf/encoding.zig").ProtoReader.init(timestamp_bytes);
+        var seconds: i64 = 0;
+        var nanos: i32 = 0;
+        
+        while (ts_reader.hasMore()) {
+            const ts_tag = try ts_reader.readTag();
+            switch (ts_tag.field_number) {
+                1 => seconds = try ts_reader.readInt64(),
+                2 => nanos = try ts_reader.readInt32(),
+                else => try ts_reader.skipField(ts_tag.wire_type),
+            }
+        }
+        
+        return TransactionId{
+            .account_id = account_id,
+            .valid_start = Timestamp{ .seconds = seconds, .nanos = nanos },
+            .scheduled = scheduled,
+            .nonce = nonce,
+        };
+    }
 };

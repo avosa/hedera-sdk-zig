@@ -11,6 +11,13 @@ const errors = @import("../core/errors.zig");
 // Maximum number of tokens that can be dissociated in a single transaction
 pub const MAX_TOKEN_DISSOCIATIONS: usize = 100;
 
+// Factory function for TokenDissociateTransaction
+pub fn newTokenDissociateTransaction(allocator: std.mem.Allocator) *TokenDissociateTransaction {
+    const tx = allocator.create(TokenDissociateTransaction) catch @panic("Out of memory");
+    tx.* = TokenDissociateTransaction.init(allocator);
+    return tx;
+}
+
 // TokenDissociateTransaction dissociates tokens from an account
 pub const TokenDissociateTransaction = struct {
     base: Transaction,
@@ -86,6 +93,11 @@ pub const TokenDissociateTransaction = struct {
     
     pub fn getTokenIDs(self: *const TokenDissociateTransaction) []const TokenId {
         return self.token_ids.items;
+    }
+    
+    // Freeze the transaction with client for execution
+    pub fn freezeWith(self: *TokenDissociateTransaction, client: *Client) !void {
+        try self.base.freezeWith(client);
     }
     
     // Execute the transaction

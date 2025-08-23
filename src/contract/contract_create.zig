@@ -12,6 +12,13 @@ const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 
+// Factory function for creating a new ContractCreateTransaction
+pub fn newContractCreateTransaction(allocator: std.mem.Allocator) *ContractCreateTransaction {
+    const tx = allocator.create(ContractCreateTransaction) catch @panic("Out of memory");
+    tx.* = ContractCreateTransaction.init(allocator);
+    return tx;
+}
+
 // ContractCreateTransaction creates a new smart contract instance
 pub const ContractCreateTransaction = struct {
     base: Transaction,
@@ -231,6 +238,11 @@ pub const ContractCreateTransaction = struct {
     // GetDeclineStakingReward returns whether to decline staking rewards
     pub fn getDeclineStakingReward(self: *const ContractCreateTransaction) bool {
         return self.decline_staking_reward;
+    }
+    
+    // Freeze the transaction with a client
+    pub fn freezeWith(self: *ContractCreateTransaction, client: *Client) !void {
+        try self.base.freezeWith(client);
     }
     
     // Execute the transaction

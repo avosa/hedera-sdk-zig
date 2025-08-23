@@ -7,6 +7,13 @@ const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const errors = @import("../core/errors.zig");
 
+// Factory function for TokenPauseTransaction
+pub fn newTokenPauseTransaction(allocator: std.mem.Allocator) *TokenPauseTransaction {
+    const tx = allocator.create(TokenPauseTransaction) catch @panic("Out of memory");
+    tx.* = TokenPauseTransaction.init(allocator);
+    return tx;
+}
+
 // TokenPauseTransaction pauses token operations
 pub const TokenPauseTransaction = struct {
     base: Transaction,
@@ -33,6 +40,11 @@ pub const TokenPauseTransaction = struct {
     // Getter method for uniformity with Go SDK
     pub fn getTokenId(self: *const TokenPauseTransaction) ?TokenId {
         return self.token_id;
+    }
+    
+    // Freeze the transaction with client for execution
+    pub fn freezeWith(self: *TokenPauseTransaction, client: *Client) !void {
+        try self.base.freezeWith(client);
     }
     
     // Execute the transaction

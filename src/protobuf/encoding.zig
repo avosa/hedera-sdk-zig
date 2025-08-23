@@ -209,7 +209,7 @@ pub const ProtoReader = struct {
     // Read a signed varint with zigzag decoding
     pub fn readSVarint(self: *ProtoReader) !i64 {
         const zigzag = try self.readVarint();
-        const value = (zigzag >> 1) ^ (-@as(i64, @intCast(zigzag & 1)));
+        const value = @as(i64, @intCast(zigzag >> 1)) ^ (-@as(i64, @intCast(zigzag & 1)));
         return value;
     }
     

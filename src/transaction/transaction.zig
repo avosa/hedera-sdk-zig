@@ -358,26 +358,46 @@ pub const Transaction = struct {
         const body_bytes = try self.buildTransactionBody();
         defer self.allocator.free(body_bytes);
         
-        const signature_array = try private_key.sign(body_bytes);
+        const signature_result = try private_key.sign(body_bytes);
         const public_key = private_key.getPublicKey();
         
         // Create new signature pair for each signature
         var new_signatures = std.ArrayList(Signature).init(self.allocator);
-        const sig_slice = try self.allocator.alloc(u8, 64);
-        @memcpy(sig_slice, signature_array);
         
-        const pub_key_bytes = public_key.toBytesRaw();
-        const pub_key_slice = try self.allocator.alloc(u8, pub_key_bytes.len);
-        @memcpy(pub_key_slice, pub_key_bytes);
+        // Handle different signature types (array vs slice)
+        const sig_slice = if (@TypeOf(signature_result) == [64]u8) blk: {
+            const slice = try self.allocator.alloc(u8, 64);
+            @memcpy(slice, &signature_result);
+            break :blk slice;
+        } else blk: {
+            // It's already a slice, just use it
+            break :blk signature_result;
+        };
+        
+        // Get public key bytes - handle both arrays and slices
+        const pub_key_result = public_key.toBytesRaw();
+        const pub_key_slice = switch (@typeInfo(@TypeOf(pub_key_result))) {
+            .array => |arr| blk: {
+                const slice = try self.allocator.alloc(u8, arr.len);
+                @memcpy(slice, &pub_key_result);
+                break :blk slice;
+            },
+            .pointer => blk: {
+                const slice = try self.allocator.alloc(u8, pub_key_result.len);
+                @memcpy(slice, pub_key_result);
+                break :blk slice;
+            },
+            else => unreachable,
+        };
         
         try new_signatures.append(Signature{
             .public_key = pub_key_slice,
             .signature = sig_slice,
         });
         
-        // Use public key as identifier
-        const key = try self.allocator.alloc(u8, pub_key_bytes.len);
-        @memcpy(key, pub_key_bytes);
+        // Use public key as identifier - make a copy
+        const key = try self.allocator.alloc(u8, pub_key_slice.len);
+        @memcpy(key, pub_key_slice);
         
         try self.signatures.append(SignatureKeyPair{
             .key = key,
@@ -634,19 +654,87 @@ const TransactionRequest = struct {
     pub const Response = TransactionResponse;
     
     pub fn execute(self: TransactionRequest, conn: *GrpcConnection) !TransactionResponse {
-        _ = self;
-        _ = conn;
-        // Submit transaction via gRPC
+        // Create the gRPC request for CryptoService
+        const service = "proto.CryptoService";
+        const method = "cryptoTransfer";
+        
+        // Wrap transaction bytes in Transaction message wrapper
+        var tx_wrapper = ProtoWriter.init(conn.allocator);
+        defer tx_wrapper.deinit();
+        
+        // signedTransactionBytes = 1
+        try tx_wrapper.writeMessage(1, self.transaction_bytes);
+        const wrapped_tx = try tx_wrapper.toOwnedSlice();
+        defer conn.allocator.free(wrapped_tx);
+        
+        // Send the transaction
+        const response_bytes = try conn.call(service, method, wrapped_tx);
+        defer conn.allocator.free(response_bytes);
+        
+        // Parse response
+        var reader = ProtoReader.init(response_bytes);
+        var response_code: i32 = 0;
+        var tx_id: ?TransactionId = null;
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            switch (tag.field_number) {
+                1 => { // nodeTransactionPrecheckCode
+                    response_code = try reader.readInt32();
+                },
+                2 => { // cost
+                    _ = try reader.readUint64();
+                },
+                else => try reader.skipField(tag.wire_type),
+            }
+        }
+        
+        // Check response code
+        if (response_code != 0 and response_code != 22) { // OK or SUCCESS
+            return error.TransactionFailed;
+        }
+        
+        // Extract transaction ID from the request
+        var req_reader = ProtoReader.init(self.transaction_bytes);
+        while (req_reader.hasMore()) {
+            const tag = try req_reader.readTag();
+            if (tag.field_number == 1) { // body_bytes
+                const body_bytes = try req_reader.readMessage();
+                var body_reader = ProtoReader.init(body_bytes);
+                
+                while (body_reader.hasMore()) {
+                    const body_tag = try body_reader.readTag();
+                    if (body_tag.field_number == 1) { // transactionID
+                        const tx_id_bytes = try body_reader.readMessage();
+                        tx_id = try TransactionId.fromBytes(tx_id_bytes);
+                        break;
+                    } else {
+                        try body_reader.skipField(body_tag.wire_type);
+                    }
+                }
+                break;
+            } else {
+                try req_reader.skipField(tag.wire_type);
+            }
+        }
+        
+        // Calculate transaction hash
+        var hash: [48]u8 = undefined;
+        std.crypto.hash.sha3.Sha3_384.hash(self.transaction_bytes, &hash, .{});
+        
+        const hash_copy = try conn.allocator.alloc(u8, hash.len);
+        @memcpy(hash_copy, &hash);
+        
         return TransactionResponse{
-            .transaction_id = TransactionId.generate(AccountId.init(0, 0, 0)),
+            .transaction_id = tx_id orelse TransactionId.generate(self.node_account_id),
             .scheduled_transaction_id = null,
-            .node_id = AccountId.init(0, 0, 3),
-            .hash = &[_]u8{},
-            .transaction_hash = &[_]u8{},
+            .node_id = self.node_account_id,
+            .hash = hash_copy,
+            .transaction_hash = hash_copy,
             .validate_status = true,
             .include_child_receipts = false,
             .transaction = null,
-            .allocator = std.heap.page_allocator,
+            .allocator = conn.allocator,
         };
     }
 };

@@ -105,6 +105,22 @@ pub const EntityId = struct {
                self.realm == other.realm and
                self.num == other.num;
     }
+    
+    pub fn fromBytes(bytes: []const u8) !EntityId {
+        // Simple parsing assuming bytes are in format: shard(8) + realm(8) + num(8)
+        if (bytes.len < 24) return error.InvalidParameter;
+        
+        const shard = std.mem.readInt(u64, bytes[0..8], .big);
+        const realm = std.mem.readInt(u64, bytes[8..16], .big);
+        const num = std.mem.readInt(u64, bytes[16..24], .big);
+        
+        return EntityId{
+            .shard = shard,
+            .realm = realm,
+            .num = num,
+            .checksum = null,
+        };
+    }
 };
 
 // AccountId represents a Hedera account
@@ -220,6 +236,12 @@ pub const AccountId = struct {
             .alias_evm_address = null,
             .checksum = null,
         };
+    }
+    
+    pub fn fromProtobufBytes(allocator: std.mem.Allocator, bytes: []const u8) !AccountId {
+        _ = allocator; // Not used for simple parsing
+        // For now, assume protobuf bytes are the same as raw bytes
+        return try fromBytes(bytes);
     }
     
     pub fn equals(self: AccountId, other: AccountId) bool {
@@ -347,6 +369,15 @@ pub const ContractId = struct {
         }
         return self.entity.equals(other.entity);
     }
+    
+    pub fn fromProtobufBytes(allocator: std.mem.Allocator, bytes: []const u8) !ContractId {
+        _ = allocator; // Not used for simple parsing
+        const entity = try EntityId.fromBytes(bytes);
+        return ContractId{ 
+            .entity = entity,
+            .evm_address = null 
+        };
+    }
 };
 
 // FileId represents a file on Hedera
@@ -387,6 +418,12 @@ pub const FileId = struct {
     
     pub fn equals(self: FileId, other: FileId) bool {
         return self.entity.equals(other.entity);
+    }
+    
+    pub fn fromProtobufBytes(allocator: std.mem.Allocator, bytes: []const u8) !FileId {
+        _ = allocator; // Not used for simple parsing
+        const entity = try EntityId.fromBytes(bytes);
+        return FileId{ .entity = entity };
     }
     
     // Special system file IDs
@@ -433,6 +470,12 @@ pub const TokenId = struct {
     
     pub fn equals(self: TokenId, other: TokenId) bool {
         return self.entity.equals(other.entity);
+    }
+    
+    pub fn fromProtobufBytes(allocator: std.mem.Allocator, bytes: []const u8) !TokenId {
+        _ = allocator; // Not used for simple parsing
+        const entity = try EntityId.fromBytes(bytes);
+        return TokenId{ .entity = entity };
     }
     
     // HashContext for use in HashMap
@@ -492,6 +535,12 @@ pub const TopicId = struct {
     pub fn equals(self: TopicId, other: TopicId) bool {
         return self.entity.equals(other.entity);
     }
+    
+    pub fn fromProtobufBytes(allocator: std.mem.Allocator, bytes: []const u8) !TopicId {
+        _ = allocator; // Not used for simple parsing
+        const entity = try EntityId.fromBytes(bytes);
+        return TopicId{ .entity = entity };
+    }
 };
 
 // ScheduleId represents a scheduled transaction
@@ -532,6 +581,12 @@ pub const ScheduleId = struct {
     
     pub fn equals(self: ScheduleId, other: ScheduleId) bool {
         return self.entity.equals(other.entity);
+    }
+    
+    pub fn fromProtobufBytes(allocator: std.mem.Allocator, bytes: []const u8) !ScheduleId {
+        _ = allocator; // Not used for simple parsing
+        const entity = try EntityId.fromBytes(bytes);
+        return ScheduleId{ .entity = entity };
     }
 };
 

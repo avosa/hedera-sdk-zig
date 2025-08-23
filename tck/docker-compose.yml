@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  hedera-sdk-zig-tck:
+    build:
+      context: ..
+      dockerfile: tck/Dockerfile
+    ports:
+      - "${TCK_PORT:-8544}:8544"
+    environment:
+      - TCK_PORT=8544
+      - NETWORK=${NETWORK:-testnet}
+      - OPERATOR_ACCOUNT_ID=${OPERATOR_ACCOUNT_ID:-}
+      - OPERATOR_ACCOUNT_PRIVATE_KEY=${OPERATOR_ACCOUNT_PRIVATE_KEY:-}
+      - MIRROR_NODE_REST_URL=${MIRROR_NODE_REST_URL:-}
+      - MIRROR_NODE_REST_JAVA_URL=${MIRROR_NODE_REST_JAVA_URL:-}
+    networks:
+      - hedera-tck-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8544/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  hedera-tck-network:
+    driver: bridge

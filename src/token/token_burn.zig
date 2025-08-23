@@ -10,6 +10,13 @@ const errors = @import("../core/errors.zig");
 // Maximum number of NFT serial numbers that can be burned in a single transaction
 pub const MAX_NFT_BURN_BATCH_SIZE: usize = 10;
 
+// Factory function for TokenBurnTransaction
+pub fn newTokenBurnTransaction(allocator: std.mem.Allocator) *TokenBurnTransaction {
+    const tx = allocator.create(TokenBurnTransaction) catch @panic("Out of memory");
+    tx.* = TokenBurnTransaction.init(allocator);
+    return tx;
+}
+
 // TokenBurnTransaction burns fungible tokens or NFTs
 pub const TokenBurnTransaction = struct {
     base: Transaction,
@@ -135,6 +142,11 @@ pub const TokenBurnTransaction = struct {
     
     pub fn getSerialNumbers(self: *const TokenBurnTransaction) []const i64 {
         return self.serial_numbers.items;
+    }
+    
+    // Freeze the transaction with client
+    pub fn freezeWith(self: *TokenBurnTransaction, client: *Client) !void {
+        try self.base.freezeWith(client);
     }
     
     // Execute the transaction

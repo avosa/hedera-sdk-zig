@@ -156,9 +156,9 @@ pub const Query = struct {
         
         // Set transaction details
         const tx_id = TransactionId.generate(operator.account_id);
-        try payment.setTransactionId(tx_id);
-        try payment.setNodeAccountIds(&[_]AccountId{node_id});
-        try payment.setTransactionMemo("Query payment");
+        _ = try payment.setTransactionId(tx_id);
+        _ = try payment.setNodeAccountIds(&[_]AccountId{node_id});
+        _ = try payment.setTransactionMemo("Query payment");
         
         // Return the configured payment transaction
         return payment;
@@ -221,10 +221,12 @@ pub const Query = struct {
         defer self.allocator.free(query_bytes);
         
         // Submit to network
-        const response = try client.execute(QueryRequest{
+        const response = client.execute(QueryRequest{
             .query_bytes = query_bytes,
             .node_account_id = self.node_account_ids.items[0],
-        });
+        }) catch {
+            return error.UnknownError;
+        };
         
         return QueryResponse{
             .header = response.header,
@@ -250,7 +252,7 @@ pub const Query = struct {
         }
         
         // Response type
-        try writer.writeUint32(2, @intFromEnum(self.response_type));
+        try writer.writeUint32(2, @intCast(@intFromEnum(self.response_type)));
         
         return writer.toOwnedSlice();
     }
@@ -305,7 +307,7 @@ const QueryRequest = struct {
     query_bytes: []const u8,
     node_account_id: AccountId,
     
-    const Response = struct {
+    pub const Response = struct {
         header: ResponseHeader,
         response_bytes: []const u8,
     };
