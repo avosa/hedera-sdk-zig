@@ -15,6 +15,13 @@ const Timestamp = @import("../core/timestamp.zig").Timestamp;
 pub const MAX_FILE_SIZE: usize = 1024 * 1024; // 1MB
 pub const MAX_CHUNK_SIZE: usize = 4096; // 4KB per chunk
 
+// Factory function for creating a new FileCreateTransaction
+pub fn newFileCreateTransaction(allocator: std.mem.Allocator) *FileCreateTransaction {
+    const tx = allocator.create(FileCreateTransaction) catch @panic("Out of memory");
+    tx.* = FileCreateTransaction.init(allocator);
+    return tx;
+}
+
 // FileCreateTransaction creates a new file in the Hedera network
 pub const FileCreateTransaction = struct {
     base: Transaction,
@@ -100,6 +107,11 @@ pub const FileCreateTransaction = struct {
     // Set file memo (alias)
     pub fn setFileMemo(self: *FileCreateTransaction, memo: []const u8) errors.HederaError!*FileCreateTransaction {
         return self.setMemo(memo);
+    }
+    
+    // Freeze the transaction with a client
+    pub fn freezeWith(self: *FileCreateTransaction, client: *Client) !void {
+        try self.base.freezeWith(client);
     }
     
     // Execute the transaction

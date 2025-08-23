@@ -8,6 +8,13 @@ const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const errors = @import("../core/errors.zig");
 
+// Factory function for TokenUnfreezeTransaction
+pub fn newTokenUnfreezeTransaction(allocator: std.mem.Allocator) *TokenUnfreezeTransaction {
+    const tx = allocator.create(TokenUnfreezeTransaction) catch @panic("Out of memory");
+    tx.* = TokenUnfreezeTransaction.init(allocator);
+    return tx;
+}
+
 // TokenUnfreezeTransaction unfreezes an account's ability to transfer a token
 pub const TokenUnfreezeTransaction = struct {
     base: Transaction,
@@ -47,6 +54,11 @@ pub const TokenUnfreezeTransaction = struct {
     
     pub fn getAccountId(self: *const TokenUnfreezeTransaction) ?AccountId {
         return self.account_id;
+    }
+    
+    // Freeze the transaction with client for execution
+    pub fn freezeWith(self: *TokenUnfreezeTransaction, client: *Client) !void {
+        try self.base.freezeWith(client);
     }
     
     // Execute the transaction

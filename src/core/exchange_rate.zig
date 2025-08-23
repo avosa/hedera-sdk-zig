@@ -142,20 +142,24 @@ pub const ExchangeRate = struct {
         var reader = ProtoReader.init(data);
         var rate = ExchangeRate.init(0, 0);
 
-        while (try reader.next()) |field| {
-            switch (field.number) {
-                1 => rate.hbar_equivalent = try reader.readInt32(field.data),
-                2 => rate.cent_equivalent = try reader.readInt32(field.data),
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            
+            switch (tag.field_number) {
+                1 => rate.hbar_equivalent = try reader.readInt32(),
+                2 => rate.cent_equivalent = try reader.readInt32(),
                 3 => {
-                    var time_reader = ProtoReader.init(field.data);
+                    const time_data = try reader.readMessage();
+                    var time_reader = ProtoReader.init(time_data);
                     var seconds: i64 = 0;
                     var nanos: i32 = 0;
 
-                    while (try time_reader.next()) |time_field| {
-                        switch (time_field.number) {
-                            1 => seconds = try time_reader.readInt64(time_field.data),
-                            2 => nanos = try time_reader.readInt32(time_field.data),
-                            else => {},
+                    while (time_reader.hasMore()) {
+                        const time_tag = try time_reader.readTag();
+                        switch (time_tag.field_number) {
+                            1 => seconds = try time_reader.readInt64(),
+                            2 => nanos = try time_reader.readInt32(),
+                            else => try time_reader.skipField(time_tag.wire_type),
                         }
                     }
 
@@ -164,11 +168,15 @@ pub const ExchangeRate = struct {
                         .nanos = nanos,
                     };
                 },
-                else => {},
+                else => try reader.skipField(tag.wire_type),
             }
         }
 
         return rate;
+    }
+    
+    pub fn fromProtobufBytes(allocator: std.mem.Allocator, data: []const u8) !ExchangeRate {
+        return try fromProtobuf(data, allocator);
     }
 
     pub fn clone(self: *const ExchangeRate) ExchangeRate {
@@ -307,11 +315,18 @@ pub const ExchangeRates = struct {
         var current_rate = ExchangeRate.init(1, 1);
         var next_rate = ExchangeRate.init(1, 1);
 
-        while (try reader.next()) |field| {
-            switch (field.number) {
-                1 => current_rate = try ExchangeRate.fromProtobuf(field.data, allocator),
-                2 => next_rate = try ExchangeRate.fromProtobuf(field.data, allocator),
-                else => {},
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            switch (tag.field_number) {
+                1 => {
+                    const rate_data = try reader.readMessage();
+                    current_rate = try ExchangeRate.fromProtobuf(rate_data, allocator);
+                },
+                2 => {
+                    const rate_data = try reader.readMessage();
+                    next_rate = try ExchangeRate.fromProtobuf(rate_data, allocator);
+                },
+                else => try reader.skipField(tag.wire_type),
             }
         }
 

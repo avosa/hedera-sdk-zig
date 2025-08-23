@@ -44,16 +44,16 @@ pub const AccountAllowanceDeleteTransaction = struct {
     pub fn deleteNftAllowance(self: *AccountAllowanceDeleteTransaction, nft_id: NftId, owner: AccountId) !void {
         // Check if we already have an entry for this token and owner
         for (self.nft_allowances.items) |*nft| {
-            if (nft.token_id.num == nft_id.token_id.num and
+            if (nft.token_id.num() == nft_id.token_id.num() and
                 nft.owner.account == owner.account) {
-                try nft.serials.append(nft_id.serial_number);
+                try nft.serials.append(@intCast(nft_id.serial_number));
                 return;
             }
         }
         
         // Create new entry
         var serials = std.ArrayList(i64).init(self.base.allocator);
-        try serials.append(nft_id.serial_number);
+        try serials.append(@intCast(nft_id.serial_number));
         
         try self.nft_allowances.append(NftRemoveAllowance{
             .token_id = nft_id.token_id,
@@ -72,6 +72,10 @@ pub const AccountAllowanceDeleteTransaction = struct {
     }
     
     // Execute the transaction
+    pub fn freezeWith(self: *AccountAllowanceDeleteTransaction, client: ?*Client) !void {
+        try self.base.freezeWith(client);
+    }
+    
     pub fn execute(self: *AccountAllowanceDeleteTransaction, client: *Client) !TransactionResponse {
         return try self.base.execute(client);
     }
@@ -135,3 +139,8 @@ pub const AccountAllowanceDeleteTransaction = struct {
         try self.base.writeCommonFields(writer);
     }
 };
+
+// Factory function matching Hedera SDK patterns
+pub fn newAccountAllowanceDeleteTransaction(allocator: std.mem.Allocator) AccountAllowanceDeleteTransaction {
+    return AccountAllowanceDeleteTransaction.init(allocator);
+}

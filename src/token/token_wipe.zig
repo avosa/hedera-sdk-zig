@@ -11,6 +11,13 @@ const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 // Maximum number of NFT serial numbers that can be wiped in a single transaction
 pub const MAX_NFT_WIPE_BATCH_SIZE: usize = 10;
 
+// Factory function for TokenWipeTransaction
+pub fn newTokenWipeTransaction(allocator: std.mem.Allocator) *TokenWipeTransaction {
+    const tx = allocator.create(TokenWipeTransaction) catch @panic("Out of memory");
+    tx.* = TokenWipeTransaction.init(allocator);
+    return tx;
+}
+
 // TokenWipeTransaction wipes tokens from an account's balance
 pub const TokenWipeTransaction = struct {
     base: Transaction,
@@ -149,6 +156,11 @@ pub const TokenWipeTransaction = struct {
     
     pub fn getSerialNumbers(self: *const TokenWipeTransaction) []const i64 {
         return self.serial_numbers.items;
+    }
+    
+    // Freeze the transaction with client for execution
+    pub fn freezeWith(self: *TokenWipeTransaction, client: *Client) !void {
+        try self.base.freezeWith(client);
     }
     
     // Execute the transaction

@@ -418,3 +418,6 @@ kubeconfig
 *.rej
 .envrc.local
 .tool-versions.local
+
+# TCK test files
+tck/test_endpoints.py

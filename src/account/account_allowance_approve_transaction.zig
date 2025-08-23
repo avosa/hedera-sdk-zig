@@ -149,6 +149,10 @@ pub const AccountAllowanceApproveTransaction = struct {
     }
     
     // Execute the transaction
+    pub fn freezeWith(self: *AccountAllowanceApproveTransaction, client: ?*Client) !void {
+        try self.base.freezeWith(client);
+    }
+    
     pub fn execute(self: *AccountAllowanceApproveTransaction, client: *Client) !TransactionResponse {
         return try self.base.execute(client);
     }
@@ -330,3 +334,8 @@ pub const AccountAllowanceApproveTransaction = struct {
         try self.base.writeCommonFields(writer);
     }
 };
+
+// Factory function matching Hedera SDK patterns
+pub fn newAccountAllowanceApproveTransaction(allocator: std.mem.Allocator) AccountAllowanceApproveTransaction {
+    return AccountAllowanceApproveTransaction.init(allocator);
+}

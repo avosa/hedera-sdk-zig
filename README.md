@@ -1,15 +1,15 @@
 # Hedera SDK for Zig
 
-The **FIRST** and **ONLY** Hedera SDK implementation in Zig, providing 100% feature parity with Hedera's official SDKs.
+The **FIRST** and **ONLY** Hedera SDK implementation in Zig, now fully compliant with the official Hedera Technology Compatibility Kit (TCK).
 
 ## 🚀 Features
 
-- **100% Feature Parity** with Hedera Go SDK
+- **TCK Compliant** - Fully compliant with Hedera's Technology Compatibility Kit
 - **Zero Dependencies** - Pure Zig implementation
 - **Type Safe** - Leverages Zig's compile-time safety
 - **Memory Safe** - No leaks, no undefined behavior
-- **Performance Optimized** - Faster than Go SDK
-- **Complete Test Coverage** - Unit, integration, and system tests
+- **Performance Optimized** - Engineered in Zig to deliver top-tier speed and efficiency.
+- **Complete Test Coverage** - Unit, integration, system, and TCK tests
 
 ## 📦 Installation
 
@@ -60,7 +60,7 @@ Apache License 2.0
 
 ## 🙏 Acknowledgments
 
-Built with reference to Hedera's official Go, Swift and JavaScrip SDKs to ensure complete compatibility and feature parity.
+Built with reference to Hedera's official Go, Swift and JavaScript SDKs to ensure complete compatibility and TCK compliance.
 
 ## 📞 Support
 
@@ -70,4 +70,4 @@ For issues, feature requests, or questions:
 
 ---
 
-**Note**: This is the first production-ready Hedera SDK for Zig. It provides complete feature parity with official Hedera SDKs and is suitable for production use.
+**Note**: This is the first production-ready Hedera SDK for Zig. It is fully TCK compliant and suitable for production use.

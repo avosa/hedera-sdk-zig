@@ -49,6 +49,11 @@ pub const TransactionRecordQuery = struct {
         return self;
     }
     
+    // Alias for setIncludeChildren to match TransactionResponse usage
+    pub fn setIncludeChildRecords(self: *TransactionRecordQuery, include: bool) *TransactionRecordQuery {
+        return self.setIncludeChildren(include);
+    }
+    
     // Include duplicate transaction records
     pub fn setIncludeDuplicates(self: *TransactionRecordQuery, include: bool) *TransactionRecordQuery {
         self.include_duplicates = include;
