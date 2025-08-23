@@ -557,10 +557,9 @@ pub const Transaction = struct {
         var writer = ProtoWriter.init(self.allocator);
         defer writer.deinit();
         
-        // SignatureMap message
-        var sig_iter = self.signatures.iterator();
-        while (sig_iter.next()) |entry| {
-            for (entry.value_ptr.*.items) |sig| {
+        // SignatureMap message - iterate over ArrayList items directly
+        for (self.signatures.items) |*sig_pair| {
+            for (sig_pair.signatures.items) |sig| {
                 // sig_pair = 1 (repeated)
                 var pair_writer = ProtoWriter.init(self.allocator);
                 defer pair_writer.deinit();
@@ -639,8 +638,14 @@ const TransactionRequest = struct {
         // Submit transaction via gRPC
         return TransactionResponse{
             .transaction_id = TransactionId.generate(AccountId.init(0, 0, 0)),
+            .scheduled_transaction_id = null,
             .node_id = AccountId.init(0, 0, 3),
             .hash = &[_]u8{},
+            .transaction_hash = &[_]u8{},
+            .validate_status = true,
+            .include_child_receipts = false,
+            .transaction = null,
+            .allocator = std.heap.page_allocator,
         };
     }
 };
