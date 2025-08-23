@@ -15,7 +15,7 @@ test "SystemDeleteTransaction" {
     
     // Delete file
     const file_id = FileId.init(0, 0, 150);
-    _ = tx.setFileId(file_id);
+    _ = try tx.setFileId(file_id);
     tx.setExpirationTime(Timestamp.fromSeconds(1234567890));
     
     try testing.expectEqual(file_id.num(), tx.file_id.?.num());
@@ -23,7 +23,7 @@ test "SystemDeleteTransaction" {
     
     // Can't set both file and contract
     const contract_id = ContractId.init(0, 0, 200);
-    _ = tx.setContractId(contract_id);
+    _ = try tx.setContractId(contract_id);
     
     try testing.expect(tx.file_id == null);
     try testing.expectEqual(contract_id.num(), tx.contract_id.?.num());
@@ -39,13 +39,13 @@ test "SystemUndeleteTransaction" {
     
     // Undelete file
     const file_id = FileId.init(0, 0, 150);
-    _ = tx.setFileId(file_id);
+    _ = try tx.setFileId(file_id);
     
     try testing.expectEqual(file_id.num(), tx.file_id.?.num());
     
     // Switch to contract
     const contract_id = ContractId.init(0, 0, 200);
-    _ = tx.setContractId(contract_id);
+    _ = try tx.setContractId(contract_id);
     
     try testing.expect(tx.file_id == null);
     try testing.expectEqual(contract_id.num(), tx.contract_id.?.num());
@@ -60,24 +60,24 @@ test "FreezeTransaction" {
     defer tx.deinit();
     
     // Set freeze type
-    _ = tx.setFreezeType(.FREEZE_UPGRADE);
+    _ = try tx.setFreezeType(.FREEZE_UPGRADE);
     
     // Set start and end time
     const start_time = Timestamp.fromSeconds(1234567890);
     const end_time = Timestamp.fromSeconds(1234567900);
     
-    _ = tx.setStartTime(start_time);
-    _ = tx.setEndTime(end_time);
+    _ = try tx.setStartTime(start_time);
+    _ = try tx.setEndTime(end_time);
     
     // Set update file
     const update_file = FileId.init(0, 0, 150);
-    _ = tx.setUpdateFile(update_file);
+    _ = try tx.setUpdateFile(update_file);
     
     // Set file hash
     const file_hash = try allocator.alloc(u8, 48);
     defer allocator.free(file_hash);
     @memset(file_hash, 0xAB);
-    _ = tx.setFileHash(file_hash);
+    _ = try tx.setFileHash(file_hash);
     
     try testing.expectEqual(@as(u8, @intFromEnum(@import("freeze.zig").FreezeType.FREEZE_UPGRADE)), @intFromEnum(tx.freeze_type));
     try testing.expectEqual(start_time.toNanos(), tx.start_time.?.toNanos());
@@ -124,7 +124,7 @@ test "GetByKeyQuery" {
     
     // Set key
     const key = try @import("../crypto/key.zig").Ed25519PublicKey.fromBytes(&[_]u8{1} ** 32);
-    _ = query.setKey(key);
+    _ = try query.setKey(key);
     
     try testing.expect(query.key != null);
 }

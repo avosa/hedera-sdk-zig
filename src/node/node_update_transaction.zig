@@ -6,6 +6,7 @@ const Key = @import("../crypto/key.zig").Key;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const ServiceEndpoint = @import("node_create_transaction.zig").ServiceEndpoint;
+const errors = @import("../core/errors.zig");
 
 // NodeUpdateTransaction updates a consensus node in the network
 pub const NodeUpdateTransaction = struct {
@@ -53,30 +54,32 @@ pub const NodeUpdateTransaction = struct {
     }
     
     // Set the node ID to update
-    pub fn setNodeId(self: *NodeUpdateTransaction, node_id: u64) *NodeUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setNodeId(self: *NodeUpdateTransaction, node_id: u64) errors.HederaError!*NodeUpdateTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         self.node_id = node_id;
+        return self;
     }
     
     // Set the account ID for the node
-    pub fn setAccountId(self: *NodeUpdateTransaction, account_id: AccountId) *NodeUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAccountId(self: *NodeUpdateTransaction, account_id: AccountId) errors.HederaError!*NodeUpdateTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         self.account_id = account_id;
+        return self;
     }
     
     // Set the description
-    pub fn setDescription(self: *NodeUpdateTransaction, description: []const u8) *NodeUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setDescription(self: *NodeUpdateTransaction, description: []const u8) errors.HederaError!*NodeUpdateTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         if (self.description) |old| {
             self.base.allocator.free(old);
-            return self;
         }
-        self.description = try self.base.allocator.dupe(u8, description);
+        self.description = errors.handleDupeError(self.base.allocator, description) catch return errors.HederaError.OutOfMemory;
+        return self;
     }
     
     // Set gossip endpoints (replaces all)
-    pub fn setGossipEndpoints(self: *NodeUpdateTransaction, endpoints: []const ServiceEndpoint) *NodeUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setGossipEndpoints(self: *NodeUpdateTransaction, endpoints: []const ServiceEndpoint) errors.HederaError!*NodeUpdateTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         
         if (self.gossip_endpoints) |*old| {
             for (old.items) |endpoint| {
@@ -84,23 +87,25 @@ pub const NodeUpdateTransaction = struct {
                 self.base.allocator.free(endpoint.domain_name);
             }
             old.deinit();
-            return self;
         }
         
         var new_endpoints = std.ArrayList(ServiceEndpoint).init(self.base.allocator);
         for (endpoints) |endpoint| {
-            try new_endpoints.append(ServiceEndpoint{
-                .ip_address = try self.base.allocator.dupe(u8, endpoint.ip_address),
+            const duped_ip = errors.handleDupeError(self.base.allocator, endpoint.ip_address) catch return errors.HederaError.OutOfMemory;
+            const duped_domain = errors.handleDupeError(self.base.allocator, endpoint.domain_name) catch return errors.HederaError.OutOfMemory;
+            errors.handleAppendError(&new_endpoints, ServiceEndpoint{
+                .ip_address = duped_ip,
                 .port = endpoint.port,
-                .domain_name = try self.base.allocator.dupe(u8, endpoint.domain_name),
-            });
+                .domain_name = duped_domain,
+            }) catch return errors.HederaError.OutOfMemory;
         }
         self.gossip_endpoints = new_endpoints;
+        return self;
     }
     
     // Set service endpoints (replaces all)
-    pub fn setServiceEndpoints(self: *NodeUpdateTransaction, endpoints: []const ServiceEndpoint) *NodeUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setServiceEndpoints(self: *NodeUpdateTransaction, endpoints: []const ServiceEndpoint) errors.HederaError!*NodeUpdateTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         
         if (self.service_endpoints) |*old| {
             for (old.items) |endpoint| {
@@ -108,44 +113,47 @@ pub const NodeUpdateTransaction = struct {
                 self.base.allocator.free(endpoint.domain_name);
             }
             old.deinit();
-            return self;
         }
         
         var new_endpoints = std.ArrayList(ServiceEndpoint).init(self.base.allocator);
         for (endpoints) |endpoint| {
-            try new_endpoints.append(ServiceEndpoint{
-                .ip_address = try self.base.allocator.dupe(u8, endpoint.ip_address),
+            const duped_ip = errors.handleDupeError(self.base.allocator, endpoint.ip_address) catch return errors.HederaError.OutOfMemory;
+            const duped_domain = errors.handleDupeError(self.base.allocator, endpoint.domain_name) catch return errors.HederaError.OutOfMemory;
+            errors.handleAppendError(&new_endpoints, ServiceEndpoint{
+                .ip_address = duped_ip,
                 .port = endpoint.port,
-                .domain_name = try self.base.allocator.dupe(u8, endpoint.domain_name),
-            });
+                .domain_name = duped_domain,
+            }) catch return errors.HederaError.OutOfMemory;
         }
         self.service_endpoints = new_endpoints;
+        return self;
     }
     
     // Set the gossip CA certificate
-    pub fn setGossipCaCertificate(self: *NodeUpdateTransaction, certificate: []const u8) *NodeUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setGossipCaCertificate(self: *NodeUpdateTransaction, certificate: []const u8) errors.HederaError!*NodeUpdateTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         if (self.gossip_ca_certificate) |old| {
             self.base.allocator.free(old);
-            return self;
         }
-        self.gossip_ca_certificate = try self.base.allocator.dupe(u8, certificate);
+        self.gossip_ca_certificate = errors.handleDupeError(self.base.allocator, certificate) catch return errors.HederaError.OutOfMemory;
+        return self;
     }
     
     // Set the gRPC certificate hash
-    pub fn setGrpcCertificateHash(self: *NodeUpdateTransaction, hash: []const u8) *NodeUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setGrpcCertificateHash(self: *NodeUpdateTransaction, hash: []const u8) errors.HederaError!*NodeUpdateTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         if (self.grpc_certificate_hash) |old| {
             self.base.allocator.free(old);
-            return self;
         }
-        self.grpc_certificate_hash = try self.base.allocator.dupe(u8, hash);
+        self.grpc_certificate_hash = errors.handleDupeError(self.base.allocator, hash) catch return errors.HederaError.OutOfMemory;
+        return self;
     }
     
     // Set the admin key
-    pub fn setAdminKey(self: *NodeUpdateTransaction, key: Key) *NodeUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAdminKey(self: *NodeUpdateTransaction, key: Key) errors.HederaError!*NodeUpdateTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         self.admin_key = key;
+        return self;
     }
     
     // Execute the transaction
@@ -168,7 +176,6 @@ pub const NodeUpdateTransaction = struct {
         // nodeId = 1
         if (self.node_id) |node_id| {
             try node_writer.writeUint64(1, node_id);
-            return self;
         }
         
         // accountId = 2

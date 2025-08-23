@@ -1,4 +1,5 @@
 const std = @import("std");
+const errors = @import("../core/errors.zig");
 const TopicId = @import("../core/id.zig").TopicId;
 const AccountId = @import("../core/id.zig").AccountId;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
@@ -28,8 +29,8 @@ pub const TopicDeleteTransaction = struct {
     }
     
     // SetTopicID sets the topic IDentifier
-    pub fn setTopicId(self: *TopicDeleteTransaction, topic_id: TopicId) *TopicDeleteTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn setTopicId(self: *TopicDeleteTransaction, topic_id: TopicId) errors.HederaError!*TopicDeleteTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         self.topic_id = topic_id;
         return self;
     }
@@ -41,7 +42,9 @@ pub const TopicDeleteTransaction = struct {
     
     // Execute executes the transaction
     pub fn execute(self: *TopicDeleteTransaction, client: *Client) !TransactionResponse {
-        if (self.topic_id == null) @panic("Topic ID is required");
+        if (self.topic_id == null) {
+            return errors.HederaError.InvalidTopicId;
+        }
         return try self.transaction.execute(client);
     }
     

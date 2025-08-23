@@ -358,7 +358,7 @@ test "Freeze transaction with key" {
     defer freeze_tx.deinit();
     
     // Set freeze type
-    _ = freeze_tx.setFreezeType(.freeze_only);
+    _ = try freeze_tx.setFreezeType(.freeze_only);
     
     // Generate freeze key
     var freeze_key = try hedera.generatePrivateKey(allocator);

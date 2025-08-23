@@ -12,7 +12,7 @@ test "File create transaction" {
     
     // Set file contents
     const contents = "Hello, Hedera File Service!";
-    _ = tx.setContents(contents);
+    _ = try tx.setContents(contents);
     
     // Generate keys
     var key1 = try hedera.generatePrivateKey(allocator);
@@ -34,10 +34,10 @@ test "File create transaction" {
     
     // Set expiration time
     const expiration = hedera.Timestamp.fromSeconds(1234567890);
-    _ = tx.setExpirationTime(expiration);
+    _ = try tx.setExpirationTime(expiration);
     
     // Set memo
-    _ = tx.setFileMemo("Test file");
+    _ = try tx.setFileMemo("Test file");
     
     // Verify settings
     try testing.expectEqualStrings(contents, tx.contents);
@@ -56,17 +56,17 @@ test "File append transaction" {
     
     // Set file ID
     const file_id = hedera.FileId.init(0, 0, 111);
-    _ = tx.setFileId(file_id);
+    _ = try tx.setFileId(file_id);
     
     // Set contents to append
     const contents = " Additional content";
-    _ = tx.setContents(contents);
+    _ = try tx.setContents(contents);
     
     // Set chunk size for large files
-    _ = tx.setChunkSize(4096);
+    _ = try tx.setChunkSize(4096);
     
     // Set max chunks
-    _ = tx.setMaxChunks(5);
+    _ = try tx.setMaxChunks(5);
     
     try testing.expectEqual(@as(u64, 111), tx.file_id.?.num());
     try testing.expectEqualStrings(contents, tx.contents);
@@ -84,7 +84,7 @@ test "File update transaction" {
     
     // Set file ID
     const file_id = hedera.FileId.init(0, 0, 222);
-    _ = tx.setFileId(file_id);
+    _ = try tx.setFileId(file_id);
     
     // Update contents
     const new_contents = "Updated file contents";
@@ -97,7 +97,7 @@ test "File update transaction" {
     
     // Update expiration
     const new_expiration = hedera.Timestamp.fromSeconds(2345678901);
-    _ = tx.setExpirationTime(new_expiration);
+    _ = try tx.setExpirationTime(new_expiration);
     
     // Update memo
     _ = try tx.setFileMemo("Updated file memo");
@@ -119,7 +119,7 @@ test "File delete transaction" {
     
     // Set file to delete
     const file_id = hedera.FileId.init(0, 0, 333);
-    _ = tx.setFileId(file_id);
+    _ = try tx.setFileId(file_id);
     
     try testing.expectEqual(@as(u64, 333), tx.file_id.?.num());
 }
@@ -212,13 +212,13 @@ test "File chunking for large files" {
     
     // Set file ID
     const file_id = hedera.FileId.init(0, 0, 666);
-    _ = tx.setFileId(file_id);
+    _ = try tx.setFileId(file_id);
     
     // Set large content
-    _ = tx.setContents(large_content);
+    _ = try tx.setContents(large_content);
     
     // Set chunk size (4KB)
-    _ = tx.setChunkSize(4096);
+    _ = try tx.setChunkSize(4096);
     
     // Calculate expected chunks
     const expected_chunks = (large_content.len + 4095) / 4096;
@@ -245,7 +245,7 @@ test "File transaction validation" {
     var append_tx = hedera.FileAppendTransaction.init(allocator);
     defer append_tx.deinit();
     
-    _ = append_tx.setContents("content");
+    _ = try append_tx.setContents("content");
     try testing.expect(append_tx.file_id == null);
     
     // Test file update without file ID should fail when executed
@@ -272,12 +272,12 @@ test "File memo limits" {
     
     // Valid memo (under 100 bytes)
     const valid_memo = "This is a valid file memo";
-    _ = tx.setFileMemo(valid_memo);
+    _ = try tx.setFileMemo(valid_memo);
     try testing.expectEqualStrings(valid_memo, tx.memo.?);
     
     // Long memo (exactly 100 bytes)
     const long_memo = "a" ** 100;
-    _ = tx.setFileMemo(long_memo);
+    _ = try tx.setFileMemo(long_memo);
     try testing.expectEqualStrings(long_memo, tx.memo.?);
     
     // Too long memo would panic (removed test as setters use @panic not errors)
@@ -292,7 +292,7 @@ test "File key requirements" {
     defer tx.deinit();
     
     const file_id = hedera.FileId.init(0, 0, 777);
-    _ = tx.setFileId(file_id);
+    _ = try tx.setFileId(file_id);
     
     // Create complex key structure
     var admin_key = try hedera.generatePrivateKey(allocator);
@@ -332,16 +332,16 @@ test "File special contents" {
     
     // Binary contents
     const binary_content = [_]u8{ 0x00, 0xFF, 0xDE, 0xAD, 0xBE, 0xEF };
-    _ = tx.setContents(&binary_content);
+    _ = try tx.setContents(&binary_content);
     try testing.expectEqualSlices(u8, &binary_content, tx.contents);
     
     // UTF-8 contents
     const utf8_content = "Hello 世界 🌍";
-    _ = tx.setContents(utf8_content);
+    _ = try tx.setContents(utf8_content);
     try testing.expectEqualStrings(utf8_content, tx.contents);
     
     // Empty contents
-    _ = tx.setContents("");
+    _ = try tx.setContents("");
     try testing.expectEqualStrings("", tx.contents);
 }
 

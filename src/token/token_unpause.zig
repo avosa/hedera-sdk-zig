@@ -5,6 +5,7 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // TokenUnpauseTransaction unpauses token operations
 pub const TokenUnpauseTransaction = struct {
@@ -23,8 +24,8 @@ pub const TokenUnpauseTransaction = struct {
     }
     
     // Set the token to unpause
-    pub fn setTokenId(self: *TokenUnpauseTransaction, token_id: TokenId) *TokenUnpauseTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setTokenId(self: *TokenUnpauseTransaction, token_id: TokenId) errors.HederaError!*TokenUnpauseTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.token_id = token_id;
         return self;
     }

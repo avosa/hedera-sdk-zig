@@ -7,6 +7,7 @@ const Key = @import("../crypto/key.zig").Key;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const Timestamp = @import("../core/timestamp.zig").Timestamp;
+const errors = @import("../core/errors.zig");
 
 // ScheduleCreateTransaction creates a new schedule entity in the network's action queue
 pub const ScheduleCreateTransaction = struct {
@@ -37,22 +38,22 @@ pub const ScheduleCreateTransaction = struct {
     }
     
     // Set the payer account ID for the scheduled transaction
-    pub fn setPayerAccountId(self: *ScheduleCreateTransaction, payer_account_id: AccountId) *ScheduleCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setPayerAccountId(self: *ScheduleCreateTransaction, payer_account_id: AccountId) errors.HederaError!*ScheduleCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.payer_account_id = payer_account_id;
         return self;
     }
     
     // Set the admin key that can delete the schedule
-    pub fn setAdminKey(self: *ScheduleCreateTransaction, key: Key) *ScheduleCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAdminKey(self: *ScheduleCreateTransaction, key: Key) errors.HederaError!*ScheduleCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.admin_key = key;
         return self;
     }
     
     // Set the transaction to be scheduled
-    pub fn setScheduledTransaction(self: *ScheduleCreateTransaction, transaction: *Transaction) *ScheduleCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setScheduledTransaction(self: *ScheduleCreateTransaction, transaction: *Transaction) errors.HederaError!*ScheduleCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.schedulable_transaction) |old_tx| {
             old_tx.deinit();
@@ -65,33 +66,33 @@ pub const ScheduleCreateTransaction = struct {
     }
     
     // Set the memo for the schedule
-    pub fn setMemo(self: *ScheduleCreateTransaction, memo: []const u8) !*ScheduleCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        if (memo.len > 100) @panic("Memo too long");
+    pub fn setMemo(self: *ScheduleCreateTransaction, memo: []const u8) errors.HederaError!*ScheduleCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
+        try errors.requireMaxLength(memo, 100);
         
         if (self.memo) |old_memo| {
             self.base.allocator.free(old_memo);
         }
         
-        self.memo = try self.base.allocator.dupe(u8, memo);
+        self.memo = try errors.handleDupeError(self.base.allocator, memo);
         return self;
     }
     
     // Set the schedule memo (alias for setMemo)
-    pub fn setScheduleMemo(self: *ScheduleCreateTransaction, memo: []const u8) !*ScheduleCreateTransaction {
+    pub fn setScheduleMemo(self: *ScheduleCreateTransaction, memo: []const u8) errors.HederaError!*ScheduleCreateTransaction {
         return self.setMemo(memo);
     }
     
     // Set the expiration time for the schedule
-    pub fn setExpirationTime(self: *ScheduleCreateTransaction, expiration_time: Timestamp) *ScheduleCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setExpirationTime(self: *ScheduleCreateTransaction, expiration_time: Timestamp) errors.HederaError!*ScheduleCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.expiration_time = expiration_time;
         return self;
     }
     
     // Set whether to wait for expiry before execution
-    pub fn setWaitForExpiry(self: *ScheduleCreateTransaction, wait: bool) *ScheduleCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setWaitForExpiry(self: *ScheduleCreateTransaction, wait: bool) errors.HederaError!*ScheduleCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.wait_for_expiry = wait;
         return self;
     }

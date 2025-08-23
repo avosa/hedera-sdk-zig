@@ -1,4 +1,5 @@
 const std = @import("std");
+const errors = @import("../core/errors.zig");
 const Transaction = @import("../transaction/transaction.zig").Transaction;
 const TransactionResponse = @import("../transaction/transaction.zig").TransactionResponse;
 const FileId = @import("../core/id.zig").FileId;
@@ -36,19 +37,18 @@ pub const FileUpdateTransaction = struct {
     }
     
     // Set the file ID to update
-    pub fn setFileId(self: *FileUpdateTransaction, file_id: FileId) *FileUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setFileId(self: *FileUpdateTransaction, file_id: FileId) errors.HederaError!*FileUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.file_id = file_id;
         return self;
     }
     
     // Set the keys for the file (accepts ArrayList)
-    pub fn setKeysList(self: *FileUpdateTransaction, keys: std.ArrayList(Key)) *FileUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setKeysList(self: *FileUpdateTransaction, keys: std.ArrayList(Key)) errors.HederaError!*FileUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.keys) |*old_keys| {
             old_keys.deinit();
-            return self;
         }
         
         self.keys = keys;
@@ -56,52 +56,52 @@ pub const FileUpdateTransaction = struct {
     }
     
     // Set the keys for the file (accepts single Key)
-    pub fn setKeys(self: *FileUpdateTransaction, key: Key) !*FileUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setKeys(self: *FileUpdateTransaction, key: Key) errors.HederaError!*FileUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.keys) |*old_keys| {
             old_keys.deinit();
         }
         
         var keys = std.ArrayList(Key).init(self.base.allocator);
-        try keys.append(key);
+        try errors.handleAppendError(&keys, key);
         self.keys = keys;
         return self;
     }
     
     // Set the contents of the file
-    pub fn setContents(self: *FileUpdateTransaction, contents: []const u8) !*FileUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setContents(self: *FileUpdateTransaction, contents: []const u8) errors.HederaError!*FileUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.contents) |old_contents| {
             self.base.allocator.free(old_contents);
         }
         
-        self.contents = try self.base.allocator.dupe(u8, contents);
+        self.contents = try errors.handleDupeError(self.base.allocator, contents);
         return self;
     }
     
     // Set the expiration time
-    pub fn setExpirationTime(self: *FileUpdateTransaction, expiration_time: Timestamp) *FileUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setExpirationTime(self: *FileUpdateTransaction, expiration_time: Timestamp) errors.HederaError!*FileUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.expiration_time = expiration_time;
         return self;
     }
     
     // Set the memo
-    pub fn setMemo(self: *FileUpdateTransaction, memo: []const u8) !*FileUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setMemo(self: *FileUpdateTransaction, memo: []const u8) errors.HederaError!*FileUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.memo) |old_memo| {
             self.base.allocator.free(old_memo);
         }
         
-        self.memo = try self.base.allocator.dupe(u8, memo);
+        self.memo = try errors.handleDupeError(self.base.allocator, memo);
         return self;
     }
     
-    // Set the file memo (alias for setMemo for Go SDK compatibility)
-    pub fn setFileMemo(self: *FileUpdateTransaction, memo: []const u8) !*FileUpdateTransaction {
+    // Set the file memo (alias for setMemo)
+    pub fn setFileMemo(self: *FileUpdateTransaction, memo: []const u8) errors.HederaError!*FileUpdateTransaction {
         return self.setMemo(memo);
     }
     
@@ -132,7 +132,6 @@ pub const FileUpdateTransaction = struct {
             const id_bytes = try id_writer.toOwnedSlice();
             defer self.base.allocator.free(id_bytes);
             try file_writer.writeMessage(1, id_bytes);
-            return self;
         }
         
         // expirationTime = 2

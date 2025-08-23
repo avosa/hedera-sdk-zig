@@ -1,4 +1,5 @@
 const std = @import("std");
+const errors = @import("../core/errors.zig");
 const AccountId = @import("../core/id.zig").AccountId;
 const FileId = @import("../core/id.zig").FileId;
 const Key = @import("../crypto/key.zig").Key;
@@ -61,8 +62,8 @@ pub const ContractCreateTransaction = struct {
     }
     
     // SetBytecodeFileID sets the file ID containing the contract bytecode
-    pub fn setBytecodeFileId(self: *ContractCreateTransaction, file_id: FileId) *ContractCreateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setBytecodeFileId(self: *ContractCreateTransaction, file_id: FileId) errors.HederaError!*ContractCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.bytecode_file_id = file_id;
         self.bytecode = ""; // Clear bytecode when setting file ID
         return self;
@@ -74,8 +75,8 @@ pub const ContractCreateTransaction = struct {
     }
     
     // SetBytecode sets the contract bytecode directly
-    pub fn setBytecode(self: *ContractCreateTransaction, bytecode: []const u8) *ContractCreateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setBytecode(self: *ContractCreateTransaction, bytecode: []const u8) errors.HederaError!*ContractCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.bytecode = bytecode;
         self.bytecode_file_id = null; // Clear file ID when setting bytecode
         return self;
@@ -87,8 +88,8 @@ pub const ContractCreateTransaction = struct {
     }
     
     // SetAdminKey sets the admin key for the contract
-    pub fn setAdminKey(self: *ContractCreateTransaction, key: Key) *ContractCreateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setAdminKey(self: *ContractCreateTransaction, key: Key) errors.HederaError!*ContractCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.admin_key = key;
         return self;
     }
@@ -99,8 +100,8 @@ pub const ContractCreateTransaction = struct {
     }
     
     // SetGas sets the gas limit for the contract constructor
-    pub fn setGas(self: *ContractCreateTransaction, gas: u64) *ContractCreateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setGas(self: *ContractCreateTransaction, gas: u64) errors.HederaError!*ContractCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.gas = @intCast(gas);
         return self;
     }
@@ -111,8 +112,8 @@ pub const ContractCreateTransaction = struct {
     }
     
     // SetInitialBalance sets the initial balance for the contract
-    pub fn setInitialBalance(self: *ContractCreateTransaction, balance: Hbar) *ContractCreateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setInitialBalance(self: *ContractCreateTransaction, balance: Hbar) errors.HederaError!*ContractCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.initial_balance = balance;
         return self;
     }
@@ -123,8 +124,8 @@ pub const ContractCreateTransaction = struct {
     }
     
     // SetProxyAccountID sets the proxy account ID (deprecated)
-    pub fn setProxyAccountId(self: *ContractCreateTransaction, proxy_id: AccountId) *ContractCreateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setProxyAccountId(self: *ContractCreateTransaction, proxy_id: AccountId) errors.HederaError!*ContractCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.proxy_account_id = proxy_id;
         return self;
     }
@@ -135,8 +136,8 @@ pub const ContractCreateTransaction = struct {
     }
     
     // SetAutoRenewPeriod sets the auto renew period for the contract
-    pub fn setAutoRenewPeriod(self: *ContractCreateTransaction, period: Duration) *ContractCreateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setAutoRenewPeriod(self: *ContractCreateTransaction, period: Duration) errors.HederaError!*ContractCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.auto_renew_period = period;
         return self;
     }
@@ -147,8 +148,8 @@ pub const ContractCreateTransaction = struct {
     }
     
     // SetConstructorParameters sets the constructor parameters for the contract
-    pub fn setConstructorParameters(self: *ContractCreateTransaction, params: []const u8) *ContractCreateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setConstructorParameters(self: *ContractCreateTransaction, params: []const u8) errors.HederaError!*ContractCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.constructor_parameters = params;
         return self;
     }
@@ -159,8 +160,8 @@ pub const ContractCreateTransaction = struct {
     }
     
     // SetMemo sets the memo for the contract
-    pub fn setMemo(self: *ContractCreateTransaction, memo: []const u8) *ContractCreateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setMemo(self: *ContractCreateTransaction, memo: []const u8) errors.HederaError!*ContractCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.memo = memo;
         return self;
     }
@@ -171,8 +172,8 @@ pub const ContractCreateTransaction = struct {
     }
     
     // SetMaxAutomaticTokenAssociations sets the maximum number of automatic token associations
-    pub fn setMaxAutomaticTokenAssociations(self: *ContractCreateTransaction, max: i32) *ContractCreateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setMaxAutomaticTokenAssociations(self: *ContractCreateTransaction, max: i32) errors.HederaError!*ContractCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.max_automatic_token_associations = max;
         return self;
     }
@@ -183,8 +184,8 @@ pub const ContractCreateTransaction = struct {
     }
     
     // SetAutoRenewAccountID sets the auto renew account ID for the contract
-    pub fn setAutoRenewAccountId(self: *ContractCreateTransaction, account_id: AccountId) *ContractCreateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setAutoRenewAccountId(self: *ContractCreateTransaction, account_id: AccountId) errors.HederaError!*ContractCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.auto_renew_account_id = account_id;
         return self;
     }
@@ -195,8 +196,8 @@ pub const ContractCreateTransaction = struct {
     }
     
     // SetStakedAccountID sets the staked account ID for the contract
-    pub fn setStakedAccountID(self: *ContractCreateTransaction, account_id: AccountId) *ContractCreateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setStakedAccountID(self: *ContractCreateTransaction, account_id: AccountId) errors.HederaError!*ContractCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.staked_account_id = account_id;
         self.staked_node_id = null; // Clear node ID when setting account ID
         return self;
@@ -208,8 +209,8 @@ pub const ContractCreateTransaction = struct {
     }
     
     // SetStakedNodeID sets the staked node ID for the contract
-    pub fn setStakedNodeId(self: *ContractCreateTransaction, node_id: i64) *ContractCreateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setStakedNodeId(self: *ContractCreateTransaction, node_id: i64) errors.HederaError!*ContractCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.staked_node_id = node_id;
         self.staked_account_id = null; // Clear account ID when setting node ID
         return self;
@@ -221,8 +222,8 @@ pub const ContractCreateTransaction = struct {
     }
     
     // SetDeclineStakingReward sets whether to decline staking rewards
-    pub fn setDeclineStakingReward(self: *ContractCreateTransaction, decline: bool) *ContractCreateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setDeclineStakingReward(self: *ContractCreateTransaction, decline: bool) errors.HederaError!*ContractCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.decline_staking_reward = decline;
         return self;
     }

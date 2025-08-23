@@ -11,7 +11,7 @@ test "Topic create transaction" {
     defer tx.deinit();
     
     // Set topic memo
-    _ = tx.setTopicMemo("Test consensus topic");
+    _ = try tx.setTopicMemo("Test consensus topic");
     
     // Generate keys
     var admin_key = try hedera.generatePrivateKey(allocator);
@@ -21,12 +21,12 @@ test "Topic create transaction" {
     defer submit_key.deinit();
     
     // Set keys
-    _ = tx.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
-    _ = tx.setSubmitKey(hedera.Key.fromPublicKey(submit_key.getPublicKey()));
+    _ = try tx.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
+    _ = try tx.setSubmitKey(hedera.Key.fromPublicKey(submit_key.getPublicKey()));
     
     // Set auto renew
-    _ = tx.setAutoRenewAccountId(hedera.AccountId.init(0, 0, 100));
-    _ = tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
+    _ = try tx.setAutoRenewAccountId(hedera.AccountId.init(0, 0, 100));
+    _ = try tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
     
     // Verify settings
     try testing.expectEqualStrings("Test consensus topic", tx.memo);
@@ -46,10 +46,10 @@ test "Topic update transaction" {
     
     // Set topic to update
     const topic_id = hedera.TopicId.init(0, 0, 777);
-    _ = tx.setTopicId(topic_id);
+    _ = try tx.setTopicId(topic_id);
     
     // Update memo
-    _ = tx.setTopicMemo("Updated topic memo");
+    _ = try tx.setTopicMemo("Updated topic memo");
     
     // Update keys
     var new_admin_key = try hedera.generatePrivateKey(allocator);
@@ -58,15 +58,15 @@ test "Topic update transaction" {
     var new_submit_key = try hedera.generatePrivateKey(allocator);
     defer new_submit_key.deinit();
     
-    _ = tx.setAdminKey(hedera.Key.fromPublicKey(new_admin_key.getPublicKey()));
-    _ = tx.setSubmitKey(hedera.Key.fromPublicKey(new_submit_key.getPublicKey()));
+    _ = try tx.setAdminKey(hedera.Key.fromPublicKey(new_admin_key.getPublicKey()));
+    _ = try tx.setSubmitKey(hedera.Key.fromPublicKey(new_submit_key.getPublicKey()));
     
     // Update auto renew
-    _ = tx.setAutoRenewAccountId(hedera.AccountId.init(0, 0, 200));
-    _ = tx.setAutoRenewPeriod(hedera.Duration.fromDays(120));
+    _ = try tx.setAutoRenewAccountId(hedera.AccountId.init(0, 0, 200));
+    _ = try tx.setAutoRenewPeriod(hedera.Duration.fromDays(120));
     
     // Clear submit key
-    _ = tx.clearSubmitKey();
+    _ = try tx.clearSubmitKey();
     
     // Verify settings
     try testing.expectEqual(@as(u64, 777), tx.topic_id.?.num());
@@ -87,7 +87,7 @@ test "Topic delete transaction" {
     
     // Set topic to delete
     const topic_id = hedera.TopicId.init(0, 0, 888);
-    _ = tx.setTopicId(topic_id);
+    _ = try tx.setTopicId(topic_id);
     
     try testing.expectEqual(@as(u64, 888), tx.topic_id.?.num());
 }
@@ -102,17 +102,17 @@ test "Topic message submit transaction" {
     
     // Set topic ID
     const topic_id = hedera.TopicId.init(0, 0, 999);
-    _ = tx.setTopicId(topic_id);
+    _ = try tx.setTopicId(topic_id);
     
     // Set message
     const message = "Hello from consensus service!";
-    _ = tx.setMessage(message);
+    _ = try tx.setMessage(message);
     
     // Set max chunks for large messages
-    _ = tx.setMaxChunks(5);
+    _ = try tx.setMaxChunks(5);
     
     // Set chunk size
-    _ = tx.setChunkSize(1024);
+    _ = try tx.setChunkSize(1024);
     
     try testing.expectEqual(@as(u64, 999), tx.topic_id.?.num());
     try testing.expectEqualStrings(message, tx.message);
@@ -130,7 +130,7 @@ test "Topic message chunking" {
     
     // Set topic ID
     const topic_id = hedera.TopicId.init(0, 0, 1111);
-    _ = tx.setTopicId(topic_id);
+    _ = try tx.setTopicId(topic_id);
     
     // Create large message (5KB)
     const large_message = try allocator.alloc(u8, 5120);
@@ -138,10 +138,10 @@ test "Topic message chunking" {
     @memset(large_message, 'M');
     
     // Set large message
-    _ = tx.setMessage(large_message);
+    _ = try tx.setMessage(large_message);
     
     // Set chunk size (1KB)
-    _ = tx.setChunkSize(1024);
+    _ = try tx.setChunkSize(1024);
     
     // Calculate expected chunks
     const expected_chunks = (large_message.len + 1023) / 1024;
@@ -272,12 +272,12 @@ test "Topic memo limits" {
     
     // Valid memo (under 100 bytes)
     const valid_memo = "This is a valid topic memo";
-    _ = tx.setTopicMemo(valid_memo);
+    _ = try tx.setTopicMemo(valid_memo);
     try testing.expectEqualStrings(valid_memo, tx.memo);
     
     // Long memo (exactly 100 bytes)
     const long_memo = "a" ** 100;
-    _ = tx.setTopicMemo(long_memo);
+    _ = try tx.setTopicMemo(long_memo);
     try testing.expectEqualStrings(long_memo, tx.memo);
     
     // Too long memo would panic (removed test as setters use @panic not errors)
@@ -292,14 +292,14 @@ test "Topic submit key requirements" {
     defer tx.deinit();
     
     // Topic without submit key (public topic)
-    _ = tx.setTopicMemo("Public topic");
+    _ = try tx.setTopicMemo("Public topic");
     try testing.expect(tx.submit_key == null);
     
     // Topic with submit key (restricted topic)
     var submit_key = try hedera.generatePrivateKey(allocator);
     defer submit_key.deinit();
     
-    _ = tx.setSubmitKey(hedera.Key.fromPublicKey(submit_key.getPublicKey()));
+    _ = try tx.setSubmitKey(hedera.Key.fromPublicKey(submit_key.getPublicKey()));
     try testing.expect(tx.submit_key != null);
     
     // Topic with threshold submit key
@@ -316,7 +316,7 @@ test "Topic submit key requirements" {
     try threshold_key.add(hedera.Key.fromPublicKey(key1.getPublicKey()));
     try threshold_key.add(hedera.Key.fromPublicKey(key2.getPublicKey()));
     
-    _ = tx.setSubmitKey(hedera.Key.fromKeyList(threshold_key));
+    _ = try tx.setSubmitKey(hedera.Key.fromKeyList(threshold_key));
     try testing.expect(tx.submit_key != null);
 }
 

@@ -60,7 +60,7 @@ Apache License 2.0
 
 ## 🙏 Acknowledgments
 
-Built with reference to Hedera's official Go SDK to ensure complete compatibility and feature parity.
+Built with reference to Hedera's official Go, Swift and JavaScrip SDKs to ensure complete compatibility and feature parity.
 
 ## 📞 Support
 

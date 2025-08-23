@@ -6,6 +6,7 @@ const TokenId = @import("../core/id.zig").TokenId;
 const NftId = @import("../core/id.zig").NftId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // TokenReference represents a token reference for rejection
 pub const TokenReference = struct {
@@ -32,8 +33,8 @@ pub const TokenRejectTransaction = struct {
     }
     
     // Set the owner account
-    pub fn setOwner(self: *TokenRejectTransaction, owner: AccountId) *TokenRejectTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setOwner(self: *TokenRejectTransaction, owner: AccountId) errors.HederaError!*TokenRejectTransaction {
+        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
         self.owner = owner;
         return self;
     }
@@ -53,7 +54,7 @@ pub const TokenRejectTransaction = struct {
     }
     
     // Set all token references to reject
-    pub fn setTokenReferences(self: *TokenRejectTransaction, references: []const TokenReference) *TokenRejectTransaction {
+    pub fn setTokenReferences(self: *TokenRejectTransaction, references: []const TokenReference) !*TokenRejectTransaction {
         self.token_references.clearAndFree();
         try self.token_references.appendSlice(references);
         return self;

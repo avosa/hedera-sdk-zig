@@ -1,4 +1,5 @@
 const std = @import("std");
+const errors = @import("../core/errors.zig");
 const FileId = @import("../core/id.zig").FileId;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
 const TransactionResponse = @import("../transaction/transaction.zig").TransactionResponse;
@@ -33,18 +34,18 @@ pub const FileAppendTransaction = struct {
     }
     
     // Set the file ID to append to
-    pub fn setFileId(self: *FileAppendTransaction, file_id: FileId) *FileAppendTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setFileId(self: *FileAppendTransaction, file_id: FileId) errors.HederaError!*FileAppendTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.file_id = file_id;
         return self;
     }
     
     // Set the contents to append
-    pub fn setContents(self: *FileAppendTransaction, contents: []const u8) *FileAppendTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setContents(self: *FileAppendTransaction, contents: []const u8) errors.HederaError!*FileAppendTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (contents.len > MAX_CHUNK_SIZE * MAX_CHUNKS) {
-            @panic("Contents too large");
+            return errors.HederaError.MaxFileSizeExceeded;
         }
         
         self.contents = contents;
@@ -52,11 +53,11 @@ pub const FileAppendTransaction = struct {
     }
     
     // Set chunk size for multi-chunk appends
-    pub fn setChunkSize(self: *FileAppendTransaction, size: usize) *FileAppendTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setChunkSize(self: *FileAppendTransaction, size: usize) errors.HederaError!*FileAppendTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (size == 0 or size > MAX_CHUNK_SIZE) {
-            @panic("Invalid chunk size");
+            return errors.HederaError.InvalidParameter;
         }
         
         self.chunk_size = size;
@@ -64,11 +65,11 @@ pub const FileAppendTransaction = struct {
     }
     
     // Set max chunks
-    pub fn setMaxChunks(self: *FileAppendTransaction, max_chunks: u32) *FileAppendTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setMaxChunks(self: *FileAppendTransaction, max_chunks: u32) errors.HederaError!*FileAppendTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (max_chunks == 0 or max_chunks > MAX_CHUNKS) {
-            @panic("Invalid max chunks");
+            return errors.HederaError.InvalidParameter;
         }
         
         self.max_chunks = max_chunks;

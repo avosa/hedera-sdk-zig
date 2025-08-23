@@ -184,4 +184,3 @@ test "hedera.Status all known codes" {
     _ = Status.FILE_UPLOADED_PROTO_NOT_SAVED_TO_DISK;
     _ = Status.FEE_SCHEDULE_FILE_PART_UPLOADED;
     _ = Status.EXCHANGE_RATE_CHANGE_LIMIT_EXCEEDED;
-}

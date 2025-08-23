@@ -4,6 +4,7 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // PrngTransaction generates a pseudorandom number on the Hedera network
 pub const PrngTransaction = struct {
@@ -22,9 +23,9 @@ pub const PrngTransaction = struct {
     }
     
     // Set the range for the random number (0 to range-1)
-    pub fn setRange(self: *PrngTransaction, range: i32) *PrngTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        if (range <= 0) @panic("Invalid range");
+    pub fn setRange(self: *PrngTransaction, range: i32) errors.HederaError!*PrngTransaction {
+        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+        if (range <= 0) return errors.HederaError.InvalidParameter;
         self.range = range;
         return self;
     }

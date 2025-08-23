@@ -8,6 +8,7 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const TransactionReceipt = @import("../transaction/transaction.zig").TransactionReceipt;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // Match Go SDK's NewAccountCreateTransaction factory function
 pub fn newAccountCreateTransaction(allocator: std.mem.Allocator) AccountCreateTransaction {
@@ -64,15 +65,15 @@ pub const AccountCreateTransaction = struct {
     }
     
     // Set the key for the new account
-    pub fn setKey(self: *AccountCreateTransaction, key: Key) *AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setKey(self: *AccountCreateTransaction, key: Key) errors.HederaError!*AccountCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.key = key;
         return self;
     }
     
     // Sets account key and ECDSA key for alias
     pub fn setKeyWithAlias(self: *AccountCreateTransaction, key: Key, ecdsa_key: Key) !*AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+        try errors.requireNotFrozen(self.base.frozen);
         self.key = key;
         
         // Extract EVM address from ECDSA key
@@ -100,7 +101,7 @@ pub const AccountCreateTransaction = struct {
     
     // Sets ECDSA key and derives EVM address
     pub fn setEcdsaKeyWithAlias(self: *AccountCreateTransaction, ecdsa_key: Key) !*AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+        try errors.requireNotFrozen(self.base.frozen);
         
         // Set the key
         self.key = ecdsa_key;
@@ -129,22 +130,22 @@ pub const AccountCreateTransaction = struct {
     }
     
     // Set initial balance for the new account
-    pub fn setInitialBalance(self: *AccountCreateTransaction, balance: Hbar) *AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setInitialBalance(self: *AccountCreateTransaction, balance: Hbar) errors.HederaError!*AccountCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.initial_balance = balance;
         return self;
     }
     
     // Set whether receiver signature is required
-    pub fn setReceiverSignatureRequired(self: *AccountCreateTransaction, required: bool) *AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setReceiverSignatureRequired(self: *AccountCreateTransaction, required: bool) errors.HederaError!*AccountCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.receiver_signature_required = required;
         return self;
     }
     
     // Accepts EVM address string or raw bytes  
     pub fn setAliasBytes(self: *AccountCreateTransaction, input: []const u8) !*AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.alias) |old_alias| {
             self.base.allocator.free(old_alias);
@@ -183,14 +184,14 @@ pub const AccountCreateTransaction = struct {
     }
     
     // Set auto renew period
-    pub fn setAutoRenewPeriod(self: *AccountCreateTransaction, period: Duration) *AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAutoRenewPeriod(self: *AccountCreateTransaction, period: Duration) errors.HederaError!*AccountCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         const min_period = Duration.fromDays(1);
         const max_period = Duration.fromDays(3653); // ~10 years
         
         if (period.seconds < min_period.seconds or period.seconds > max_period.seconds) {
-            @panic("Invalid auto renew period");
+            return errors.HederaError.InvalidExpirationTime;
         }
         
         self.auto_renew_period = period;
@@ -198,12 +199,9 @@ pub const AccountCreateTransaction = struct {
     }
     
     // Set account memo
-    pub fn setAccountMemo(self: *AccountCreateTransaction, memo: []const u8) *AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        
-        if (memo.len > 100) {
-            @panic("Memo too long");
-        }
+    pub fn setAccountMemo(self: *AccountCreateTransaction, memo: []const u8) errors.HederaError!*AccountCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
+        try errors.requireStringNotTooLong(memo, 100);
         
         self.memo = memo;
         return self;
@@ -211,11 +209,11 @@ pub const AccountCreateTransaction = struct {
     
     
     // Set max automatic token associations
-    pub fn setMaxAutomaticTokenAssociations(self: *AccountCreateTransaction, max: i32) *AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setMaxAutomaticTokenAssociations(self: *AccountCreateTransaction, max: i32) errors.HederaError!*AccountCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (max < 0 or max > 5000) {
-            @panic("Invalid max automatic token associations");
+            return errors.HederaError.InvalidTokenMaximumSupply;
         }
         
         self.max_automatic_token_associations = max;
@@ -224,8 +222,8 @@ pub const AccountCreateTransaction = struct {
     
     // SetProxyAccountID sets the ID of the account to which this account is proxy staked
     // Deprecated but kept for compatibility with Go SDK
-    pub fn setProxyAccountId(self: *AccountCreateTransaction, id: AccountId) *AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setProxyAccountId(self: *AccountCreateTransaction, id: AccountId) errors.HederaError!*AccountCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.proxy_account_id = id;
         return self;
     }
@@ -282,11 +280,11 @@ pub const AccountCreateTransaction = struct {
     
     
     // Set staked account ID
-    pub fn setStakedAccountId(self: *AccountCreateTransaction, account_id: AccountId) *AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setStakedAccountId(self: *AccountCreateTransaction, account_id: AccountId) errors.HederaError!*AccountCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.staked_node_id != null) {
-            return error.CannotSetBothStakedAccountAndNode;
+            return errors.HederaError.InvalidTransaction;
         }
         
         self.staked_account_id = account_id;
@@ -295,11 +293,11 @@ pub const AccountCreateTransaction = struct {
     
     
     // Set staked node ID
-    pub fn setStakedNodeId(self: *AccountCreateTransaction, node_id: i64) *AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setStakedNodeId(self: *AccountCreateTransaction, node_id: i64) errors.HederaError!*AccountCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.staked_account_id != null) {
-            @panic("Cannot set both staked account and node");
+            return errors.HederaError.InvalidTransaction;
         }
         
         self.staked_node_id = node_id;
@@ -308,19 +306,19 @@ pub const AccountCreateTransaction = struct {
     
     
     // Set decline staking reward
-    pub fn setDeclineStakingReward(self: *AccountCreateTransaction, decline: bool) *AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setDeclineStakingReward(self: *AccountCreateTransaction, decline: bool) errors.HederaError!*AccountCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.decline_staking_reward = decline;
         return self;
     }
     
     
     // Set alias key
-    pub fn setAliasKey(self: *AccountCreateTransaction, key: Key) *AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAliasKey(self: *AccountCreateTransaction, key: Key) errors.HederaError!*AccountCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.alias_evm_address != null) {
-            return error.CannotSetBothAliasKeyAndEvmAddress;
+            return errors.HederaError.InvalidTransaction;
         }
         
         self.alias_key = key;
@@ -328,15 +326,15 @@ pub const AccountCreateTransaction = struct {
     }
     
     // Set alias EVM address
-    pub fn setAliasEvmAddress(self: *AccountCreateTransaction, address: []const u8) *AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAliasEvmAddress(self: *AccountCreateTransaction, address: []const u8) errors.HederaError!*AccountCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (address.len != 20) {
-            return error.InvalidEvmAddress;
+            return errors.HederaError.InvalidTransaction;
         }
         
         if (self.alias_key != null) {
-            return error.CannotSetBothAliasKeyAndEvmAddress;
+            return errors.HederaError.InvalidTransaction;
         }
         
         self.alias_evm_address = address;
@@ -365,7 +363,7 @@ pub const AccountCreateTransaction = struct {
     
     // Set transaction memo matching Go SDK chaining pattern
     pub fn setTransactionMemo(self: *AccountCreateTransaction, memo: []const u8) !*AccountCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+        try errors.requireNotFrozen(self.base.frozen);
         self.memo = memo;
         _ = self.base.setTransactionMemo(memo);
         return self;

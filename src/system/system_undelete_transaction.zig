@@ -5,6 +5,7 @@ const ContractId = @import("../core/id.zig").ContractId;
 const FileId = @import("../core/id.zig").FileId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // SystemUndeleteTransaction undeletes a file or smart contract (admin only)
 pub const SystemUndeleteTransaction = struct {
@@ -23,16 +24,16 @@ pub const SystemUndeleteTransaction = struct {
     }
     
     // Set the contract ID to undelete
-    pub fn setContractId(self: *SystemUndeleteTransaction, contract_id: ContractId) *SystemUndeleteTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setContractId(self: *SystemUndeleteTransaction, contract_id: ContractId) errors.HederaError!*SystemUndeleteTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.contract_id = contract_id;
         self.file_id = null; // Clear file ID when setting contract ID
         return self;
     }
     
     // Set the file ID to undelete
-    pub fn setFileId(self: *SystemUndeleteTransaction, file_id: FileId) *SystemUndeleteTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setFileId(self: *SystemUndeleteTransaction, file_id: FileId) errors.HederaError!*SystemUndeleteTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.file_id = file_id;
         self.contract_id = null; // Clear contract ID when setting file ID
         return self;
@@ -85,13 +86,13 @@ pub const SystemUndeleteTransaction = struct {
     }
     
     // Validate the transaction
-    pub fn validate(self: *SystemUndeleteTransaction) !void {
+    pub fn validate(self: *SystemUndeleteTransaction) errors.HederaError!void {
         if (self.contract_id == null and self.file_id == null) {
-            return error.MustSetEitherContractIdOrFileId;
+            return errors.HederaError.InvalidParameter;
         }
         
         if (self.contract_id != null and self.file_id != null) {
-            return error.CannotSetBothContractIdAndFileId;
+            return errors.HederaError.InvalidParameter;
         }
     }
 };

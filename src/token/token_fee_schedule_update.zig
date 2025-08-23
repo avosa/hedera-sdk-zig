@@ -5,7 +5,8 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
-const CustomFee = @import("token_create.zig").CustomFee;
+const CustomFee = @import("custom_fee.zig").CustomFee;
+const errors = @import("../core/errors.zig");
 
 // TokenFeeScheduleUpdateTransaction updates the custom fee schedule for a token
 pub const TokenFeeScheduleUpdateTransaction = struct {
@@ -22,45 +23,41 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
     }
     
     pub fn deinit(self: *TokenFeeScheduleUpdateTransaction) void {
-        for (self.custom_fees.items) |*fee| {
-            fee.deinit();
-        }
+        // CustomFee is now a union, no deinit needed
         self.custom_fees.deinit();
         self.base.deinit();
     }
     
     // Set the token ID for fee schedule update
-    pub fn setTokenId(self: *TokenFeeScheduleUpdateTransaction, token_id: TokenId) *TokenFeeScheduleUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setTokenId(self: *TokenFeeScheduleUpdateTransaction, token_id: TokenId) errors.HederaError!*TokenFeeScheduleUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.token_id = token_id;
         return self;
     }
     
     // Set custom fees for the token
-    pub fn setCustomFees(self: *TokenFeeScheduleUpdateTransaction, fees: []const CustomFee) *TokenFeeScheduleUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        if (fees.len > 10) @panic("Too many custom fees"); // Maximum 10 custom fees per token
+    pub fn setCustomFees(self: *TokenFeeScheduleUpdateTransaction, fees: []const CustomFee) !*TokenFeeScheduleUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
+        if (fees.len > 10) return errors.HederaError.InvalidTokenMaximumSupply; // Maximum 10 custom fees per token
         
         // Clear existing fees
-        for (self.custom_fees.items) |*fee| {
-            fee.deinit();
-            return self;
-        }
         self.custom_fees.clearRetainingCapacity();
         
         // Copy new fees
         for (fees) |fee| {
-            self.custom_fees.append(fee.clone(self.base.allocator) catch @panic("Failed to clone custom fee")) catch @panic("Failed to append custom fee");
+            const cloned_fee = fee.clone();
+            try self.custom_fees.append(cloned_fee);
         }
         return self;
     }
     
     // Includes a custom fee for the token
-    pub fn addCustomFee(self: *TokenFeeScheduleUpdateTransaction, fee: CustomFee) *TokenFeeScheduleUpdateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        if (self.custom_fees.items.len >= 10) @panic("Too many custom fees");
+    pub fn addCustomFee(self: *TokenFeeScheduleUpdateTransaction, fee: CustomFee) !*TokenFeeScheduleUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
+        if (self.custom_fees.items.len >= 10) return errors.HederaError.InvalidTokenMaximumSupply;
         
-        self.custom_fees.append(fee.clone(self.base.allocator) catch @panic("Failed to clone custom fee")) catch @panic("Failed to append custom fee");
+        const cloned_fee = fee.clone();
+        try self.custom_fees.append(cloned_fee);
         return self;
     }
     

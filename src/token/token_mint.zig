@@ -5,6 +5,7 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // Maximum metadata size for NFTs
 pub const MAX_METADATA_SIZE: usize = 100;
@@ -35,26 +36,26 @@ pub const TokenMintTransaction = struct {
     }
     
     // Set the token to mint
-    pub fn setTokenId(self: *TokenMintTransaction, token_id: TokenId) *TokenMintTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setTokenId(self: *TokenMintTransaction, token_id: TokenId) errors.HederaError!*TokenMintTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.token_id = token_id;
         return self;
     }
     
     // Set amount to mint (for fungible tokens)
-    pub fn setAmount(self: *TokenMintTransaction, amount: u64) *TokenMintTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAmount(self: *TokenMintTransaction, amount: u64) errors.HederaError!*TokenMintTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.metadata_list.items.len > 0) {
-            @panic("Cannot set both amount and metadata");
+            return errors.HederaError.InvalidTokenMintAmount;
         }
         
         if (amount == 0) {
-            @panic("Invalid mint amount");
+            return errors.HederaError.InvalidTokenMintAmount;
         }
         
         if (amount > std.math.maxInt(i64)) {
-            @panic("Mint amount too large");
+            return errors.HederaError.InvalidTokenMintAmount;
         }
         
         self.amount = amount;
@@ -62,43 +63,44 @@ pub const TokenMintTransaction = struct {
     }
     
     // Includes metadata for NFT minting
-    pub fn addMetadata(self: *TokenMintTransaction, metadata: []const u8) *TokenMintTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn addMetadata(self: *TokenMintTransaction, metadata: []const u8) errors.HederaError!*TokenMintTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.amount > 0) {
-            @panic("Cannot set both amount and metadata");
+            return errors.HederaError.InvalidTokenMintMetadata;
         }
         
         if (metadata.len > MAX_METADATA_SIZE) {
-            @panic("Metadata too large");
+            return errors.HederaError.InvalidTokenMintMetadata;
         }
         
         if (self.metadata_list.items.len >= MAX_NFT_MINT_BATCH_SIZE) {
-            @panic("Too many NFTs in batch");
+            return errors.HederaError.MaxNftsInPriceRegimeHaveBeenMinted;
         }
         
-        self.metadata_list.append(metadata) catch @panic("Failed to append metadata");
+        try errors.handleAppendError(&self.metadata_list, metadata);
+        return self;
     }
     
     // Set metadata list for batch NFT minting
-    pub fn setMetadata(self: *TokenMintTransaction, metadata_list: []const []const u8) *TokenMintTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setMetadata(self: *TokenMintTransaction, metadata_list: []const []const u8) errors.HederaError!*TokenMintTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.amount > 0) {
-            @panic("Cannot set both amount and metadata");
+            return errors.HederaError.InvalidTokenMintMetadata;
         }
         
         if (metadata_list.len > MAX_NFT_MINT_BATCH_SIZE) {
-            @panic("Too many NFTs in batch");
+            return errors.HederaError.MaxNftsInPriceRegimeHaveBeenMinted;
         }
         
         self.metadata_list.clearRetainingCapacity();
         
         for (metadata_list) |metadata| {
             if (metadata.len > MAX_METADATA_SIZE) {
-                @panic("Metadata too large");
+                return errors.HederaError.InvalidTokenMintMetadata;
             }
-            self.metadata_list.append(metadata) catch @panic("Failed to append metadata");
+            try errors.handleAppendError(&self.metadata_list, metadata);
         }
         return self;
     }

@@ -48,12 +48,12 @@ test "Transaction memo validation" {
     
     // Valid memo (under 100 bytes)
     const valid_memo = "This is a valid transaction memo";
-    _ = tx.base.setTransactionMemo(valid_memo);
+    _ = try tx.base.setTransactionMemo(valid_memo);
     try testing.expectEqualStrings(valid_memo, tx.base.transaction_memo);
     
     // Long memo (exactly 100 bytes)
     const long_memo = "a" ** 100;
-    _ = tx.base.setTransactionMemo(long_memo);
+    _ = try tx.base.setTransactionMemo(long_memo);
     try testing.expectEqualStrings(long_memo, tx.base.memo);
     
     // Too long memo would panic (removed test as setters use @panic not errors)
@@ -72,7 +72,7 @@ test "Transaction valid duration" {
     
     // Set custom valid duration
     const custom_duration = hedera.Duration.fromMinutes(3);
-    _ = tx.base.setTransactionValidDuration(custom_duration);
+    _ = try tx.base.setTransactionValidDuration(custom_duration);
     try testing.expectEqual(@as(i64, 180), tx.base.transaction_valid_duration.seconds);
 }
 
@@ -86,7 +86,7 @@ test "Transaction max transaction fee" {
     
     // Set max transaction fee
     const max_fee = try hedera.Hbar.from(5);
-    _ = tx.base.setMaxTransactionFee(max_fee);
+    _ = try tx.base.setMaxTransactionFee(max_fee);
     try testing.expectEqual(max_fee.toTinybars(), tx.base.max_transaction_fee.?.toTinybars());
 }
 
@@ -304,11 +304,11 @@ test "System delete transaction" {
     
     // Set file to delete
     const file_id = hedera.FileId.init(0, 0, 111);
-    _ = delete_tx.setFileId(file_id);
+    _ = try delete_tx.setFileId(file_id);
     
     // Set expiration time
     const expiration = hedera.Timestamp.fromSeconds(1234567890);
-    _ = delete_tx.setExpirationTime(expiration);
+    _ = try delete_tx.setExpirationTime(expiration);
     
     try testing.expect(delete_tx.file_id != null);
     try testing.expectEqual(@as(u64, 111), delete_tx.file_id.?.num());
@@ -316,7 +316,7 @@ test "System delete transaction" {
     
     // Set contract to delete
     const contract_id = hedera.ContractId.init(0, 0, 222);
-    _ = delete_tx.setContractId(contract_id);
+    _ = try delete_tx.setContractId(contract_id);
     
     try testing.expect(delete_tx.contract_id != null);
     try testing.expectEqual(@as(u64, 222), delete_tx.contract_id.?.num());
@@ -332,14 +332,14 @@ test "System undelete transaction" {
     
     // Set file to undelete
     const file_id = hedera.FileId.init(0, 0, 333);
-    _ = undelete_tx.setFileId(file_id);
+    _ = try undelete_tx.setFileId(file_id);
     
     try testing.expect(undelete_tx.file_id != null);
     try testing.expectEqual(@as(u64, 333), undelete_tx.file_id.?.num());
     
     // Set contract to undelete
     const contract_id = hedera.ContractId.init(0, 0, 444);
-    _ = undelete_tx.setContractId(contract_id);
+    _ = try undelete_tx.setContractId(contract_id);
     
     try testing.expect(undelete_tx.contract_id != null);
     try testing.expectEqual(@as(u64, 444), undelete_tx.contract_id.?.num());
@@ -354,24 +354,24 @@ test "Freeze transaction types" {
     defer freeze_tx.deinit();
     
     // Test different freeze types
-    _ = freeze_tx.setFreezeType(.freeze_only);
+    _ = try freeze_tx.setFreezeType(.freeze_only);
     try testing.expectEqual(hedera.FreezeType.freeze_only, freeze_tx.freeze_type);
     
-    _ = freeze_tx.setFreezeType(.prepare_upgrade);
+    _ = try freeze_tx.setFreezeType(.prepare_upgrade);
     try testing.expectEqual(hedera.FreezeType.prepare_upgrade, freeze_tx.freeze_type);
     
-    _ = freeze_tx.setFreezeType(.freeze_upgrade);
+    _ = try freeze_tx.setFreezeType(.freeze_upgrade);
     try testing.expectEqual(hedera.FreezeType.freeze_upgrade, freeze_tx.freeze_type);
     
-    _ = freeze_tx.setFreezeType(.freeze_abort);
+    _ = try freeze_tx.setFreezeType(.freeze_abort);
     try testing.expectEqual(hedera.FreezeType.freeze_abort, freeze_tx.freeze_type);
     
-    _ = freeze_tx.setFreezeType(.telemetry_upgrade);
+    _ = try freeze_tx.setFreezeType(.telemetry_upgrade);
     try testing.expectEqual(hedera.FreezeType.telemetry_upgrade, freeze_tx.freeze_type);
     
     // Set start and end times (hour, minute format)
-    _ = freeze_tx.setStartTime(12, 30);  // 12:30
-    _ = freeze_tx.setEndTime(14, 45);    // 14:45
+    _ = try freeze_tx.setStartTime(12, 30);  // 12:30
+    _ = try freeze_tx.setEndTime(14, 45);    // 14:45
     
     try testing.expectEqual(@as(u8, 12), freeze_tx.start_hour);
     try testing.expectEqual(@as(u8, 30), freeze_tx.start_min);
@@ -380,7 +380,7 @@ test "Freeze transaction types" {
     
     // Set file hash
     const file_hash = [_]u8{0xFF} ** 48;
-    _ = freeze_tx.setFileHash(&file_hash);
+    _ = try freeze_tx.setFileHash(&file_hash);
     
     try testing.expectEqualSlices(u8, &file_hash, freeze_tx.file_hash);
 }
@@ -395,7 +395,7 @@ test "Prng transaction" {
     
     // Set range for random number
     const range: u32 = 100;
-    _ = prng_tx.setRange(range);
+    _ = try prng_tx.setRange(range);
     
     try testing.expectEqual(@as(?i32, @intCast(range)), prng_tx.range);
 }
@@ -439,18 +439,18 @@ test "Transaction chunking for large data" {
     defer file_append.deinit();
     
     const file_id = hedera.FileId.init(0, 0, 123);
-    _ = file_append.setFileId(file_id);
+    _ = try file_append.setFileId(file_id);
     
     // Create large content (over 4KB)
     const large_content = try allocator.alloc(u8, 5000);
     defer allocator.free(large_content);
     @memset(large_content, 'A');
     
-    _ = file_append.setContents(large_content);
+    _ = try file_append.setContents(large_content);
     
     // Set chunk size
     const chunk_size: u32 = 1024;
-    _ = file_append.setChunkSize(chunk_size);
+    _ = try file_append.setChunkSize(chunk_size);
     
     try testing.expectEqual(@as(u32, chunk_size), file_append.chunk_size);
     try testing.expectEqual(@as(usize, 5000), file_append.contents.len);
@@ -469,14 +469,14 @@ test "Transaction builder pattern" {
     defer key.deinit();
     
     // Chain methods
-    _ = tx.setKey(hedera.Key.fromPublicKey(key.getPublicKey()));
-    _ = tx.setInitialBalance(try hedera.Hbar.from(100));
-    _ = tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
-    _ = tx.setAccountMemo("Test account");
-    _ = tx.setMaxAutomaticTokenAssociations(10);
-    _ = tx.setReceiverSignatureRequired(true);
-    _ = tx.setStakedNodeId(3);
-    _ = tx.setDeclineStakingReward(false);
+    _ = try tx.setKey(hedera.Key.fromPublicKey(key.getPublicKey()));
+    _ = try tx.setInitialBalance(try hedera.Hbar.from(100));
+    _ = try tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
+    _ = try tx.setAccountMemo("Test account");
+    _ = try tx.setMaxAutomaticTokenAssociations(10);
+    _ = try tx.setReceiverSignatureRequired(true);
+    _ = try tx.setStakedNodeId(3);
+    _ = try tx.setDeclineStakingReward(false);
     
     // Verify all settings
     try testing.expect(tx.key != null);

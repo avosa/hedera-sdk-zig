@@ -13,7 +13,7 @@ const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
 const TokenType = @import("token_create.zig").TokenType;
 const TokenSupplyType = @import("token_create.zig").TokenSupplyType;
-const CustomFee = @import("token_create.zig").CustomFee;
+const CustomFee = @import("custom_fee.zig").CustomFee;
 
 // TokenInfo contains comprehensive information about a token
 pub const TokenInfo = struct {

@@ -60,14 +60,14 @@ pub const ProtobufReader = struct {
 
     pub fn readFixed32(self: *Self) !u32 {
         if (self.pos + 4 > self.data.len) return error.UnexpectedEndOfData;
-        const result = std.mem.readIntLittle(u32, self.data[self.pos..][0..4]);
+        const result = std.mem.readInt(u32, self.data[self.pos..][0..4], .little);
         self.pos += 4;
         return result;
     }
 
     pub fn readFixed64(self: *Self) !u64 {
         if (self.pos + 8 > self.data.len) return error.UnexpectedEndOfData;
-        const result = std.mem.readIntLittle(u64, self.data[self.pos..][0..8]);
+        const result = std.mem.readInt(u64, self.data[self.pos..][0..8], .little);
         self.pos += 8;
         return result;
     }

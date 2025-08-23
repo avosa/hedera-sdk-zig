@@ -7,6 +7,7 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // EthereumTransactionData represents Ethereum transaction data
 pub const EthereumTransactionData = struct {
@@ -33,10 +34,12 @@ pub const EthereumTransactionData = struct {
     
     pub fn setCallData(self: *EthereumTransactionData, file_id: FileId) *EthereumTransactionData {
         self.call_data = file_id;
+        return self;
     }
     
     pub fn setMaxGasAllowance(self: *EthereumTransactionData, gas: i64) *EthereumTransactionData {
         self.max_gas_allowance = gas;
+        return self;
     }
 };
 
@@ -60,43 +63,45 @@ pub const EthereumTransaction = struct {
         self.base.deinit();
         if (self.ethereum_data.len > 0) {
             self.base.allocator.free(self.ethereum_data);
-            return self;
         }
     }
     
     // Set the raw Ethereum transaction data
-    pub fn setEthereumData(self: *EthereumTransaction, data: []const u8) *EthereumTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        if (data.len == 0) return error.InvalidEthereumData;
+    pub fn setEthereumData(self: *EthereumTransaction, data: []const u8) errors.HederaError!*EthereumTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+        if (data.len == 0) return errors.HederaError.InvalidParameter;
         
         if (self.ethereum_data.len > 0) {
             self.base.allocator.free(self.ethereum_data);
         }
-        self.ethereum_data = try self.base.allocator.dupe(u8, data);
+        self.ethereum_data = errors.handleDupeError(self.base.allocator, data) catch return errors.HederaError.OutOfMemory;
+        return self;
     }
     
     // Set the file ID containing call data for large transactions
-    pub fn setCallData(self: *EthereumTransaction, file_id: FileId) *EthereumTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setCallData(self: *EthereumTransaction, file_id: FileId) errors.HederaError!*EthereumTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         self.call_data = file_id;
+        return self;
     }
     
     // Set the maximum gas allowance for the transaction
-    pub fn setMaxGasAllowance(self: *EthereumTransaction, gas: i64) *EthereumTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        if (gas < 0) return error.InvalidGasAllowance;
+    pub fn setMaxGasAllowance(self: *EthereumTransaction, gas: i64) errors.HederaError!*EthereumTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+        if (gas < 0) return errors.HederaError.InvalidParameter;
         self.max_gas_allowance = gas;
+        return self;
     }
     
     // Create from pre-built Ethereum transaction data
     pub fn fromEthereumData(allocator: std.mem.Allocator, data: EthereumTransactionData) !EthereumTransaction {
         var transaction = EthereumTransaction.init(allocator);
-        try transaction.setEthereumData(data.ethereum_data);
+        _ = try transaction.setEthereumData(data.ethereum_data);
         if (data.call_data) |call_data| {
-            try transaction.setCallData(call_data);
+            _ = try transaction.setCallData(call_data);
         }
         if (data.max_gas_allowance > 0) {
-            try transaction.setMaxGasAllowance(data.max_gas_allowance);
+            _ = try transaction.setMaxGasAllowance(data.max_gas_allowance);
         }
         return transaction;
     }

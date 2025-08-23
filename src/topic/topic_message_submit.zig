@@ -1,4 +1,5 @@
 const std = @import("std");
+const errors = @import("../core/errors.zig");
 const TopicId = @import("../core/id.zig").TopicId;
 const AccountId = @import("../core/id.zig").AccountId;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
@@ -55,8 +56,8 @@ pub const TopicMessageSubmitTransaction = struct {
     }
     
     // SetTopicID sets the topic to submit message to
-    pub fn setTopicId(self: *TopicMessageSubmitTransaction, topic_id: TopicId) *TopicMessageSubmitTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn setTopicId(self: *TopicMessageSubmitTransaction, topic_id: TopicId) errors.HederaError!*TopicMessageSubmitTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         self.topic_id = topic_id;
         return self;
     }
@@ -67,8 +68,8 @@ pub const TopicMessageSubmitTransaction = struct {
     }
     
     // SetMessage sets the message to be submitted
-    pub fn setMessage(self: *TopicMessageSubmitTransaction, message: []const u8) *TopicMessageSubmitTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn setMessage(self: *TopicMessageSubmitTransaction, message: []const u8) errors.HederaError!*TopicMessageSubmitTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         self.message = message;
         return self;
     }
@@ -79,8 +80,8 @@ pub const TopicMessageSubmitTransaction = struct {
     }
     
     // SetMaxChunks sets the maximum amount of chunks to use to send the message
-    pub fn setMaxChunks(self: *TopicMessageSubmitTransaction, max_chunks: u64) *TopicMessageSubmitTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn setMaxChunks(self: *TopicMessageSubmitTransaction, max_chunks: u64) errors.HederaError!*TopicMessageSubmitTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         self.max_chunks = max_chunks;
         return self;
     }
@@ -91,8 +92,8 @@ pub const TopicMessageSubmitTransaction = struct {
     }
     
     // SetChunkSize sets the chunk size to use to send the message
-    pub fn setChunkSize(self: *TopicMessageSubmitTransaction, chunk_size: u64) *TopicMessageSubmitTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn setChunkSize(self: *TopicMessageSubmitTransaction, chunk_size: u64) errors.HederaError!*TopicMessageSubmitTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         self.chunk_size = chunk_size;
         return self;
     }
@@ -103,27 +104,28 @@ pub const TopicMessageSubmitTransaction = struct {
     }
     
     // SetCustomFeeLimits sets the maximum custom fee that the user is willing to pay for the message
-    pub fn setCustomFeeLimits(self: *TopicMessageSubmitTransaction, custom_fee_limits: []*CustomFeeLimit) *TopicMessageSubmitTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn setCustomFeeLimits(self: *TopicMessageSubmitTransaction, custom_fee_limits: []*CustomFeeLimit) errors.HederaError!*TopicMessageSubmitTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         
         for (self.custom_fee_limits.items) |fee_limit| {
             self.allocator.destroy(fee_limit);
         }
         self.custom_fee_limits.clearRetainingCapacity();
-        self.custom_fee_limits.appendSlice(custom_fee_limits) catch @panic("Failed to set custom fee limits");
+        try errors.handleAppendSliceError(&self.custom_fee_limits, custom_fee_limits);
         
         return self;
     }
     
     // AddCustomFeeLimit adds the maximum custom fee that the user is willing to pay for the message
-    pub fn addCustomFeeLimit(self: *TopicMessageSubmitTransaction, custom_fee_limit: *CustomFeeLimit) *TopicMessageSubmitTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
-        self.custom_fee_limits.append(custom_fee_limit) catch @panic("Failed to add custom fee limit");
+    pub fn addCustomFeeLimit(self: *TopicMessageSubmitTransaction, custom_fee_limit: *CustomFeeLimit) errors.HederaError!*TopicMessageSubmitTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
+        try errors.handleAppendError(&self.custom_fee_limits, custom_fee_limit);
+        return self;
     }
     
     // ClearCustomFeeLimits clears the maximum custom fee that the user is willing to pay for the message
-    pub fn clearCustomFeeLimits(self: *TopicMessageSubmitTransaction) *TopicMessageSubmitTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn clearCustomFeeLimits(self: *TopicMessageSubmitTransaction) errors.HederaError!*TopicMessageSubmitTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         
         for (self.custom_fee_limits.items) |fee_limit| {
             self.allocator.destroy(fee_limit);
@@ -146,11 +148,15 @@ pub const TopicMessageSubmitTransaction = struct {
     // FreezeWith prepares the transaction for execution with a client
     pub fn freezeWith(self: *TopicMessageSubmitTransaction, client: ?*Client) !*TopicMessageSubmitTransaction {
         // Validate chunk size
-        if (self.chunk_size == 0) @panic("Invalid chunk size");
+        if (self.chunk_size == 0) {
+            return errors.HederaError.InvalidParameter;
+        }
         
         // Calculate required chunks
         const chunks = (self.message.len + self.chunk_size - 1) / self.chunk_size;
-        if (chunks > self.max_chunks) @panic("Message requires too many chunks");
+        if (chunks > self.max_chunks) {
+            return errors.HederaError.MessageSizeTooLarge;
+        }
         
         try self.transaction.freezeWith(client);
         return self;
@@ -158,15 +164,19 @@ pub const TopicMessageSubmitTransaction = struct {
     
     // Execute executes the transaction
     pub fn execute(self: *TopicMessageSubmitTransaction, client: *Client) !TransactionResponse {
-        if (self.topic_id == null) @panic("Topic ID is required");
-        if (self.message.len == 0) @panic("Message is required");
+        if (self.topic_id == null) {
+            return errors.HederaError.InvalidTopicId;
+        }
+        if (self.message.len == 0) {
+            return errors.HederaError.InvalidTopicMessage;
+        }
         
         const responses = try self.executeAll(client);
         if (responses.len > 0) {
             return responses[0];
         }
         
-        @panic("No transactions executed");
+        return errors.HederaError.UnknownError;
     }
     
     // ExecuteAll executes all the transactions with the provided client
@@ -188,14 +198,16 @@ pub const TopicMessageSubmitTransaction = struct {
     pub fn schedule(self: *TopicMessageSubmitTransaction) !*ScheduleCreateTransaction {
         // Calculate required chunks
         const chunks = (self.message.len + self.chunk_size - 1) / self.chunk_size;
-        if (chunks > 1) @panic("Cannot schedule multi-chunk messages");
+        if (chunks > 1) {
+            return errors.HederaError.MessageSizeTooLarge;
+        }
         
         return try self.transaction.schedule();
     }
     
     // Sign signs the transaction
-    pub fn sign(self: *TopicMessageSubmitTransaction, private_key: anytype) *TopicMessageSubmitTransaction {
-        self.transaction.sign(private_key);
+    pub fn sign(self: *TopicMessageSubmitTransaction, private_key: anytype) !*TopicMessageSubmitTransaction {
+        try self.transaction.sign(private_key);
         return self;
     }
     

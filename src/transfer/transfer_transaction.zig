@@ -7,6 +7,7 @@ const Transaction = @import("../transaction/transaction.zig").Transaction;
 const TransactionResponse = @import("../transaction/transaction.zig").TransactionResponse;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // Transfer alias for Go SDK compatibility  
 pub const Transfer = HbarTransfer;
@@ -137,8 +138,8 @@ pub const TransferTransaction = struct {
     }
     
     // Includes an HBAR transfer in the transaction
-    pub fn addHbarTransfer(self: *TransferTransaction, account_id: AccountId, amount: Hbar) !void {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn addHbarTransfer(self: *TransferTransaction, account_id: AccountId, amount: Hbar) errors.HederaError!void {
+        try errors.requireNotFrozen(self.base.frozen);
         
         // Check if account already has a transfer
         for (self.hbar_transfers.items) |*transfer| {
@@ -150,12 +151,12 @@ pub const TransferTransaction = struct {
         }
         
         // Create new transfer entry
-        try self.hbar_transfers.append(HbarTransfer.init(account_id, amount));
+        try errors.handleAppendError(&self.hbar_transfers, HbarTransfer.init(account_id, amount));
     }
     
     // Includes an approved HBAR transfer in the transaction
-    pub fn addApprovedHbarTransfer(self: *TransferTransaction, account_id: AccountId, amount: Hbar) !void {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn addApprovedHbarTransfer(self: *TransferTransaction, account_id: AccountId, amount: Hbar) errors.HederaError!void {
+        try errors.requireNotFrozen(self.base.frozen);
         
         // Check if account already has a transfer
         for (self.hbar_transfers.items) |*transfer| {
@@ -167,12 +168,12 @@ pub const TransferTransaction = struct {
         }
         
         // Create new approved transfer entry
-        try self.hbar_transfers.append(HbarTransfer.initApproved(account_id, amount));
+        try errors.handleAppendError(&self.hbar_transfers, HbarTransfer.initApproved(account_id, amount));
     }
     
     // Includes a token transfer in the transaction
-    pub fn addTokenTransfer(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64) !void {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn addTokenTransfer(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64) errors.HederaError!void {
+        try errors.requireNotFrozen(self.base.frozen);
         
         // Check if this token-account pair already has a transfer
         for (self.token_transfers.items) |*transfer| {
@@ -183,15 +184,15 @@ pub const TransferTransaction = struct {
         }
         
         // Create new transfer entry
-        try self.token_transfers.append(TokenTransfer.init(token_id, account_id, amount, self.base.allocator));
+        try errors.handleAppendError(&self.token_transfers, TokenTransfer.init(token_id, account_id, amount, self.base.allocator));
     }
     
     // Includes a token transfer in the transaction with decimals
-    pub fn addTokenTransferWithDecimals(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64, decimals: u32) !void {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn addTokenTransferWithDecimals(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64, decimals: u32) errors.HederaError!void {
+        try errors.requireNotFrozen(self.base.frozen);
         
         // Store expected decimals
-        try self.token_decimals.put(token_id, decimals);
+        self.token_decimals.put(token_id, decimals) catch return errors.HederaError.OutOfMemory;
         
         // Check if this token-account pair already has a transfer
         for (self.token_transfers.items) |*transfer| {
@@ -203,12 +204,12 @@ pub const TransferTransaction = struct {
         }
         
         // Create new transfer entry
-        try self.token_transfers.append(TokenTransfer.initWithDecimals(token_id, account_id, amount, decimals, self.base.allocator));
+        try errors.handleAppendError(&self.token_transfers, TokenTransfer.initWithDecimals(token_id, account_id, amount, decimals, self.base.allocator));
     }
     
     // Includes an approved token transfer in the transaction
-    pub fn addApprovedTokenTransfer(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64) !void {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn addApprovedTokenTransfer(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64) errors.HederaError!void {
+        try errors.requireNotFrozen(self.base.frozen);
         
         // Check if this token-account pair already has a transfer
         for (self.token_transfers.items) |*transfer| {
@@ -220,50 +221,50 @@ pub const TransferTransaction = struct {
         }
         
         // Create new approved transfer entry
-        try self.token_transfers.append(TokenTransfer.initApproved(token_id, account_id, amount, self.base.allocator));
+        try errors.handleAppendError(&self.token_transfers, TokenTransfer.initApproved(token_id, account_id, amount, self.base.allocator));
     }
     
     // Includes an NFT transfer in the transaction
-    pub fn addNftTransfer(self: *TransferTransaction, nft_id: NftId, sender: AccountId, receiver: AccountId) !void {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn addNftTransfer(self: *TransferTransaction, nft_id: NftId, sender: AccountId, receiver: AccountId) errors.HederaError!void {
+        try errors.requireNotFrozen(self.base.frozen);
         
         // Check for duplicate (same NFT with same sender/receiver)
         for (self.nft_transfers.items) |transfer| {
             if (transfer.nft_id.equals(nft_id) and 
                 transfer.sender_account_id.equals(sender) and 
                 transfer.receiver_account_id.equals(receiver)) {
-                return error.DuplicateNftTransfer;
+                return errors.HederaError.InvalidParameter;
             }
         }
         
-        try self.nft_transfers.append(NftTransfer.init(nft_id, sender, receiver));
+        try errors.handleAppendError(&self.nft_transfers, NftTransfer.init(nft_id, sender, receiver));
     }
     
     // Includes an approved NFT transfer in the transaction
-    pub fn addApprovedNftTransfer(self: *TransferTransaction, nft_id: NftId, sender: AccountId, receiver: AccountId) !void {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn addApprovedNftTransfer(self: *TransferTransaction, nft_id: NftId, sender: AccountId, receiver: AccountId) errors.HederaError!void {
+        try errors.requireNotFrozen(self.base.frozen);
         
         // Check for duplicate (same NFT with same sender/receiver)
         for (self.nft_transfers.items) |transfer| {
             if (transfer.nft_id.equals(nft_id) and 
                 transfer.sender_account_id.equals(sender) and 
                 transfer.receiver_account_id.equals(receiver)) {
-                return error.DuplicateNftTransfer;
+                return errors.HederaError.InvalidParameter;
             }
         }
         
-        try self.nft_transfers.append(NftTransfer.initApproved(nft_id, sender, receiver));
+        try errors.handleAppendError(&self.nft_transfers, NftTransfer.initApproved(nft_id, sender, receiver));
     }
     
     // Validate transfers sum to zero
-    fn validateTransfers(self: *TransferTransaction) !void {
+    fn validateTransfers(self: *TransferTransaction) errors.HederaError!void {
         // Validate HBAR transfers
         var hbar_sum = Hbar.zero();
         for (self.hbar_transfers.items) |transfer| {
             hbar_sum = try hbar_sum.add(transfer.amount);
         }
         if (!hbar_sum.isZero()) {
-            return error.UnbalancedHbarTransfers;
+            return errors.HederaError.InvalidAccountAmounts;
         }
         
         // Validate token transfers per token
@@ -272,48 +273,48 @@ pub const TransferTransaction = struct {
         
         for (self.token_transfers.items) |transfer| {
             const current = token_sums.get(transfer.token_id) orelse 0;
-            try token_sums.put(transfer.token_id, current + transfer.amount);
+            token_sums.put(transfer.token_id, current + transfer.amount) catch return errors.HederaError.OutOfMemory;
         }
         
         var iter = token_sums.iterator();
         while (iter.next()) |entry| {
             if (entry.value_ptr.* != 0) {
-                return error.UnbalancedTokenTransfers;
+                return errors.HederaError.TransfersNotZeroSumForToken;
             }
         }
     }
     
     // Freeze the transaction
-    pub fn freeze(self: *TransferTransaction) !void {
+    pub fn freeze(self: *TransferTransaction) errors.HederaError!void {
         try self.validateTransfers();
-        try self.base.freeze();
+        self.base.freeze() catch return errors.HederaError.InvalidTransaction;
     }
     
     // Freeze with client
-    pub fn freezeWith(self: *TransferTransaction, client: *Client) !void {
+    pub fn freezeWith(self: *TransferTransaction, client: *Client) errors.HederaError!void {
         try self.validateTransfers();
-        try self.base.freezeWith(client);
+        self.base.freezeWith(client) catch return errors.HederaError.InvalidTransaction;
     }
     
     // Sign the transaction
-    pub fn sign(self: *TransferTransaction, private_key: anytype) !void {
-        try self.base.sign(private_key);
+    pub fn sign(self: *TransferTransaction, private_key: anytype) errors.HederaError!void {
+        self.base.sign(private_key) catch return errors.HederaError.InvalidSignature;
     }
     
     // Sign with operator
-    pub fn signWithOperator(self: *TransferTransaction, client: *Client) !void {
-        try self.base.signWithOperator(client);
+    pub fn signWithOperator(self: *TransferTransaction, client: *Client) errors.HederaError!void {
+        self.base.signWithOperator(client) catch return errors.HederaError.InvalidSignature;
     }
     
     // Execute the transaction
-    pub fn execute(self: *TransferTransaction, client: *Client) !TransactionResponse {
+    pub fn execute(self: *TransferTransaction, client: *Client) errors.HederaError!TransactionResponse {
         if (self.hbar_transfers.items.len == 0 and 
             self.token_transfers.items.len == 0 and 
             self.nft_transfers.items.len == 0) {
-            return error.NoTransfersSpecified;
+            return errors.HederaError.EmptyTransactionBody;
         }
         
-        return try self.base.execute(client);
+        return self.base.execute(client) catch return errors.HederaError.InvalidTransaction;
     }
     
     // Build transaction body

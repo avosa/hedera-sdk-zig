@@ -6,6 +6,7 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // TokenFreezeTransaction freezes an account's ability to transfer a token
 pub const TokenFreezeTransaction = struct {
@@ -26,15 +27,15 @@ pub const TokenFreezeTransaction = struct {
     }
     
     // Set the token to freeze
-    pub fn setTokenId(self: *TokenFreezeTransaction, token_id: TokenId) *TokenFreezeTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setTokenId(self: *TokenFreezeTransaction, token_id: TokenId) errors.HederaError!*TokenFreezeTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.token_id = token_id;
         return self;
     }
     
     // Set the account to freeze
-    pub fn setAccountId(self: *TokenFreezeTransaction, account_id: AccountId) *TokenFreezeTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAccountId(self: *TokenFreezeTransaction, account_id: AccountId) errors.HederaError!*TokenFreezeTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.account_id = account_id;
         return self;
     }

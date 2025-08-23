@@ -1,4 +1,5 @@
 const std = @import("std");
+const errors = @import("../core/errors.zig");
 const ContractId = @import("../core/id.zig").ContractId;
 const AccountId = @import("../core/id.zig").AccountId;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
@@ -29,8 +30,8 @@ pub const ContractDeleteTransaction = struct {
     }
     
     // SetContractID sets the contract to delete
-    pub fn SetContractID(self: *ContractDeleteTransaction, contract_id: ContractId) *ContractDeleteTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetContractID(self: *ContractDeleteTransaction, contract_id: ContractId) errors.HederaError!*ContractDeleteTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.contract_id = contract_id;
         return self;
     }
@@ -41,8 +42,8 @@ pub const ContractDeleteTransaction = struct {
     }
     
     // SetTransferAccountID sets the account to transfer remaining balance to
-    pub fn SetTransferAccountID(self: *ContractDeleteTransaction, account_id: AccountId) *ContractDeleteTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetTransferAccountID(self: *ContractDeleteTransaction, account_id: AccountId) errors.HederaError!*ContractDeleteTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.transfer_account_id = account_id;
         self.transfer_contract_id = null; // Clear contract ID when setting account ID
         return self;
@@ -54,8 +55,8 @@ pub const ContractDeleteTransaction = struct {
     }
     
     // SetTransferContractID sets the contract to transfer remaining balance to
-    pub fn SetTransferContractID(self: *ContractDeleteTransaction, contract_id: ContractId) *ContractDeleteTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetTransferContractID(self: *ContractDeleteTransaction, contract_id: ContractId) errors.HederaError!*ContractDeleteTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.transfer_contract_id = contract_id;
         self.transfer_account_id = null; // Clear account ID when setting contract ID
         return self;
@@ -67,8 +68,8 @@ pub const ContractDeleteTransaction = struct {
     }
     
     // SetPermanentRemoval sets the permanent removal flag
-    pub fn SetPermanentRemoval(self: *ContractDeleteTransaction, permanent: bool) *ContractDeleteTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetPermanentRemoval(self: *ContractDeleteTransaction, permanent: bool) errors.HederaError!*ContractDeleteTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.permanent_removal = permanent;
         return self;
     }
@@ -82,11 +83,11 @@ pub const ContractDeleteTransaction = struct {
     // Execute the transaction
     pub fn execute(self: *ContractDeleteTransaction, client: *Client) !TransactionResponse {
         if (self.contract_id == null) {
-            @panic("contract ID is required");
+            return error.ContractIdRequired;
         }
         
         if (self.transfer_account_id == null and self.transfer_contract_id == null) {
-            @panic("transfer target is required");
+            return error.TransferTargetRequired;
         }
         
         return try self.base.execute(client);

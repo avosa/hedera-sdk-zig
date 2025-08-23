@@ -1,4 +1,5 @@
 const std = @import("std");
+const errors = @import("../core/errors.zig");
 const AccountId = @import("../core/id.zig").AccountId;
 const Key = @import("../crypto/key.zig").Key;
 const Duration = @import("../core/duration.zig").Duration;
@@ -51,8 +52,8 @@ pub const TopicCreateTransaction = struct {
         };
         
         // Set default auto renew period and max transaction fee
-        _ = self.setAutoRenewPeriod(Duration{ .seconds = 7890000, .nanos = 0 });
-        _ = self.transaction.setMaxTransactionFee(Hbar.fromTinybars(2500000000) catch unreachable); // 25 Hbar
+        _ = self.setAutoRenewPeriod(Duration{ .seconds = 7890000, .nanos = 0 }) catch {};
+        _ = self.transaction.setMaxTransactionFee(Hbar.fromTinybars(2500000000) catch unreachable) catch {}; // 25 Hbar
         
         return self;
     }
@@ -68,8 +69,8 @@ pub const TopicCreateTransaction = struct {
     }
     
     // setAdminKey sets the key required to update or delete the topic
-    pub fn setAdminKey(self: *TopicCreateTransaction, public_key: Key) *TopicCreateTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn setAdminKey(self: *TopicCreateTransaction, public_key: Key) errors.HederaError!*TopicCreateTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         self.admin_key = public_key;
         return self;
     }
@@ -80,8 +81,8 @@ pub const TopicCreateTransaction = struct {
     }
     
     // setSubmitKey sets the key required for submitting messages to the topic
-    pub fn setSubmitKey(self: *TopicCreateTransaction, public_key: Key) *TopicCreateTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn setSubmitKey(self: *TopicCreateTransaction, public_key: Key) errors.HederaError!*TopicCreateTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         self.submit_key = public_key;
         return self;
     }
@@ -92,8 +93,8 @@ pub const TopicCreateTransaction = struct {
     }
     
     // setFeeScheduleKey sets the key which allows updates to the new topic's fees
-    pub fn setFeeScheduleKey(self: *TopicCreateTransaction, public_key: Key) *TopicCreateTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn setFeeScheduleKey(self: *TopicCreateTransaction, public_key: Key) errors.HederaError!*TopicCreateTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         self.fee_schedule_key = public_key;
         return self;
     }
@@ -104,21 +105,23 @@ pub const TopicCreateTransaction = struct {
     }
     
     // SetFeeExemptKeys sets the keys that will be exempt from paying fees
-    pub fn setFeeExemptKeys(self: *TopicCreateTransaction, keys: []const Key) *TopicCreateTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn setFeeExemptKeys(self: *TopicCreateTransaction, keys: []const Key) errors.HederaError!*TopicCreateTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         self.fee_exempt_keys.clearRetainingCapacity();
-        self.fee_exempt_keys.appendSlice(keys) catch @panic("Failed to set fee exempt keys");
+        try errors.handleAppendSliceError(&self.fee_exempt_keys, keys);
+        return self;
     }
     
     // AddFeeExemptKey adds a key that will be exempt from paying fees
-    pub fn addFeeExemptKey(self: *TopicCreateTransaction, key: Key) *TopicCreateTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
-        self.fee_exempt_keys.append(key) catch @panic("Failed to add fee exempt key");
+    pub fn addFeeExemptKey(self: *TopicCreateTransaction, key: Key) errors.HederaError!*TopicCreateTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
+        try errors.handleAppendError(&self.fee_exempt_keys, key);
+        return self;
     }
     
     // ClearFeeExemptKeys removes all keys that will be exempt from paying fees
-    pub fn clearFeeExemptKeys(self: *TopicCreateTransaction) *TopicCreateTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn clearFeeExemptKeys(self: *TopicCreateTransaction) errors.HederaError!*TopicCreateTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         self.fee_exempt_keys.clearRetainingCapacity();
         return self;
     }
@@ -129,24 +132,26 @@ pub const TopicCreateTransaction = struct {
     }
     
     // SetCustomFees sets the fixed fees to assess when a message is submitted to the new topic
-    pub fn setCustomFees(self: *TopicCreateTransaction, fees: []*CustomFixedFee) *TopicCreateTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn setCustomFees(self: *TopicCreateTransaction, fees: []*CustomFixedFee) errors.HederaError!*TopicCreateTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         for (self.custom_fees.items) |fee| {
             self.allocator.destroy(fee);
         }
         self.custom_fees.clearRetainingCapacity();
-        self.custom_fees.appendSlice(fees) catch @panic("Failed to set custom fees");
+        try errors.handleAppendSliceError(&self.custom_fees, fees);
+        return self;
     }
     
     // AddCustomFee adds a fixed fee to assess when a message is submitted to the new topic
-    pub fn addCustomFee(self: *TopicCreateTransaction, fee: *CustomFixedFee) *TopicCreateTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
-        self.custom_fees.append(fee) catch @panic("Failed to add custom fee");
+    pub fn addCustomFee(self: *TopicCreateTransaction, fee: *CustomFixedFee) errors.HederaError!*TopicCreateTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
+        try errors.handleAppendError(&self.custom_fees, fee);
+        return self;
     }
     
     // ClearCustomFees removes all custom fees to assess when a message is submitted to the new topic
-    pub fn clearCustomFees(self: *TopicCreateTransaction) *TopicCreateTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn clearCustomFees(self: *TopicCreateTransaction) errors.HederaError!*TopicCreateTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         for (self.custom_fees.items) |fee| {
             self.allocator.destroy(fee);
         }
@@ -160,8 +165,8 @@ pub const TopicCreateTransaction = struct {
     }
     
     // SetTopicMemo sets a short publicly visible memo about the topic
-    pub fn setTopicMemo(self: *TopicCreateTransaction, memo: []const u8) *TopicCreateTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn setTopicMemo(self: *TopicCreateTransaction, memo: []const u8) errors.HederaError!*TopicCreateTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         self.memo = memo;
         return self;
     }
@@ -172,8 +177,8 @@ pub const TopicCreateTransaction = struct {
     }
     
     // SetAutoRenewPeriod sets the initial lifetime of the topic
-    pub fn setAutoRenewPeriod(self: *TopicCreateTransaction, period: Duration) *TopicCreateTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn setAutoRenewPeriod(self: *TopicCreateTransaction, period: Duration) errors.HederaError!*TopicCreateTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         self.auto_renew_period = period;
         return self;
     }
@@ -184,8 +189,8 @@ pub const TopicCreateTransaction = struct {
     }
     
     // SetAutoRenewAccountID sets an optional account to be used at the topic's expirationTime
-    pub fn setAutoRenewAccountId(self: *TopicCreateTransaction, auto_renew_account_id: AccountId) *TopicCreateTransaction {
-        if (self.transaction.frozen) @panic("Transaction is frozen");
+    pub fn setAutoRenewAccountId(self: *TopicCreateTransaction, auto_renew_account_id: AccountId) errors.HederaError!*TopicCreateTransaction {
+        try errors.requireNotFrozen(self.transaction.frozen);
         self.auto_renew_account_id = auto_renew_account_id;
         return self;
     }
@@ -212,8 +217,8 @@ pub const TopicCreateTransaction = struct {
     }
     
     // Sign signs the transaction
-    pub fn sign(self: *TopicCreateTransaction, private_key: anytype) *TopicCreateTransaction {
-        self.transaction.sign(private_key);
+    pub fn sign(self: *TopicCreateTransaction, private_key: anytype) !*TopicCreateTransaction {
+        try self.transaction.sign(private_key);
         return self;
     }
     

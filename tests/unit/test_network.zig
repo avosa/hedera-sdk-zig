@@ -38,9 +38,9 @@ test "Network creation and node management" {
     defer network.deinit();
     
     // Test adding nodes
-    _ = network.addNode("35.237.200.180:50211", hedera.AccountId.init(0, 0, 3));
-    _ = network.addNode("35.186.191.247:50211", hedera.AccountId.init(0, 0, 4));
-    _ = network.addNode("35.192.2.25:50211", hedera.AccountId.init(0, 0, 5));
+    _ = try network.addNode("35.237.200.180:50211", hedera.AccountId.init(0, 0, 3));
+    _ = try network.addNode("35.186.191.247:50211", hedera.AccountId.init(0, 0, 4));
+    _ = try network.addNode("35.192.2.25:50211", hedera.AccountId.init(0, 0, 5));
     
     try testing.expectEqual(@as(usize, 3), network.nodes.count());
     
@@ -135,7 +135,7 @@ test "Client initialization and configuration" {
     var operator_key = try hedera.PrivateKey.generateEd25519(allocator);
     defer operator_key.deinit();
     
-    _ = client.setOperator(operator_id, operator_key);
+    _ = try client.setOperator(operator_id, operator_key);
     
     try testing.expect(client.operator != null);
     try testing.expect(client.operator.?.account_id.equals(operator_id));
@@ -158,7 +158,7 @@ test "Client network configuration" {
     defer client.deinit();
     
     // Test setting custom mirror node URL
-    _ = client.setMirrorNodeUrl("https://testnet.mirrornode.hedera.com");
+    _ = try client.setMirrorNodeUrl("https://testnet.mirrornode.hedera.com");
     try testing.expectEqualStrings("https://testnet.mirrornode.hedera.com", client.mirror_node_url.?);
     
     // Test setting request timeout
@@ -166,11 +166,11 @@ test "Client network configuration" {
     try testing.expectEqual(@as(i64, 30), client.request_timeout.seconds);
     
     // Test setting max transaction fee
-    _ = client.setMaxTransactionFee(hedera.Hbar.from(2));
+    _ = try client.setMaxTransactionFee(hedera.Hbar.from(2));
     try testing.expectEqual(@as(f64, 2.0), client.max_transaction_fee.?.toHbars());
     
     // Test setting max query payment
-    _ = client.setMaxQueryPayment(hedera.Hbar.from(1));
+    _ = try client.setMaxQueryPayment(hedera.Hbar.from(1));
     try testing.expectEqual(@as(f64, 1.0), client.max_query_payment.?.toHbars());
     
     // Test setting transaction valid duration
@@ -185,8 +185,8 @@ test "Client with custom network" {
     var custom_network = hedera.Network.init(allocator);
     defer custom_network.deinit();
     
-    _ = custom_network.addNode("127.0.0.1:50211", hedera.AccountId.init(0, 0, 3));
-    _ = custom_network.addNode("127.0.0.1:50212", hedera.AccountId.init(0, 0, 4));
+    _ = try custom_network.addNode("127.0.0.1:50211", hedera.AccountId.init(0, 0, 3));
+    _ = try custom_network.addNode("127.0.0.1:50212", hedera.AccountId.init(0, 0, 4));
     
     // Create client with custom network
     var client = hedera.Client.initWithNetwork(allocator, custom_network);
@@ -247,10 +247,10 @@ test "Network load balancing and node selection" {
     defer network.deinit();
     
     // Configure multiple nodes
-    _ = network.addNode("node1.example.com:50211", hedera.AccountId.init(0, 0, 3));
-    _ = network.addNode("node2.example.com:50211", hedera.AccountId.init(0, 0, 4));
-    _ = network.addNode("node3.example.com:50211", hedera.AccountId.init(0, 0, 5));
-    _ = network.addNode("node4.example.com:50211", hedera.AccountId.init(0, 0, 6));
+    _ = try network.addNode("node1.example.com:50211", hedera.AccountId.init(0, 0, 3));
+    _ = try network.addNode("node2.example.com:50211", hedera.AccountId.init(0, 0, 4));
+    _ = try network.addNode("node3.example.com:50211", hedera.AccountId.init(0, 0, 5));
+    _ = try network.addNode("node4.example.com:50211", hedera.AccountId.init(0, 0, 6));
     
     // Track which nodes are selected over multiple calls
     var node_selections = std.AutoHashMap(u64, u32).init(allocator);
@@ -306,8 +306,8 @@ test "Network error handling and recovery" {
     defer network.deinit();
     
     // Configure nodes
-    _ = network.addNode("node1.example.com:50211", hedera.AccountId.init(0, 0, 3));
-    _ = network.addNode("node2.example.com:50211", hedera.AccountId.init(0, 0, 4));
+    _ = try network.addNode("node1.example.com:50211", hedera.AccountId.init(0, 0, 3));
+    _ = try network.addNode("node2.example.com:50211", hedera.AccountId.init(0, 0, 4));
     
     // Mark all nodes as unhealthy
     if (network.getNode(hedera.AccountId.init(0, 0, 3))) |node| {
@@ -345,7 +345,7 @@ test "Client configuration validation" {
     try testing.expectError(error.InvalidConfiguration, client.setMaxTransactionFee(hedera.Hbar.fromTinybars(-1000)));
     
     // Test very large values (should be allowed but might warn)
-    _ = client.setMaxTransactionFee(hedera.Hbar.from(1000000)); // Very large fee
+    _ = try client.setMaxTransactionFee(hedera.Hbar.from(1000000)); // Very large fee
     try testing.expectEqual(@as(f64, 1000000.0), client.max_transaction_fee.?.toHbars());
     
     // Test timeout configurations
