@@ -14,7 +14,7 @@ test "AccountBalanceQuery initialization" {
     defer query.deinit();
     
     const account_id = AccountId.init(0, 0, 100);
-    _ = query.setAccountId(delete_account_id);
+    _ = try query.setAccountId(delete_account_id);
     
     try testing.expectEqual(delete_account_id.account, query.account_id.?.account);
     try testing.expect(query.contract_id == null);
@@ -29,7 +29,7 @@ test "AccountBalanceQuery with contract ID" {
     defer query.deinit();
     
     const contract_id = ContractId.init(0, 0, 200);
-    _ = query.setContractId(contract_id);
+    _ = try query.setContractId(contract_id);
     
     try testing.expectEqual(contract_id.num(), query.contract_id.?.num());
     try testing.expect(query.account_id == null);

@@ -6,6 +6,7 @@ const AccountId = @import("../core/id.zig").AccountId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const Ed25519PrivateKey = @import("../crypto/key.zig").Ed25519PrivateKey;
+const errors = @import("../core/errors.zig");
 
 // BatchTransaction allows multiple transactions to be submitted as a batch
 pub const BatchTransaction = struct {
@@ -38,15 +39,16 @@ pub const BatchTransaction = struct {
     
     // Add a transaction to the batch
     pub fn addTransaction(self: *BatchTransaction, transaction: *Transaction) !void {
-        if (self.base.frozen) @panic("Transaction is frozen");
+        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
         try self.transactions.append(transaction);
     }
     
     // Set all transactions in the batch
-    pub fn setTransactions(self: *BatchTransaction, transactions: []*Transaction) *BatchTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setTransactions(self: *BatchTransaction, transactions: []*Transaction) errors.HederaError!*BatchTransaction {
+        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
         self.transactions.clearAndFree();
-        try self.transactions.appendSlice(transactions);
+        self.transactions.appendSlice(transactions) catch return errors.HederaError.OutOfMemory;
+        return self;
     }
     
     // Sign all transactions in the batch

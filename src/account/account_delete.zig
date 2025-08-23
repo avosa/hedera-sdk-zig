@@ -5,6 +5,7 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // AccountDeleteTransaction marks an account as deleted, moving all its current hbars to another account.
 // It will remain in the ledger, marked as deleted, until it expires. Transfers into a deleted account fail.
@@ -27,8 +28,8 @@ pub const AccountDeleteTransaction = struct {
     }
     
     // SetAccountID sets the account to delete - matches Go SDK
-    pub fn setAccountId(self: *AccountDeleteTransaction, account_id: AccountId) *AccountDeleteTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAccountId(self: *AccountDeleteTransaction, account_id: AccountId) errors.HederaError!*AccountDeleteTransaction {
+        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
         self.delete_account_id = account_id;
         return self;
     }
@@ -42,8 +43,8 @@ pub const AccountDeleteTransaction = struct {
     }
     
     // SetTransferAccountID sets the account to transfer remaining balance to
-    pub fn setTransferAccountId(self: *AccountDeleteTransaction, transfer_id: AccountId) *AccountDeleteTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setTransferAccountId(self: *AccountDeleteTransaction, transfer_id: AccountId) errors.HederaError!*AccountDeleteTransaction {
+        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
         self.transfer_account_id = transfer_id;
         return self;
     }

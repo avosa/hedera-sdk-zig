@@ -87,8 +87,8 @@ test "StakeTransferTransaction" {
     const from_account = AccountId.init(0, 0, 100);
     const to_account = AccountId.init(0, 0, 200);
     
-    _ = tx.setFromAccountId(from_account);
-    _ = tx.setToAccountId(to_account);
+    _ = try tx.setFromAccountId(from_account);
+    _ = try tx.setToAccountId(to_account);
     tx.setAmount(try Hbar.from(1000));
     
     try testing.expectEqual(from_account.num(), tx.from_delete_account_id.?.account);
@@ -105,7 +105,7 @@ test "NodeStakeUpdateTransaction" {
     defer tx.deinit();
     
     // Update node stake settings
-    _ = tx.setNodeId(3);
+    _ = try tx.setNodeId(3);
     tx.setMaxStake(try Hbar.from(100000));
     tx.setMinStake(try Hbar.from(1000));
     tx.setRewardRate(10000); // 10%

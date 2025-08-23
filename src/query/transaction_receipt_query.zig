@@ -96,10 +96,8 @@ pub const TransactionReceiptQuery = struct {
             return error.TransactionIdNotSet;
         }
         
-        // Set the query data before executing
-        self.query.query_data = try self.buildQuery();
         const response = try self.query.execute(client);
-        const receipt = try self.parseResponse(response.response);
+        const receipt = try self.parseResponse(response.response_bytes);
         
         if (self.validate_status) {
             try receipt.validateStatus();
@@ -168,7 +166,8 @@ pub const TransactionReceiptQuery = struct {
         // Parse TransactionGetReceiptResponse protobuf message
         var reader = protobuf.ProtobufReader.init(self.query.allocator, response_bytes);
         
-        while (try reader.nextField()) |field| {
+        while (try reader.nextField()) |field_const| {
+            var field = field_const;
             switch (field.tag) {
                 1 => {
                     // header = 1 (ResponseHeader)

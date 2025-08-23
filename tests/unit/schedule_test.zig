@@ -21,21 +21,21 @@ test "Schedule create transaction" {
     var schedule = hedera.ScheduleCreateTransaction.init(allocator);
     defer schedule.deinit();
     
-    _ = schedule.setScheduledTransaction(&transfer.base);
+    _ = try schedule.setScheduledTransaction(&transfer.base);
     _ = try schedule.setScheduleMemo("Scheduled transfer");
-    _ = schedule.setPayerAccountId(account1);
+    _ = try schedule.setPayerAccountId(account1);
     
     // Set admin key
     var admin_key = try hedera.generatePrivateKey(allocator);
     defer admin_key.deinit();
-    _ = schedule.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
+    _ = try schedule.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
     
     // Set expiration time
     const expiration = hedera.Timestamp.fromSeconds(1234567890);
-    _ = schedule.setExpirationTime(expiration);
+    _ = try schedule.setExpirationTime(expiration);
     
     // Wait for expiry
-    _ = schedule.setWaitForExpiry(true);
+    _ = try schedule.setWaitForExpiry(true);
     
     // Verify settings
     try testing.expect(schedule.scheduled_transaction != null);
@@ -56,7 +56,7 @@ test "Schedule sign transaction" {
     
     // Set schedule ID
     const schedule_id = hedera.ScheduleId.init(0, 0, 555);
-    _ = tx.setScheduleId(schedule_id);
+    _ = try tx.setScheduleId(schedule_id);
     
     try testing.expectEqual(@as(u64, 555), tx.schedule_id.?.num());
 }
@@ -71,7 +71,7 @@ test "Schedule delete transaction" {
     
     // Set schedule ID
     const schedule_id = hedera.ScheduleId.init(0, 0, 666);
-    _ = tx.setScheduleId(schedule_id);
+    _ = try tx.setScheduleId(schedule_id);
     
     try testing.expectEqual(@as(u64, 666), tx.schedule_id.?.num());
 }
@@ -169,7 +169,7 @@ test "Schedule with token operations" {
     var schedule = hedera.ScheduleCreateTransaction.init(allocator);
     defer schedule.deinit();
     
-    _ = schedule.setScheduledTransaction(&token_transfer.base);
+    _ = try schedule.setScheduledTransaction(&token_transfer.base);
     _ = try schedule.setScheduleMemo("Scheduled token transfer");
     
     try testing.expect(schedule.scheduled_transaction != null);
@@ -186,9 +186,9 @@ test "Schedule with smart contract operations" {
     defer contract_execute.deinit();
     
     const contract_id = hedera.ContractId.init(0, 0, 2000);
-    _ = contract_execute.setContractId(contract_id);
-    _ = contract_execute.setGas(100000);
-    _ = contract_execute.setPayableAmount(try hedera.Hbar.from(1));
+    _ = try contract_execute.setContractId(contract_id);
+    _ = try contract_execute.setGas(100000);
+    _ = try contract_execute.setPayableAmount(try hedera.Hbar.from(1));
     
     // Set function parameters
     var params = hedera.ContractFunctionParameters.init(allocator);
@@ -199,13 +199,13 @@ test "Schedule with smart contract operations" {
     
     const function_params = try params.toBytes();
     defer allocator.free(function_params);
-    _ = contract_execute.setFunctionParameters(function_params);
+    _ = try contract_execute.setFunctionParameters(function_params);
     
     // Create schedule
     var schedule = hedera.ScheduleCreateTransaction.init(allocator);
     defer schedule.deinit();
     
-    _ = schedule.setScheduledTransaction(&contract_execute.base);
+    _ = try schedule.setScheduledTransaction(&contract_execute.base);
     _ = try schedule.setScheduleMemo("Scheduled contract execution");
     
     try testing.expect(schedule.scheduled_transaction != null);
@@ -222,20 +222,20 @@ test "Schedule with account operations" {
     defer account_update.deinit();
     
     const account_id = hedera.AccountId.init(0, 0, 700);
-    _ = account_update.setAccountId(account_id);
+    _ = try account_update.setAccountId(account_id);
     
     // Generate new key
     var new_key = try hedera.generatePrivateKey(allocator);
     defer new_key.deinit();
-    _ = account_update.setKey(hedera.Key.fromPublicKey(new_key.getPublicKey()));
+    _ = try account_update.setKey(hedera.Key.fromPublicKey(new_key.getPublicKey()));
     
-    _ = account_update.setMemo("Updated via schedule");
+    _ = try account_update.setMemo("Updated via schedule");
     
     // Create schedule
     var schedule = hedera.ScheduleCreateTransaction.init(allocator);
     defer schedule.deinit();
     
-    _ = schedule.setScheduledTransaction(&account_update.base);
+    _ = try schedule.setScheduledTransaction(&account_update.base);
     _ = try schedule.setScheduleMemo("Scheduled account update");
     
     try testing.expect(schedule.scheduled_transaction != null);
@@ -261,7 +261,7 @@ test "Schedule expiration handling" {
     var schedule = hedera.ScheduleCreateTransaction.init(allocator);
     defer schedule.deinit();
     
-    _ = schedule.setScheduledTransaction(&transfer.base);
+    _ = try schedule.setScheduledTransaction(&transfer.base);
     
     // Set expiration time (1 hour from now)
     const now = hedera.Timestamp.now();
@@ -269,10 +269,10 @@ test "Schedule expiration handling" {
         .seconds = now.seconds + 3600,
         .nanos = now.nanos,
     };
-    _ = schedule.setExpirationTime(expiration);
+    _ = try schedule.setExpirationTime(expiration);
     
     // Don't wait for expiry
-    _ = schedule.setWaitForExpiry(false);
+    _ = try schedule.setWaitForExpiry(false);
     
     try testing.expect(schedule.expiration_time != null);
     try testing.expect(!schedule.wait_for_expiry);
@@ -297,7 +297,7 @@ test "Schedule signature requirements" {
     var schedule = hedera.ScheduleCreateTransaction.init(allocator);
     defer schedule.deinit();
     
-    _ = schedule.setScheduledTransaction(&transfer.base);
+    _ = try schedule.setScheduledTransaction(&transfer.base);
     _ = try schedule.setScheduleMemo("Multi-sig required");
     
     // Create threshold key for admin
@@ -318,7 +318,7 @@ test "Schedule signature requirements" {
     try threshold_key.add(hedera.Key.fromPublicKey(key2.getPublicKey()));
     try threshold_key.add(hedera.Key.fromPublicKey(key3.getPublicKey()));
     
-    _ = schedule.setAdminKey(hedera.Key.fromKeyList(threshold_key));
+    _ = try schedule.setAdminKey(hedera.Key.fromKeyList(threshold_key));
     
     try testing.expect(schedule.admin_key != null);
     if (schedule.admin_key.? == .key_list) {
@@ -341,7 +341,7 @@ test "Schedule memo limits" {
     var schedule = hedera.ScheduleCreateTransaction.init(allocator);
     defer schedule.deinit();
     
-    _ = schedule.setScheduledTransaction(&transfer.base);
+    _ = try schedule.setScheduledTransaction(&transfer.base);
     
     // Valid memo (under 100 bytes)
     const valid_memo = "This is a valid schedule memo";

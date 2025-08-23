@@ -6,6 +6,7 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // Maximum number of tokens that can be associated in a single transaction
 pub const MAX_TOKEN_ASSOCIATIONS: usize = 100;
@@ -30,37 +31,37 @@ pub const TokenAssociateTransaction = struct {
     }
     
     // Set the account to associate tokens with
-    pub fn setAccountId(self: *TokenAssociateTransaction, account_id: AccountId) *TokenAssociateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAccountId(self: *TokenAssociateTransaction, account_id: AccountId) errors.HederaError!*TokenAssociateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.account_id = account_id;
         return self;
     }
     
     // Includes a token for association
-    pub fn addTokenId(self: *TokenAssociateTransaction, token_id: TokenId) *TokenAssociateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn addTokenId(self: *TokenAssociateTransaction, token_id: TokenId) errors.HederaError!*TokenAssociateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.token_ids.items.len >= MAX_TOKEN_ASSOCIATIONS) {
-            @panic("Too many token associations");
+            return errors.HederaError.TokenTransferListSizeLimitExceeded;
         }
         
         // Check for duplicates
         for (self.token_ids.items) |existing| {
             if (existing.equals(token_id)) {
-                @panic("Duplicate token ID");
+                return errors.HederaError.TokenIdRepeatedInTokenList;
             }
         }
         
-        self.token_ids.append(token_id) catch @panic("Failed to append token ID");
+        try errors.handleAppendError(&self.token_ids, token_id);
         return self;
     }
     
     // Set the list of tokens to associate
-    pub fn setTokenIds(self: *TokenAssociateTransaction, token_ids: []const TokenId) *TokenAssociateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setTokenIds(self: *TokenAssociateTransaction, token_ids: []const TokenId) errors.HederaError!*TokenAssociateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (token_ids.len > MAX_TOKEN_ASSOCIATIONS) {
-            @panic("Too many token associations");
+            return errors.HederaError.TokenTransferListSizeLimitExceeded;
         }
         
         // Clear existing tokens
@@ -70,10 +71,10 @@ pub const TokenAssociateTransaction = struct {
         for (token_ids) |token_id| {
             for (self.token_ids.items) |existing| {
                 if (existing.equals(token_id)) {
-                    @panic("Duplicate token ID");
+                    return errors.HederaError.TokenIdRepeatedInTokenList;
                 }
             }
-            self.token_ids.append(token_id) catch @panic("Failed to append token ID");
+            try errors.handleAppendError(&self.token_ids, token_id);
         }
         return self;
     }

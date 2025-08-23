@@ -135,7 +135,7 @@ test "Contract call query" {
     _ = query.setContractId(contract_id);
     
     // Set gas
-    _ = query.setGas(100000);
+    _ = try query.setGas(100000);
     try testing.expectEqual(@as(i64, 100000), query.gas);
     
     // Set function with parameters
@@ -145,7 +145,7 @@ test "Contract call query" {
     try params.addUint256(42);
     try params.addAddress("0x1234567890123456789012345678901234567890");
     
-    _ = query.setFunction("transfer", params);
+    _ = try query.setFunction("transfer", params);
     
     try testing.expectEqualStrings("transfer", query.function_name);
     try testing.expect(query.function_parameters.len > 0);

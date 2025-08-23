@@ -5,6 +5,7 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // Maximum number of NFT serial numbers that can be burned in a single transaction
 pub const MAX_NFT_BURN_BATCH_SIZE: usize = 10;
@@ -34,26 +35,26 @@ pub const TokenBurnTransaction = struct {
     }
     
     // Set the token to burn
-    pub fn setTokenId(self: *TokenBurnTransaction, token_id: TokenId) *TokenBurnTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setTokenId(self: *TokenBurnTransaction, token_id: TokenId) errors.HederaError!*TokenBurnTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.token_id = token_id;
         return self;
     }
     
     // Set amount to burn (for fungible tokens)
-    pub fn setAmount(self: *TokenBurnTransaction, amount: u64) *TokenBurnTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAmount(self: *TokenBurnTransaction, amount: u64) errors.HederaError!*TokenBurnTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.serial_numbers.items.len > 0) {
-            @panic("Cannot set both amount and serial numbers");
+            return errors.HederaError.InvalidTokenBurnAmount;
         }
         
         if (amount == 0) {
-            @panic("Invalid burn amount");
+            return errors.HederaError.InvalidTokenBurnAmount;
         }
         
         if (amount > std.math.maxInt(i64)) {
-            @panic("Burn amount too large");
+            return errors.HederaError.InvalidTokenBurnAmount;
         }
         
         self.amount = amount;
@@ -61,58 +62,59 @@ pub const TokenBurnTransaction = struct {
     }
     
     // Includes a serial number for NFT burning
-    pub fn addSerialNumber(self: *TokenBurnTransaction, serial_number: i64) *TokenBurnTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn addSerialNumber(self: *TokenBurnTransaction, serial_number: i64) errors.HederaError!*TokenBurnTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.amount > 0) {
-            @panic("Cannot set both amount and serial numbers");
+            return errors.HederaError.InvalidTokenBurnAmount;
         }
         
         if (serial_number <= 0) {
-            @panic("Invalid serial number");
+            return errors.HederaError.InvalidParameter;
         }
         
         if (self.serial_numbers.items.len >= MAX_NFT_BURN_BATCH_SIZE) {
-            @panic("Too many serial numbers");
+            return errors.HederaError.MaxNftsInPriceRegimeHaveBeenMinted;
         }
         
         // Check for duplicates
         for (self.serial_numbers.items) |existing| {
             if (existing == serial_number) {
-                @panic("Duplicate serial number");
+                return errors.HederaError.RepeatedSerialNumbersInNftAllowance;
             }
         }
         
-        self.serial_numbers.append(serial_number) catch @panic("Failed to append serial number");
+        try errors.handleAppendError(&self.serial_numbers, serial_number);
+        return self;
     }
     
     // Set serial numbers for batch NFT burning
-    pub fn setSerialNumbers(self: *TokenBurnTransaction, serial_numbers: []const i64) *TokenBurnTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setSerialNumbers(self: *TokenBurnTransaction, serial_numbers: []const i64) errors.HederaError!*TokenBurnTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.amount > 0) {
-            @panic("Cannot set both amount and serial numbers");
+            return errors.HederaError.InvalidTokenBurnAmount;
         }
         
         if (serial_numbers.len > MAX_NFT_BURN_BATCH_SIZE) {
-            @panic("Too many serial numbers");
+            return errors.HederaError.MaxNftsInPriceRegimeHaveBeenMinted;
         }
         
         self.serial_numbers.clearRetainingCapacity();
         
         for (serial_numbers) |serial_number| {
             if (serial_number <= 0) {
-                @panic("Invalid serial number");
+                return errors.HederaError.InvalidParameter;
             }
             
             // Check for duplicates
             for (self.serial_numbers.items) |existing| {
                 if (existing == serial_number) {
-                    @panic("Duplicate serial number");
+                    return errors.HederaError.RepeatedSerialNumbersInNftAllowance;
                 }
             }
             
-            self.serial_numbers.append(serial_number) catch @panic("Failed to append serial number");
+            try errors.handleAppendError(&self.serial_numbers, serial_number);
         }
         return self;
     }

@@ -32,8 +32,8 @@ test "AccountBalance token balances" {
     const token1 = TokenId.init(0, 0, 500);
     const token2 = TokenId.init(0, 0, 501);
     
-    _ = balance.setTokenBalance(token1, 1000);
-    _ = balance.setTokenBalance(token2, 2000);
+    _ = try balance.setTokenBalance(token1, 1000);
+    _ = try balance.setTokenBalance(token2, 2000);
     
     try testing.expectEqual(@as(?u64, 1000), balance.getTokenBalance(token1));
     try testing.expectEqual(@as(?u64, 2000), balance.getTokenBalance(token2));
@@ -51,7 +51,7 @@ test "AccountBalance decimal balances" {
     const token = TokenId.init(0, 0, 500);
     
     // Set token balance with decimals
-    _ = balance.setTokenBalanceWithDecimals(token, 1000, 8);
+    _ = try balance.setTokenBalanceWithDecimals(token, 1000, 8);
     
     const decimal_balance = balance.getTokenBalanceDecimal(token);
     try testing.expect(decimal_balance != null);
@@ -70,7 +70,7 @@ test "AccountBalance serialization" {
     balance.account_id = AccountId.init(0, 0, 100);
     balance.hbars = try Hbar.from(500);
     
-    _ = balance.setTokenBalance(TokenId.init(0, 0, 600), 3000);
+    _ = try balance.setTokenBalance(TokenId.init(0, 0, 600), 3000);
     
     // Serialize
     var writer = @import("../protobuf/writer.zig").ProtobufWriter.init(allocator);

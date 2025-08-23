@@ -6,6 +6,7 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // FreezeType specifies the type of freeze operation
 pub const FreezeType = enum(i32) {
@@ -46,10 +47,10 @@ pub const FreezeTransaction = struct {
     }
     
     // Set freeze start time
-    pub fn setStartTime(self: *FreezeTransaction, hour: u8, min: u8) *FreezeTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        if (hour >= 24) @panic("Invalid hour");
-        if (min >= 60) @panic("Invalid minute");
+    pub fn setStartTime(self: *FreezeTransaction, hour: u8, min: u8) errors.HederaError!*FreezeTransaction {
+        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+        if (hour >= 24) return errors.HederaError.InvalidParameter;
+        if (min >= 60) return errors.HederaError.InvalidParameter;
         
         self.start_hour = hour;
         self.start_min = min;
@@ -57,10 +58,10 @@ pub const FreezeTransaction = struct {
     }
     
     // Set freeze end time
-    pub fn setEndTime(self: *FreezeTransaction, hour: u8, min: u8) *FreezeTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        if (hour >= 24) @panic("Invalid hour");
-        if (min >= 60) @panic("Invalid minute");
+    pub fn setEndTime(self: *FreezeTransaction, hour: u8, min: u8) errors.HederaError!*FreezeTransaction {
+        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+        if (hour >= 24) return errors.HederaError.InvalidParameter;
+        if (min >= 60) return errors.HederaError.InvalidParameter;
         
         self.end_hour = hour;
         self.end_min = min;
@@ -68,23 +69,23 @@ pub const FreezeTransaction = struct {
     }
     
     // Set update file
-    pub fn setUpdateFile(self: *FreezeTransaction, file_id: FileId) *FreezeTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setUpdateFile(self: *FreezeTransaction, file_id: FileId) errors.HederaError!*FreezeTransaction {
+        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
         self.update_file = file_id;
         return self;
     }
     
     // Set file hash
-    pub fn setFileHash(self: *FreezeTransaction, hash: []const u8) *FreezeTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        if (hash.len != 48) @panic("Invalid file hash"); // SHA-384 hash
+    pub fn setFileHash(self: *FreezeTransaction, hash: []const u8) errors.HederaError!*FreezeTransaction {
+        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+        if (hash.len != 48) return errors.HederaError.InvalidParameter; // SHA-384 hash
         self.file_hash = hash;
         return self;
     }
     
     // Set freeze type
-    pub fn setFreezeType(self: *FreezeTransaction, freeze_type: FreezeType) *FreezeTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setFreezeType(self: *FreezeTransaction, freeze_type: FreezeType) errors.HederaError!*FreezeTransaction {
+        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
         self.freeze_type = freeze_type;
         return self;
     }

@@ -7,6 +7,7 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // LiveHash represents a hash that can be used to verify data integrity
 pub const LiveHash = struct {
@@ -70,34 +71,34 @@ pub const LiveHashAddTransaction = struct {
     }
     
     // Set the account ID for the live hash
-    pub fn setAccountId(self: *LiveHashAddTransaction, account_id: AccountId) *LiveHashAddTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAccountId(self: *LiveHashAddTransaction, account_id: AccountId) errors.HederaError!*LiveHashAddTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.account_id = account_id;
         return self;
     }
     
     // Set the hash value (must be SHA-384)
-    pub fn setHash(self: *LiveHashAddTransaction, hash: []const u8) !*LiveHashAddTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        if (hash.len != 48) @panic("Invalid hash length - must be SHA-384");
+    pub fn setHash(self: *LiveHashAddTransaction, hash: []const u8) errors.HederaError!*LiveHashAddTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
+        if (hash.len != 48) return errors.HederaError.InvalidParameter;
         
         if (self.hash.len > 0) {
             self.base.allocator.free(self.hash);
         }
-        self.hash = try self.base.allocator.dupe(u8, hash);
+        self.hash = try errors.handleDupeError(self.base.allocator, hash);
         return self;
     }
     
     // Includes a key that can query the live hash
-    pub fn addKey(self: *LiveHashAddTransaction, key: Key) !void {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        try self.keys.append(key);
+    pub fn addKey(self: *LiveHashAddTransaction, key: Key) errors.HederaError!void {
+        try errors.requireNotFrozen(self.base.frozen);
+        try errors.handleAppendError(&self.keys, key);
     }
     
     // Set the duration the live hash will remain valid
-    pub fn setDuration(self: *LiveHashAddTransaction, duration: Duration) *LiveHashAddTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        if (duration.seconds > 120 * 24 * 60 * 60) @panic("Duration exceeds maximum of 120 days");
+    pub fn setDuration(self: *LiveHashAddTransaction, duration: Duration) errors.HederaError!*LiveHashAddTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
+        if (duration.seconds > 120 * 24 * 60 * 60) return errors.HederaError.InvalidParameter;
         self.duration = duration;
         return self;
     }
@@ -277,21 +278,21 @@ pub const LiveHashDeleteTransaction = struct {
     }
     
     // Set the account ID for the live hash
-    pub fn setAccountId(self: *LiveHashDeleteTransaction, account_id: AccountId) *LiveHashDeleteTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAccountId(self: *LiveHashDeleteTransaction, account_id: AccountId) errors.HederaError!*LiveHashDeleteTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.account_id = account_id;
         return self;
     }
     
     // Set the hash value to delete
-    pub fn setHash(self: *LiveHashDeleteTransaction, hash: []const u8) !*LiveHashDeleteTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        if (hash.len != 48) @panic("Invalid hash length - must be SHA-384");
+    pub fn setHash(self: *LiveHashDeleteTransaction, hash: []const u8) errors.HederaError!*LiveHashDeleteTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
+        if (hash.len != 48) return errors.HederaError.InvalidParameter;
         
         if (self.hash.len > 0) {
             self.base.allocator.free(self.hash);
         }
-        self.hash = try self.base.allocator.dupe(u8, hash);
+        self.hash = try errors.handleDupeError(self.base.allocator, hash);
         return self;
     }
     

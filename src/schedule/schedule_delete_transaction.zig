@@ -4,6 +4,7 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const ScheduleId = @import("../core/id.zig").ScheduleId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // ScheduleDeleteTransaction deletes a schedule from the network's action queue
 pub const ScheduleDeleteTransaction = struct {
@@ -21,8 +22,8 @@ pub const ScheduleDeleteTransaction = struct {
     }
     
     // Set the schedule ID to delete
-    pub fn setScheduleId(self: *ScheduleDeleteTransaction, schedule_id: ScheduleId) *ScheduleDeleteTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setScheduleId(self: *ScheduleDeleteTransaction, schedule_id: ScheduleId) errors.HederaError!*ScheduleDeleteTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.schedule_id = schedule_id;
         return self;
     }

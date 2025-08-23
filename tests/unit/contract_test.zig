@@ -38,7 +38,7 @@ test "ContractInfo initialization and fields" {
     info.auto_renew_period = hedera.Duration.fromSeconds(7776000); // 90 days
     info.storage = 1024;
     info.memo = try allocator.dupe(u8, "Smart Contract");
-    info.balance = try hedera.Hbar.from(100);
+    info.balance = @intCast((try hedera.Hbar.from(100)).toTinybars());
     info.deleted = false;
     info.ledger_id = try allocator.dupe(u8, "0x01");
     info.auto_renew_account_id = hedera.AccountId.init(0, 0, 800);
@@ -52,9 +52,9 @@ test "ContractInfo initialization and fields" {
         .decline_reward = false,
     };
     
-    try testing.expectEqual(@as(u64, 1000), info.contract_id.?.num());
+    try testing.expectEqual(@as(u64, 1000), info.contract_id.num());
     try testing.expectEqual(@as(i64, 1024), info.storage);
-    try testing.expectEqualStrings("Smart Contract", info.memo.?);
+    try testing.expectEqualStrings("Smart Contract", info.memo);
     try testing.expect(!info.deleted);
     try testing.expectEqual(@as(i32, 10), info.max_automatic_token_associations);
 }
@@ -241,36 +241,36 @@ test "Contract creation transaction" {
     
     // Set bytecode
     const bytecode = try allocator.dupe(u8, &[_]u8{0x60, 0x80, 0x60, 0x40}); // Simple bytecode
-    _ = tx.setBytecode(bytecode);
+    _ = try tx.setBytecode(bytecode);
     
     // Set constructor parameters
     const params = try allocator.dupe(u8, &[_]u8{0x00} ** 64);
-    _ = tx.setConstructorParameters(params);
+    _ = try tx.setConstructorParameters(params);
     
     // Set gas
-    _ = tx.setGas(100000);
+    _ = try tx.setGas(100000);
     
     // Set initial balance
-    _ = tx.setInitialBalance(try hedera.Hbar.from(10));
+    _ = try tx.setInitialBalance(try hedera.Hbar.from(10));
     
     // Set admin key
     var admin_key = try hedera.generatePrivateKey(allocator);
     defer admin_key.deinit();
-    _ = tx.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
+    _ = try tx.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
     
     // Set memo
-    _ = tx.setMemo("Test Contract");
+    _ = try tx.setMemo("Test Contract");
     
     // Set auto renew
-    _ = tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
-    _ = tx.setAutoRenewAccountId(hedera.AccountId.init(0, 0, 800));
+    _ = try tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
+    _ = try tx.setAutoRenewAccountId(hedera.AccountId.init(0, 0, 800));
     
     // Set max automatic token associations
-    _ = tx.setMaxAutomaticTokenAssociations(10);
+    _ = try tx.setMaxAutomaticTokenAssociations(10);
     
     // Set staking
-    _ = tx.setStakedNodeId(3);
-    _ = tx.setDeclineStakingReward(false);
+    _ = try tx.setStakedNodeId(3);
+    _ = try tx.setDeclineStakingReward(false);
     
     try testing.expectEqual(@as(i64, 100000), tx.gas);
     try testing.expectEqualStrings("Test Contract", tx.memo);

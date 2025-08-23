@@ -3,6 +3,7 @@ const Transaction = @import("../transaction/transaction.zig").Transaction;
 const TransactionResponse = @import("../transaction/transaction.zig").TransactionResponse;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // Legacy Ethereum transaction (pre-EIP-1559)
 pub const EthereumLegacyTransaction = struct {
@@ -43,56 +44,63 @@ pub const EthereumLegacyTransaction = struct {
     }
     
     // Set nonce
-    pub fn setNonce(self: *EthereumLegacyTransaction, nonce: u64) *EthereumLegacyTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setNonce(self: *EthereumLegacyTransaction, nonce: u64) errors.HederaError!*EthereumLegacyTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         self.nonce = nonce;
+        return self;
     }
     
     // Set gas price
-    pub fn setGasPrice(self: *EthereumLegacyTransaction, gas_price: []const u8) *EthereumLegacyTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setGasPrice(self: *EthereumLegacyTransaction, gas_price: []const u8) errors.HederaError!*EthereumLegacyTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         if (self.gas_price.len > 0) self.base.allocator.free(self.gas_price);
-        self.gas_price = try self.base.allocator.dupe(u8, gas_price);
+        self.gas_price = errors.handleDupeError(self.base.allocator, gas_price) catch return errors.HederaError.OutOfMemory;
+        return self;
     }
     
     // Set gas limit
-    pub fn setGasLimit(self: *EthereumLegacyTransaction, gas_limit: u64) *EthereumLegacyTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setGasLimit(self: *EthereumLegacyTransaction, gas_limit: u64) errors.HederaError!*EthereumLegacyTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         self.gas_limit = gas_limit;
+        return self;
     }
     
     // Set to address
-    pub fn setTo(self: *EthereumLegacyTransaction, to: []const u8) *EthereumLegacyTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setTo(self: *EthereumLegacyTransaction, to: []const u8) errors.HederaError!*EthereumLegacyTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         if (self.to) |old_to| self.base.allocator.free(old_to);
-        self.to = try self.base.allocator.dupe(u8, to);
+        self.to = errors.handleDupeError(self.base.allocator, to) catch return errors.HederaError.OutOfMemory;
+        return self;
     }
     
     // Set value
-    pub fn setValue(self: *EthereumLegacyTransaction, value: []const u8) *EthereumLegacyTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setValue(self: *EthereumLegacyTransaction, value: []const u8) errors.HederaError!*EthereumLegacyTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         if (self.value.len > 0) self.base.allocator.free(self.value);
-        self.value = try self.base.allocator.dupe(u8, value);
+        self.value = errors.handleDupeError(self.base.allocator, value) catch return errors.HederaError.OutOfMemory;
+        return self;
     }
     
     // Set data
-    pub fn setData(self: *EthereumLegacyTransaction, data: []const u8) *EthereumLegacyTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setData(self: *EthereumLegacyTransaction, data: []const u8) errors.HederaError!*EthereumLegacyTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         if (self.data.len > 0) self.base.allocator.free(self.data);
-        self.data = try self.base.allocator.dupe(u8, data);
+        self.data = errors.handleDupeError(self.base.allocator, data) catch return errors.HederaError.OutOfMemory;
+        return self;
     }
     
     // Set signature
-    pub fn setSignature(self: *EthereumLegacyTransaction, v: []const u8, r: []const u8, s: []const u8) *EthereumLegacyTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setSignature(self: *EthereumLegacyTransaction, v: []const u8, r: []const u8, s: []const u8) errors.HederaError!*EthereumLegacyTransaction {
+        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
         
         if (self.v.len > 0) self.base.allocator.free(self.v);
         if (self.r.len > 0) self.base.allocator.free(self.r);
         if (self.s.len > 0) self.base.allocator.free(self.s);
         
-        self.v = try self.base.allocator.dupe(u8, v);
-        self.r = try self.base.allocator.dupe(u8, r);
-        self.s = try self.base.allocator.dupe(u8, s);
+        self.v = errors.handleDupeError(self.base.allocator, v) catch return errors.HederaError.OutOfMemory;
+        self.r = errors.handleDupeError(self.base.allocator, r) catch return errors.HederaError.OutOfMemory;
+        self.s = errors.handleDupeError(self.base.allocator, s) catch return errors.HederaError.OutOfMemory;
+        return self;
     }
     
     // Execute the transaction
@@ -114,7 +122,6 @@ pub const EthereumLegacyTransaction = struct {
             try rlpEncodeBytes(&list_data, to);
         } else {
             try list_data.append(0x80); // Empty RLP
-            return self;
         }
         
         try rlpEncodeBytes(&list_data, self.value);

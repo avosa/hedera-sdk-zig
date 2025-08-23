@@ -1,4 +1,5 @@
 const std = @import("std");
+const errors = @import("../core/errors.zig");
 const FileId = @import("../core/id.zig").FileId;
 const PublicKey = @import("../crypto/key.zig").PublicKey;
 const KeyList = @import("../crypto/key.zig").KeyList;
@@ -38,46 +39,46 @@ pub const FileCreateTransaction = struct {
     }
     
     // Set the expiration time for the file
-    pub fn setExpirationTime(self: *FileCreateTransaction, time: Timestamp) *FileCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setExpirationTime(self: *FileCreateTransaction, time: Timestamp) errors.HederaError!*FileCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.expiration_time = time;
         return self;
     }
     
     // Includes a key that must sign for modifications
-    pub fn addKey(self: *FileCreateTransaction, key: Key) !void {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        try self.keys.append(key);
+    pub fn addKey(self: *FileCreateTransaction, key: Key) errors.HederaError!void {
+        try errors.requireNotFrozen(self.base.frozen);
+        try errors.handleAppendError(&self.keys, key);
     }
     
     // Set the keys that must sign for modifications (accepts Key)
-    pub fn setKeys(self: *FileCreateTransaction, key: Key) !*FileCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setKeys(self: *FileCreateTransaction, key: Key) errors.HederaError!*FileCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         self.keys.clearRetainingCapacity();
         
         // Add Key to the keys list
-        try self.keys.append(key);
+        try errors.handleAppendError(&self.keys, key);
         return self;
     }
     
     // Set the keys that must sign for modifications (accepts Key array)
-    pub fn setKeysArray(self: *FileCreateTransaction, keys: []const Key) *FileCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setKeysArray(self: *FileCreateTransaction, keys: []const Key) errors.HederaError!*FileCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         self.keys.clearRetainingCapacity();
         for (keys) |key| {
-            try self.keys.append(key);
-            return self;
+            try errors.handleAppendError(&self.keys, key);
         }
+        return self;
     }
     
     // Set the file contents
-    pub fn setContents(self: *FileCreateTransaction, contents: []const u8) *FileCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setContents(self: *FileCreateTransaction, contents: []const u8) errors.HederaError!*FileCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (contents.len > MAX_FILE_SIZE) {
-            @panic("File too large");
+            return errors.HederaError.MaxFileSizeExceeded;
         }
         
         self.contents = contents;
@@ -85,11 +86,11 @@ pub const FileCreateTransaction = struct {
     }
     
     // Set the file memo
-    pub fn setMemo(self: *FileCreateTransaction, memo: []const u8) *FileCreateTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setMemo(self: *FileCreateTransaction, memo: []const u8) errors.HederaError!*FileCreateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (memo.len > 100) {
-            @panic("Memo too long");
+            return errors.HederaError.MemoTooLong;
         }
         
         self.memo = memo;
@@ -97,7 +98,7 @@ pub const FileCreateTransaction = struct {
     }
     
     // Set file memo (alias)
-    pub fn setFileMemo(self: *FileCreateTransaction, memo: []const u8) *FileCreateTransaction {
+    pub fn setFileMemo(self: *FileCreateTransaction, memo: []const u8) errors.HederaError!*FileCreateTransaction {
         return self.setMemo(memo);
     }
     

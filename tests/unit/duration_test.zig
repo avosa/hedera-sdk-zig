@@ -127,4 +127,3 @@ test "hedera.Duration max value" {
     
     try testing.expect(d.seconds > 0);
     try testing.expect(!d.isZero());
-}

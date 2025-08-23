@@ -1,4 +1,5 @@
 const std = @import("std");
+const errors = @import("../core/errors.zig");
 const Transaction = @import("../transaction/transaction.zig").Transaction;
 const TransactionResponse = @import("../transaction/transaction.zig").TransactionResponse;
 const AccountId = @import("../core/id.zig").AccountId;
@@ -40,8 +41,8 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // SetContractID sets the contract ID to update
-    pub fn SetContractID(self: *ContractUpdateTransaction, contract_id: ContractId) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetContractID(self: *ContractUpdateTransaction, contract_id: ContractId) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.contract_id = contract_id;
         return self;
     }
@@ -52,8 +53,8 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // SetExpirationTime sets the expiration time for the contract
-    pub fn SetExpirationTime(self: *ContractUpdateTransaction, expiration_time: Timestamp) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetExpirationTime(self: *ContractUpdateTransaction, expiration_time: Timestamp) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.expiration_time = expiration_time;
         return self;
     }
@@ -64,8 +65,8 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // SetAdminKey sets the admin key for the contract
-    pub fn SetAdminKey(self: *ContractUpdateTransaction, key: Key) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetAdminKey(self: *ContractUpdateTransaction, key: Key) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.admin_key = key;
         return self;
     }
@@ -76,8 +77,8 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // SetProxyAccountID sets the proxy account ID (deprecated)
-    pub fn SetProxyAccountID(self: *ContractUpdateTransaction, proxy_account_id: AccountId) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetProxyAccountID(self: *ContractUpdateTransaction, proxy_account_id: AccountId) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.proxy_account_id = proxy_account_id;
         return self;
     }
@@ -88,8 +89,8 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // SetAutoRenewPeriod sets the auto renew period for the contract
-    pub fn SetAutoRenewPeriod(self: *ContractUpdateTransaction, period: Duration) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetAutoRenewPeriod(self: *ContractUpdateTransaction, period: Duration) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.auto_renew_period = period;
         return self;
     }
@@ -100,8 +101,8 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // SetBytecodeFileID sets the file ID containing new bytecode (deprecated)
-    pub fn SetBytecodeFileID(self: *ContractUpdateTransaction, file_id: FileId) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetBytecodeFileID(self: *ContractUpdateTransaction, file_id: FileId) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.file_id = file_id;
         return self;
     }
@@ -112,14 +113,15 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // SetContractMemo sets the memo for the contract
-    pub fn SetContractMemo(self: *ContractUpdateTransaction, memo: []const u8) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetContractMemo(self: *ContractUpdateTransaction, memo: []const u8) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.contract_memo) |old_memo| {
             self.base.allocator.free(old_memo);
         }
         
-        self.contract_memo = self.base.allocator.dupe(u8, memo) catch @panic("allocation failed");
+        self.contract_memo = try errors.handleDupeError(self.base.allocator, memo);
+        return self;
     }
     
     // GetContractMemo returns the memo for the contract
@@ -128,8 +130,8 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // ClearContractMemo clears the contract memo
-    pub fn ClearContractMemo(self: *ContractUpdateTransaction) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn ClearContractMemo(self: *ContractUpdateTransaction) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.contract_memo) |memo| {
             self.base.allocator.free(memo);
@@ -140,8 +142,8 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // SetMaxAutomaticTokenAssociations sets the maximum number of automatic token associations
-    pub fn SetMaxAutomaticTokenAssociations(self: *ContractUpdateTransaction, max: i32) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetMaxAutomaticTokenAssociations(self: *ContractUpdateTransaction, max: i32) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.max_automatic_token_associations = max;
         return self;
     }
@@ -152,8 +154,8 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // SetAutoRenewAccountID sets the auto renew account ID for the contract
-    pub fn SetAutoRenewAccountID(self: *ContractUpdateTransaction, account_id: AccountId) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetAutoRenewAccountID(self: *ContractUpdateTransaction, account_id: AccountId) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.auto_renew_account_id = account_id;
         return self;
     }
@@ -164,15 +166,15 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // ClearAutoRenewAccountID clears the auto renew account ID
-    pub fn ClearAutoRenewAccountID(self: *ContractUpdateTransaction) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn ClearAutoRenewAccountID(self: *ContractUpdateTransaction) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.auto_renew_account_id = null;
         return self;
     }
     
     // SetStakedAccountID sets the staked account ID for the contract
-    pub fn SetStakedAccountID(self: *ContractUpdateTransaction, account_id: AccountId) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetStakedAccountID(self: *ContractUpdateTransaction, account_id: AccountId) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.staked_account_id = account_id;
         self.staked_node_id = null; // Clear node ID when setting account ID
         return self;
@@ -184,8 +186,8 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // SetStakedNodeID sets the staked node ID for the contract
-    pub fn SetStakedNodeID(self: *ContractUpdateTransaction, node_id: i64) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetStakedNodeID(self: *ContractUpdateTransaction, node_id: i64) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.staked_node_id = node_id;
         self.staked_account_id = null; // Clear account ID when setting node ID
         return self;
@@ -197,22 +199,22 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // ClearStakedAccountID clears the staked account ID
-    pub fn ClearStakedAccountID(self: *ContractUpdateTransaction) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn ClearStakedAccountID(self: *ContractUpdateTransaction) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.staked_account_id = AccountId{ .account = 0 };
         return self;
     }
     
     // ClearStakedNodeID clears the staked node ID
-    pub fn ClearStakedNodeID(self: *ContractUpdateTransaction) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn ClearStakedNodeID(self: *ContractUpdateTransaction) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.staked_node_id = -1;
         return self;
     }
     
     // SetDeclineStakingReward sets whether to decline staking rewards
-    pub fn SetDeclineStakingReward(self: *ContractUpdateTransaction, decline: bool) *ContractUpdateTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn SetDeclineStakingReward(self: *ContractUpdateTransaction, decline: bool) errors.HederaError!*ContractUpdateTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.decline_staking_reward = decline;
         return self;
     }

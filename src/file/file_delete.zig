@@ -1,4 +1,5 @@
 const std = @import("std");
+const errors = @import("../core/errors.zig");
 const FileId = @import("../core/id.zig").FileId;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
 const TransactionResponse = @import("../transaction/transaction.zig").TransactionResponse;
@@ -23,8 +24,8 @@ pub const FileDeleteTransaction = struct {
     }
     
     // Set the file ID to delete
-    pub fn setFileId(self: *FileDeleteTransaction, file_id: FileId) *FileDeleteTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setFileId(self: *FileDeleteTransaction, file_id: FileId) errors.HederaError!*FileDeleteTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.file_id = file_id;
         return self;
     }

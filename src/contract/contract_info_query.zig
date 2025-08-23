@@ -13,106 +13,122 @@ const Hbar = @import("../core/hbar.zig").Hbar;
 
 // ContractInfo contains information about a smart contract
 pub const ContractInfo = struct {
-    contract_id: ?ContractId = null,
-    account_id: ?AccountId = null,
-    contract_account_id: ?[]const u8 = null,
-    admin_key: ?Key = null,
-    expiration_time: ?Timestamp = null,
-    auto_renew_period: ?Duration = null,
-    storage: i64 = 0,
-    memo: ?[]const u8 = null,
-    balance: Hbar = Hbar.zero(),
-    deleted: bool = false,
-    evm_address: ?[]const u8 = null,
-    auto_renew_account_id: ?AccountId = null,
-    max_automatic_token_associations: i32 = 0,
-    ledger_id: ?[]const u8 = null,
-    staking_info: ?StakingInfo = null,
+    contract_id: ContractId,
+    account_id: AccountId,
+    contract_account_id: []const u8,
+    admin_key: ?Key,
+    expiration_time: Timestamp,
+    auto_renew_period: Duration,
+    storage: i64,
+    memo: []const u8,
+    balance: u64,
+    deleted: bool,
+    evm_address: []const u8,
+    auto_renew_account_id: ?AccountId,
+    max_automatic_token_associations: i32,
+    ledger_id: []const u8,
+    staking_info: ?StakingInfo,
     allocator: std.mem.Allocator,
-    
+
     pub fn init(allocator: std.mem.Allocator) ContractInfo {
         return ContractInfo{
+            .contract_id = ContractId.init(0, 0, 0),
+            .account_id = AccountId.init(0, 0, 0),
+            .contract_account_id = "",
+            .admin_key = null,
+            .expiration_time = Timestamp{ .seconds = 0, .nanos = 0 },
+            .auto_renew_period = Duration{ .seconds = 0, .nanos = 0 },
+            .storage = 0,
+            .memo = "",
+            .balance = 0,
+            .deleted = false,
+            .evm_address = "",
+            .auto_renew_account_id = null,
+            .max_automatic_token_associations = 0,
+            .ledger_id = "",
+            .staking_info = null,
             .allocator = allocator,
         };
     }
-    
+
     pub fn deinit(self: *ContractInfo) void {
-        if (self.contract_account_id) |caid| {
-            self.allocator.free(caid);
+        if (self.contract_account_id.len > 0) {
+            self.allocator.free(self.contract_account_id);
         }
-        if (self.memo) |m| {
-            self.allocator.free(m);
+        if (self.memo.len > 0) {
+            self.allocator.free(self.memo);
         }
-        if (self.evm_address) |ea| {
-            self.allocator.free(ea);
+        if (self.evm_address.len > 0) {
+            self.allocator.free(self.evm_address);
         }
-        if (self.ledger_id) |lid| {
-            self.allocator.free(lid);
+        if (self.ledger_id.len > 0) {
+            self.allocator.free(self.ledger_id);
         }
+        // Key is a union, no deinit needed
     }
 };
 
 pub const StakingInfo = struct {
-        decline_reward: bool,
-        stake_period_start: ?Timestamp,
-        pending_reward: i64,
-        staked_to_me: i64,
-        staked_account_id: ?AccountId,
-        staked_node_id: ?i64,
-        
-        pub fn deinit(self: *StakingInfo) void {
-            _ = self;
-        }
-    };
+    decline_reward: bool,
+    stake_period_start: ?Timestamp,
+    pending_reward: i64,
+    staked_to_me: i64,
+    staked_account_id: ?AccountId,
+    staked_node_id: ?i64,
+
+    pub fn deinit(self: *StakingInfo) void {
+        _ = self;
+    }
+};
 
 // ContractInfoQuery retrieves information about a smart contract
 pub const ContractInfoQuery = struct {
     base: Query,
     contract_id: ?ContractId,
-    
+
     pub fn init(allocator: std.mem.Allocator) ContractInfoQuery {
         return ContractInfoQuery{
             .base = Query.init(allocator),
             .contract_id = null,
         };
     }
-    
+
     pub fn deinit(self: *ContractInfoQuery) void {
         self.base.deinit();
     }
-    
+
     // Set the contract ID to query
     pub fn setContractId(self: *ContractInfoQuery, contract_id: ContractId) *ContractInfoQuery {
         self.contract_id = contract_id;
         return self;
     }
-    
+
     // Set the query payment amount
     pub fn setQueryPayment(self: *ContractInfoQuery, payment: Hbar) *ContractInfoQuery {
         self.base.payment_amount = payment;
         return self;
     }
-    
+
     // Execute the query
     pub fn execute(self: *ContractInfoQuery, client: *Client) !ContractInfo {
         if (self.contract_id == null) {
             return error.ContractIdRequired;
         }
-        
+
         const response = try self.base.execute(client);
         return try self.parseResponse(response);
     }
-    
+
     // Get cost of the query
     pub fn getCost(self: *ContractInfoQuery, client: *Client) !Hbar {
         self.base.response_type = .CostAnswer;
         const response = try self.base.execute(client);
-        
+
         var reader = ProtoReader.init(response.response_bytes);
-        
+
         while (reader.hasMore()) {
             const tag = try reader.readTag();
-            
+
             switch (tag.field_number) {
                 2 => {
                     const cost = try reader.readUint64();
@@ -121,36 +137,36 @@ pub const ContractInfoQuery = struct {
                 else => try reader.skipField(tag.wire_type),
             }
         }
-        
+
         return error.CostNotFound;
     }
-    
+
     // Build the query
     pub fn buildQuery(self: *ContractInfoQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
         defer writer.deinit();
-        
+
         // Query message structure
         // header = 1
         var header_writer = ProtoWriter.init(self.base.allocator);
         defer header_writer.deinit();
-        
+
         // payment = 1
         if (self.base.payment_transaction) |payment| {
             try header_writer.writeMessage(1, payment);
         }
-        
+
         // responseType = 2
         try header_writer.writeInt32(2, @intFromEnum(self.base.response_type));
-        
+
         const header_bytes = try header_writer.toOwnedSlice();
         defer self.base.allocator.free(header_bytes);
         try writer.writeMessage(1, header_bytes);
-        
+
         // contractGetInfo = 9 (oneof query)
         var info_query_writer = ProtoWriter.init(self.base.allocator);
         defer info_query_writer.deinit();
-        
+
         // contractID = 1
         if (self.contract_id) |contract| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
@@ -162,43 +178,26 @@ pub const ContractInfoQuery = struct {
             defer self.base.allocator.free(contract_bytes);
             try info_query_writer.writeMessage(1, contract_bytes);
         }
-        
+
         const info_query_bytes = try info_query_writer.toOwnedSlice();
         defer self.base.allocator.free(info_query_bytes);
         try writer.writeMessage(9, info_query_bytes);
-        
+
         return writer.toOwnedSlice();
     }
-    
+
     // Parse the response
     fn parseResponse(self: *ContractInfoQuery, response: QueryResponse) !ContractInfo {
         try response.validateStatus();
-        
+
         var reader = ProtoReader.init(response.response_bytes);
-        
-        var info = ContractInfo{
-            .contract_id = ContractId.init(0, 0, 0),
-            .account_id = AccountId.init(0, 0, 0),
-            .contract_account_id = "",
-            .admin_key = null,
-            .expiration_time = Timestamp{ .seconds = 0, .nanos = 0 },
-            .auto_renew_period = Duration{ .seconds = 0 },
-            .storage = 0,
-            .memo = "",
-            .balance = 0,
-            .deleted = false,
-            .evm_address = "",
-            .auto_renew_account_id = null,
-            .max_automatic_token_associations = 0,
-            .ledger_id = "",
-            .staking_info = null,
-            .allocator = self.base.allocator,
-        };
-        
+
+        var info = ContractInfo.init(self.base.allocator);
+
         // Parse ContractGetInfoResponse
         while (reader.hasMore()) {
             const tag = try reader.readTag();
-            
+
             switch (tag.field_number) {
                 1 => {
                     // header
@@ -208,20 +207,20 @@ pub const ContractInfoQuery = struct {
                     // contractInfo
                     const contract_info_bytes = try reader.readMessage();
                     var contract_reader = ProtoReader.init(contract_info_bytes);
-                    
+
                     while (contract_reader.hasMore()) {
                         const c_tag = try contract_reader.readTag();
-                        
+
                         switch (c_tag.field_number) {
                             1 => {
                                 // contractID
                                 const contract_bytes = try contract_reader.readMessage();
                                 var id_reader = ProtoReader.init(contract_bytes);
-                                
+
                                 var shard: i64 = 0;
                                 var realm: i64 = 0;
                                 var num: i64 = 0;
-                                
+
                                 while (id_reader.hasMore()) {
                                     const i = try id_reader.readTag();
                                     switch (i.field_number) {
@@ -231,18 +230,18 @@ pub const ContractInfoQuery = struct {
                                         else => try id_reader.skipField(i.wire_type),
                                     }
                                 }
-                                
+
                                 info.contract_id = ContractId.init(@intCast(shard), @intCast(realm), @intCast(num));
                             },
                             2 => {
                                 // accountID
                                 const account_bytes = try contract_reader.readMessage();
                                 var account_reader = ProtoReader.init(account_bytes);
-                                
+
                                 var shard: i64 = 0;
                                 var realm: i64 = 0;
                                 var num: i64 = 0;
-                                
+
                                 while (account_reader.hasMore()) {
                                     const a = try account_reader.readTag();
                                     switch (a.field_number) {
@@ -252,7 +251,7 @@ pub const ContractInfoQuery = struct {
                                         else => try account_reader.skipField(a.wire_type),
                                     }
                                 }
-                                
+
                                 info.account_id = AccountId.init(@intCast(shard), @intCast(realm), @intCast(num));
                             },
                             3 => info.contract_account_id = try self.base.allocator.dupe(u8, try contract_reader.readString()),
@@ -265,7 +264,7 @@ pub const ContractInfoQuery = struct {
                                 // expirationTime
                                 const exp_bytes = try contract_reader.readMessage();
                                 var exp_reader = ProtoReader.init(exp_bytes);
-                                
+
                                 while (exp_reader.hasMore()) {
                                     const e = try exp_reader.readTag();
                                     switch (e.field_number) {
@@ -279,11 +278,12 @@ pub const ContractInfoQuery = struct {
                                 // autoRenewPeriod
                                 const period_bytes = try contract_reader.readMessage();
                                 var period_reader = ProtoReader.init(period_bytes);
-                                
+
                                 while (period_reader.hasMore()) {
                                     const p = try period_reader.readTag();
                                     switch (p.field_number) {
                                         1 => info.auto_renew_period.seconds = try period_reader.readInt64(),
+                                        2 => info.auto_renew_period.nanos = try period_reader.readInt32(),
                                         else => try period_reader.skipField(p.wire_type),
                                     }
                                 }
@@ -301,11 +301,11 @@ pub const ContractInfoQuery = struct {
                                 // autoRenewAccountId
                                 const account_bytes = try contract_reader.readMessage();
                                 var account_reader = ProtoReader.init(account_bytes);
-                                
+
                                 var shard: i64 = 0;
                                 var realm: i64 = 0;
                                 var num: i64 = 0;
-                                
+
                                 while (account_reader.hasMore()) {
                                     const a = try account_reader.readTag();
                                     switch (a.field_number) {
@@ -315,7 +315,7 @@ pub const ContractInfoQuery = struct {
                                         else => try account_reader.skipField(a.wire_type),
                                     }
                                 }
-                                
+
                                 if (num != 0) {
                                     info.auto_renew_account_id = AccountId.init(@intCast(shard), @intCast(realm), @intCast(num));
                                 }
@@ -330,8 +330,8 @@ pub const ContractInfoQuery = struct {
                                 // stakingInfo
                                 const staking_bytes = try contract_reader.readMessage();
                                 var staking_reader = ProtoReader.init(staking_bytes);
-                                
-                                var staking_info = ContractInfo.StakingInfo{
+
+                                var staking_info = StakingInfo{
                                     .decline_reward = false,
                                     .stake_period_start = null,
                                     .pending_reward = 0,
@@ -339,7 +339,7 @@ pub const ContractInfoQuery = struct {
                                     .staked_account_id = null,
                                     .staked_node_id = null,
                                 };
-                                
+
                                 while (staking_reader.hasMore()) {
                                     const s = try staking_reader.readTag();
                                     switch (s.field_number) {
@@ -348,7 +348,7 @@ pub const ContractInfoQuery = struct {
                                             // stakePeriodStart
                                             const start_bytes = try staking_reader.readMessage();
                                             var start_reader = ProtoReader.init(start_bytes);
-                                            
+
                                             var start_time = Timestamp{ .seconds = 0, .nanos = 0 };
                                             while (start_reader.hasMore()) {
                                                 const st = try start_reader.readTag();
@@ -366,11 +366,11 @@ pub const ContractInfoQuery = struct {
                                             // stakedAccountId
                                             const account_bytes = try staking_reader.readMessage();
                                             var account_reader = ProtoReader.init(account_bytes);
-                                            
+
                                             var shard: i64 = 0;
                                             var realm: i64 = 0;
                                             var num: i64 = 0;
-                                            
+
                                             while (account_reader.hasMore()) {
                                                 const a = try account_reader.readTag();
                                                 switch (a.field_number) {
@@ -380,7 +380,7 @@ pub const ContractInfoQuery = struct {
                                                     else => try account_reader.skipField(a.wire_type),
                                                 }
                                             }
-                                            
+
                                             if (num != 0) {
                                                 staking_info.staked_account_id = AccountId.init(@intCast(shard), @intCast(realm), @intCast(num));
                                             }
@@ -389,7 +389,7 @@ pub const ContractInfoQuery = struct {
                                         else => try staking_reader.skipField(s.wire_type),
                                     }
                                 }
-                                
+
                                 info.staking_info = staking_info;
                             },
                             else => try contract_reader.skipField(c_tag.wire_type),
@@ -399,7 +399,7 @@ pub const ContractInfoQuery = struct {
                 else => try reader.skipField(tag.wire_type),
             }
         }
-        
+
         return info;
     }
 };

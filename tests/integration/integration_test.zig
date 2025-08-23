@@ -57,11 +57,11 @@ test "Transaction building and signing flow" {
     defer tx.deinit();
     
     // Test method chaining
-    _ = tx.setKey(hedera.Key.fromPublicKey(operator_key.getPublicKey()));
-    _ = tx.setInitialBalance(try hedera.Hbar.from(10));
-    _ = tx.setReceiverSignatureRequired(false);
-    _ = tx.setMaxAutomaticTokenAssociations(5);
-    _ = tx.setAccountMemo("Integration test account");
+    _ = try tx.setKey(hedera.Key.fromPublicKey(operator_key.getPublicKey()));
+    _ = try tx.setInitialBalance(try hedera.Hbar.from(10));
+    _ = try tx.setReceiverSignatureRequired(false);
+    _ = try tx.setMaxAutomaticTokenAssociations(5);
+    _ = try tx.setAccountMemo("Integration test account");
     
     // Verify transaction can be frozen
     try tx.freezeWith(&client);
@@ -144,16 +144,16 @@ test "Token operations flow" {
     var token_create = hedera.TokenCreateTransaction.init(allocator);
     defer token_create.deinit();
     
-    _ = token_create.setTokenName("Test Token");
-    _ = token_create.setTokenSymbol("TST");
-    _ = token_create.setDecimals(2);
-    _ = token_create.setInitialSupply(1000000);
+    _ = try token_create.setTokenName("Test Token");
+    _ = try token_create.setTokenSymbol("TST");
+    _ = try token_create.setDecimals(2);
+    _ = try token_create.setInitialSupply(1000000);
     
     var admin_key = try hedera.generatePrivateKey(allocator);
     defer admin_key.deinit();
     
-    _ = token_create.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
-    _ = token_create.setSupplyKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
+    _ = try token_create.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
+    _ = try token_create.setSupplyKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
     
     // Verify configuration
     try testing.expectEqualStrings("Test Token", token_create.name);
@@ -168,8 +168,8 @@ test "Token operations flow" {
     const account_id = try hedera.accountIdFromString(allocator, "0.0.1234");
     const token_id = hedera.TokenId.init(0, 0, 999);
     
-    _ = token_associate.setAccountId(account_id);
-    _ = token_associate.addTokenId(token_id);
+    _ = try token_associate.setAccountId(account_id);
+    _ = try token_associate.addTokenId(token_id);
     
     try testing.expectEqual(@as(usize, 1), token_associate.token_ids.items.len);
 }
@@ -184,9 +184,9 @@ test "Smart contract operations" {
     defer contract_create.deinit();
     
     const file_id = hedera.FileId.init(0, 0, 12345);
-    _ = contract_create.setBytecodeFileId(file_id);
-    _ = contract_create.setGas(100000);
-    _ = contract_create.setInitialBalance(try hedera.Hbar.from(1));
+    _ = try contract_create.setBytecodeFileId(file_id);
+    _ = try contract_create.setGas(100000);
+    _ = try contract_create.setInitialBalance(try hedera.Hbar.from(1));
     
     // Constructor parameters
     var params = hedera.ContractFunctionParameters.init(allocator);
@@ -200,7 +200,7 @@ test "Smart contract operations" {
     
     const constructor_params = try params.toBytes();
     defer allocator.free(constructor_params);
-    _ = contract_create.setConstructorParameters(constructor_params);
+    _ = try contract_create.setConstructorParameters(constructor_params);
     
     // Verify configuration
     try testing.expect(contract_create.bytecode_file_id != null);
@@ -211,17 +211,17 @@ test "Smart contract operations" {
     defer contract_execute.deinit();
     
     const contract_id = hedera.ContractId.init(0, 0, 5000);
-    _ = contract_execute.setContractId(contract_id);
-    _ = contract_execute.setGas(50000);
-    _ = contract_execute.setPayableAmount(try hedera.Hbar.fromTinybars(50000000));
+    _ = try contract_execute.setContractId(contract_id);
+    _ = try contract_execute.setGas(50000);
+    _ = try contract_execute.setPayableAmount(try hedera.Hbar.fromTinybars(50000000));
     
     // Contract query
     var contract_query = hedera.ContractCallQuery.init(allocator);
     defer contract_query.deinit();
     
     _ = contract_query.setContractId(contract_id);
-    _ = contract_query.setGas(30000);
-    _ = contract_query.setFunction("get", null);
+    _ = try contract_query.setGas(30000);
+    _ = try contract_query.setFunction("get", null);
 }
 
 test "Topic operations" {
@@ -233,21 +233,21 @@ test "Topic operations" {
     var topic_create = try hedera.TopicCreateTransaction.init(allocator);
     defer topic_create.deinit();
     
-    _ = topic_create.setTopicMemo("Test Topic");
+    _ = try topic_create.setTopicMemo("Test Topic");
     
     var admin_key = try hedera.generatePrivateKey(allocator);
     defer admin_key.deinit();
     
-    _ = topic_create.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
-    _ = topic_create.setSubmitKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
+    _ = try topic_create.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
+    _ = try topic_create.setSubmitKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
     
     // Topic message submit
     var message_submit = try hedera.TopicMessageSubmitTransaction.init(allocator);
     defer message_submit.deinit();
     
     const topic_id = hedera.TopicId.init(0, 0, 888);
-    _ = message_submit.setTopicId(topic_id);
-    _ = message_submit.setMessage("Hello from integration test!");
+    _ = try message_submit.setTopicId(topic_id);
+    _ = try message_submit.setMessage("Hello from integration test!");
     
     try testing.expectEqualStrings("Hello from integration test!", message_submit.message);
 }
@@ -271,14 +271,16 @@ test "Schedule operations" {
     var schedule_create = hedera.ScheduleCreateTransaction.init(allocator);
     defer schedule_create.deinit();
     
-    _ = schedule_create.setScheduledTransaction(&transfer.base);
+    _ = try schedule_create.setScheduledTransaction(&transfer.base);
     _ = try schedule_create.setScheduleMemo("Scheduled transfer");
-    _ = schedule_create.setPayerAccountId(account1);
+    _ = try schedule_create.setPayerAccountId(account1);
     
     // Schedule sign
     var schedule_sign = hedera.ScheduleSignTransaction.init(allocator);
     defer schedule_sign.deinit();
     
     const schedule_id = hedera.ScheduleId.init(0, 0, 555);
-    _ = schedule_sign.setScheduleId(schedule_id);
+    _ = try schedule_sign.setScheduleId(schedule_id);
+    
+    try testing.expectEqual(@as(u64, 555), schedule_sign.schedule_id.?.num());
 }

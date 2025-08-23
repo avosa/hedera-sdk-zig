@@ -1,4 +1,5 @@
 const std = @import("std");
+const errors = @import("../core/errors.zig");
 const AccountId = @import("../core/id.zig").AccountId;
 const TokenId = @import("../core/id.zig").TokenId;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
@@ -37,33 +38,33 @@ pub const TokenWipeTransaction = struct {
     }
     
     // Set the token to wipe
-    pub fn setTokenId(self: *TokenWipeTransaction, token_id: TokenId) *TokenWipeTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setTokenId(self: *TokenWipeTransaction, token_id: TokenId) errors.HederaError!*TokenWipeTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.token_id = token_id;
         return self;
     }
     
     // Set the account to wipe from
-    pub fn setAccountId(self: *TokenWipeTransaction, account_id: AccountId) *TokenWipeTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAccountId(self: *TokenWipeTransaction, account_id: AccountId) errors.HederaError!*TokenWipeTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.account_id = account_id;
         return self;
     }
     
     // Set amount to wipe (for fungible tokens)
-    pub fn setAmount(self: *TokenWipeTransaction, amount: u64) *TokenWipeTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAmount(self: *TokenWipeTransaction, amount: u64) errors.HederaError!*TokenWipeTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.serial_numbers.items.len > 0) {
-            @panic("Cannot set both amount and serial numbers");
+            return errors.HederaError.InvalidParameter;
         }
         
         if (amount == 0) {
-            @panic("Invalid wipe amount");
+            return errors.HederaError.InvalidParameter;
         }
         
         if (amount > std.math.maxInt(i64)) {
-            @panic("Wipe amount too large");
+            return errors.HederaError.InvalidParameter;
         }
         
         self.amount = amount;
@@ -71,65 +72,66 @@ pub const TokenWipeTransaction = struct {
     }
     
     // Includes a serial number for NFT wiping
-    pub fn addSerialNumber(self: *TokenWipeTransaction, serial_number: i64) *TokenWipeTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn addSerialNumber(self: *TokenWipeTransaction, serial_number: i64) errors.HederaError!*TokenWipeTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.amount > 0) {
-            @panic("Cannot set both amount and serial numbers");
+            return errors.HederaError.InvalidParameter;
         }
         
         if (serial_number <= 0) {
-            @panic("Invalid serial number");
+            return errors.HederaError.InvalidParameter;
         }
         
         if (self.serial_numbers.items.len >= MAX_NFT_WIPE_BATCH_SIZE) {
-            @panic("Too many serial numbers");
+            return errors.HederaError.InvalidParameter;
         }
         
         // Check for duplicates
         for (self.serial_numbers.items) |existing| {
             if (existing == serial_number) {
-                @panic("Duplicate serial number");
+                return errors.HederaError.InvalidParameter;
             }
         }
         
-        self.serial_numbers.append(serial_number) catch @panic("Failed to append serial number");
+        try errors.handleAppendError(&self.serial_numbers, serial_number);
+        return self;
     }
     
     // Set serial numbers for batch NFT wiping
-    pub fn setSerialNumbers(self: *TokenWipeTransaction, serial_numbers: []const i64) *TokenWipeTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setSerialNumbers(self: *TokenWipeTransaction, serial_numbers: []const i64) errors.HederaError!*TokenWipeTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         if (self.amount > 0) {
-            @panic("Cannot set both amount and serial numbers");
+            return errors.HederaError.InvalidParameter;
         }
         
         if (serial_numbers.len > MAX_NFT_WIPE_BATCH_SIZE) {
-            @panic("Too many serial numbers");
+            return errors.HederaError.InvalidParameter;
         }
         
         self.serial_numbers.clearRetainingCapacity();
         
         for (serial_numbers) |serial_number| {
             if (serial_number <= 0) {
-                @panic("Invalid serial number");
+                return errors.HederaError.InvalidParameter;
             }
             
             // Check for duplicates
             for (self.serial_numbers.items) |existing| {
                 if (existing == serial_number) {
-                    @panic("Duplicate serial number");
+                    return errors.HederaError.InvalidParameter;
                 }
             }
             
-            self.serial_numbers.append(serial_number) catch @panic("Failed to append serial number");
+            try errors.handleAppendError(&self.serial_numbers, serial_number);
         }
         return self;
     }
     
     // Add serial (alias for AddSerialNumber)
-    pub fn addSerial(self: *TokenWipeTransaction, serial: i64) *TokenWipeTransaction {
-        return self.addSerialNumber(serial);
+    pub fn addSerial(self: *TokenWipeTransaction, serial: i64) errors.HederaError!*TokenWipeTransaction {
+        return try self.addSerialNumber(serial);
     }
     
     // Getter methods for uniformity with Go SDK

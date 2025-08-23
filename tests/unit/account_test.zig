@@ -15,14 +15,14 @@ test "Account create transaction" {
     defer key.deinit();
     
     // Set all parameters
-    _ = tx.setKey(hedera.Key.fromPublicKey(key.getPublicKey()));
-    _ = tx.setInitialBalance(try hedera.Hbar.from(100));
-    _ = tx.setReceiverSignatureRequired(true);
-    _ = tx.setMaxAutomaticTokenAssociations(10);
-    _ = tx.setAccountMemo("Test account creation");
-    _ = tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
-    _ = tx.setStakedNodeId(3);
-    _ = tx.setDeclineStakingReward(false);
+    _ = try tx.setKey(hedera.Key.fromPublicKey(key.getPublicKey()));
+    _ = try tx.setInitialBalance(try hedera.Hbar.from(100));
+    _ = try tx.setReceiverSignatureRequired(true);
+    _ = try tx.setMaxAutomaticTokenAssociations(10);
+    _ = try tx.setAccountMemo("Test account creation");
+    _ = try tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
+    _ = try tx.setStakedNodeId(3);
+    _ = try tx.setDeclineStakingReward(false);
     
     // Verify all settings
     try testing.expect(tx.key != null);
@@ -68,21 +68,21 @@ test "Account update transaction" {
     
     // Set account to update
     const account_id = hedera.AccountId.init(0, 0, 1234);
-    _ = tx.setAccountId(account_id);
+    _ = try tx.setAccountId(account_id);
     
     // Generate new key
     var new_key = try hedera.generatePrivateKey(allocator);
     defer new_key.deinit();
     
     // Update various properties
-    _ = tx.setKey(hedera.Key.fromPublicKey(new_key.getPublicKey()));
-    _ = tx.setReceiverSignatureRequired(false);
-    _ = tx.setMaxAutomaticTokenAssociations(20);
-    _ = tx.setMemo("Updated account");
-    _ = tx.setExpirationTime(hedera.Timestamp.fromSeconds(1234567890));
-    _ = tx.setAutoRenewPeriod(hedera.Duration.fromDays(120));
-    _ = tx.setStakedNodeId(4);
-    _ = tx.setDeclineStakingReward(true);
+    _ = try tx.setKey(hedera.Key.fromPublicKey(new_key.getPublicKey()));
+    _ = try tx.setReceiverSignatureRequired(false);
+    _ = try tx.setMaxAutomaticTokenAssociations(20);
+    _ = try tx.setMemo("Updated account");
+    _ = try tx.setExpirationTime(hedera.Timestamp.fromSeconds(1234567890));
+    _ = try tx.setAutoRenewPeriod(hedera.Duration.fromDays(120));
+    _ = try tx.setStakedNodeId(4);
+    _ = try tx.setDeclineStakingReward(true);
     
     // Verify settings
     try testing.expectEqual(@as(u64, 1234), tx.account_id.?.account);
@@ -107,11 +107,11 @@ test "Account delete transaction" {
     
     // Set account to delete
     const account_id = hedera.AccountId.init(0, 0, 1000);
-    _ = tx.setAccountId(account_id);
+    _ = try tx.setAccountId(account_id);
     
     // Set transfer account (where remaining funds go)
     const transfer_account = hedera.AccountId.init(0, 0, 2000);
-    _ = tx.setTransferAccountId(transfer_account);
+    _ = try tx.setTransferAccountId(transfer_account);
     
     try testing.expectEqual(@as(u64, 1000), tx.delete_account_id.?.account);
     try testing.expectEqual(@as(u64, 2000), tx.transfer_account_id.?.account);
@@ -185,7 +185,7 @@ test "Live hash add transaction" {
     
     // Set account
     const account_id = hedera.AccountId.init(0, 0, 500);
-    _ = tx.setAccountId(account_id);
+    _ = try tx.setAccountId(account_id);
     
     // Set hash
     const hash = [_]u8{0xAB} ** 48;
@@ -193,7 +193,7 @@ test "Live hash add transaction" {
     
     // Set duration
     const duration = hedera.Duration.fromDays(30);
-    _ = tx.setDuration(duration);
+    _ = try tx.setDuration(duration);
     
     // Add keys
     var key1 = try hedera.generatePrivateKey(allocator);
@@ -221,7 +221,7 @@ test "Live hash delete transaction" {
     
     // Set account
     const account_id = hedera.AccountId.init(0, 0, 600);
-    _ = tx.setAccountId(account_id);
+    _ = try tx.setAccountId(account_id);
     
     // Set hash to delete
     const hash = [_]u8{0xCD} ** 48;

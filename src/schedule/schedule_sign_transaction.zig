@@ -4,6 +4,7 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const ScheduleId = @import("../core/id.zig").ScheduleId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // ScheduleSignTransaction adds a signature to a schedule transaction
 pub const ScheduleSignTransaction = struct {
@@ -21,15 +22,15 @@ pub const ScheduleSignTransaction = struct {
     }
     
     // Set the schedule ID to sign
-    pub fn setScheduleId(self: *ScheduleSignTransaction, schedule_id: ScheduleId) *ScheduleSignTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setScheduleId(self: *ScheduleSignTransaction, schedule_id: ScheduleId) errors.HederaError!*ScheduleSignTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.schedule_id = schedule_id;
         return self;
     }
     
     // Clear the schedule ID
-    pub fn clearScheduleId(self: *ScheduleSignTransaction) !void {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn clearScheduleId(self: *ScheduleSignTransaction) errors.HederaError!void {
+        try errors.requireNotFrozen(self.base.frozen);
         self.schedule_id = null;
     }
     

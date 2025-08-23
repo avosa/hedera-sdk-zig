@@ -1,4 +1,5 @@
 const std = @import("std");
+const errors = @import("../core/errors.zig");
 const AccountId = @import("../core/id.zig").AccountId;
 const TokenId = @import("../core/id.zig").TokenId;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
@@ -26,15 +27,15 @@ pub const TokenGrantKycTransaction = struct {
     }
     
     // Set the token to grant KYC for
-    pub fn setTokenId(self: *TokenGrantKycTransaction, token_id: TokenId) *TokenGrantKycTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setTokenId(self: *TokenGrantKycTransaction, token_id: TokenId) errors.HederaError!*TokenGrantKycTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.token_id = token_id;
         return self;
     }
     
     // Set the account to grant KYC to
-    pub fn setAccountId(self: *TokenGrantKycTransaction, account_id: AccountId) *TokenGrantKycTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setAccountId(self: *TokenGrantKycTransaction, account_id: AccountId) errors.HederaError!*TokenGrantKycTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.account_id = account_id;
         return self;
     }

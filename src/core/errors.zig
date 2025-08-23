@@ -7,6 +7,7 @@ pub const HederaError = error{
     
     // Protocol errors
     InvalidTransaction,
+    TransactionFrozen,
     PayerAccountNotFound,
     InvalidNodeAccount,
     TransactionExpired,
@@ -99,6 +100,7 @@ pub const HederaError = error{
     InvalidTokenId,
     InvalidTokenDecimals,
     InvalidTokenInitialSupply,
+    InvalidTokenMaximumSupply,
     InvalidTreasuryAccountForToken,
     InvalidTokenSymbol,
     TokenHasNoFreezeKey,
@@ -494,4 +496,79 @@ pub fn Result(comptime T: type) type {
             };
         }
     };
+}
+
+// Validation helper functions for common parameter checks
+pub fn requirePositive(value: i64) HederaError!void {
+    if (value <= 0) {
+        return HederaError.InvalidParameter;
+    }
+}
+
+pub fn requireNotZero(value: anytype) HederaError!void {
+    if (value == 0) {
+        return HederaError.InvalidParameter;
+    }
+}
+
+pub fn requireValidRange(value: i64, min: i64, max: i64) HederaError!void {
+    if (value < min or value > max) {
+        return HederaError.InvalidParameter;
+    }
+}
+
+pub fn requireNotNull(value: anytype) HederaError!void {
+    if (value == null) {
+        return HederaError.InvalidParameter;
+    }
+}
+
+pub fn requireValidString(str: []const u8) HederaError!void {
+    if (str.len == 0) {
+        return HederaError.InvalidParameter;
+    }
+}
+
+pub fn requireNotFrozen(frozen: bool) HederaError!void {
+    if (frozen) {
+        return HederaError.TransactionFrozen;
+    }
+}
+
+pub fn requireMaxLength(str: []const u8, max_len: usize) HederaError!void {
+    if (str.len > max_len) {
+        return HederaError.InvalidParameter;
+    }
+}
+
+// Memory allocation error handling
+pub fn handleAllocError(allocator: std.mem.Allocator, comptime T: type, size: usize) HederaError![]T {
+    return allocator.alloc(T, size) catch return HederaError.OutOfMemory;
+}
+
+pub fn handleDupeError(allocator: std.mem.Allocator, slice: anytype) HederaError!@TypeOf(slice) {
+    return allocator.dupe(@TypeOf(slice[0]), slice) catch return HederaError.OutOfMemory;
+}
+
+pub fn handleAppendError(list: anytype, item: anytype) HederaError!void {
+    list.append(item) catch return HederaError.OutOfMemory;
+}
+
+pub fn handleAppendSliceError(list: anytype, slice: anytype) HederaError!void {
+    list.appendSlice(slice) catch return HederaError.OutOfMemory;
+}
+
+pub fn handleInsertSliceError(list: anytype, index: usize, slice: anytype) HederaError!void {
+    list.insertSlice(index, slice) catch return HederaError.OutOfMemory;
+}
+
+pub fn handleFormatError(allocator: std.mem.Allocator, comptime format: []const u8, args: anytype) HederaError![]u8 {
+    return std.fmt.allocPrint(allocator, format, args) catch return HederaError.OutOfMemory;
+}
+
+// Helper function to validate string length
+pub fn requireStringNotTooLong(str: []const u8, max_len: usize) HederaError!void {
+    if (str.len > max_len) {
+        return HederaError.MemoTooLong;
+    }
 }

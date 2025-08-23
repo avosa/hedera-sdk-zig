@@ -18,6 +18,7 @@ const GrpcConnection = @import("../network/grpc.zig").GrpcConnection;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
 const ContractFunctionResult = @import("../contract/contract_execute.zig").ContractFunctionResult;
+const errors = @import("../core/errors.zig");
 
 // Transfer types with Zig's optimized struct layout
 pub const Transfer = struct {
@@ -227,8 +228,8 @@ pub const Transaction = struct {
     }
     
     // Set transaction ID
-    pub fn setTransactionId(self: *Transaction, tx_id: TransactionId) *Transaction {
-        if (self.frozen) @panic("Transaction is frozen");
+    pub fn setTransactionId(self: *Transaction, tx_id: TransactionId) errors.HederaError!*Transaction {
+        if (self.frozen) return errors.HederaError.TransactionFrozen;
         self.transaction_id = tx_id;
         return self;
     }
@@ -243,7 +244,7 @@ pub const Transaction = struct {
     
     // Set node account IDs
     pub fn setNodeAccountIds(self: *Transaction, node_ids: []const AccountId) !*Transaction {
-        if (self.frozen) @panic("Transaction is frozen");
+        if (self.frozen) return errors.HederaError.TransactionFrozen;
         
         self.node_account_ids.clearRetainingCapacity();
         for (node_ids) |id| {
@@ -253,11 +254,11 @@ pub const Transaction = struct {
     }
     
     // Set transaction valid duration
-    pub fn setTransactionValidDuration(self: *Transaction, duration: Duration) *Transaction {
-        if (self.frozen) @panic("Transaction is frozen");
+    pub fn setTransactionValidDuration(self: *Transaction, duration: Duration) errors.HederaError!*Transaction {
+        if (self.frozen) return errors.HederaError.TransactionFrozen;
         
         if (duration.seconds < 0 or duration.seconds > 180) {
-            @panic("Invalid transaction duration");
+            return errors.HederaError.InvalidParameter;
         }
         
         self.transaction_valid_duration = duration;
@@ -265,11 +266,11 @@ pub const Transaction = struct {
     }
     
     // Set transaction memo
-    pub fn setTransactionMemo(self: *Transaction, memo: []const u8) *Transaction {
-        if (self.frozen) @panic("Transaction is frozen");
+    pub fn setTransactionMemo(self: *Transaction, memo: []const u8) errors.HederaError!*Transaction {
+        if (self.frozen) return errors.HederaError.TransactionFrozen;
         
         if (memo.len > 100) {
-            @panic("Memo too long");
+            return errors.HederaError.InvalidParameter;
         }
         
         self.transaction_memo = memo;
@@ -278,8 +279,8 @@ pub const Transaction = struct {
     }
     
     // Set max transaction fee
-    pub fn setMaxTransactionFee(self: *Transaction, fee: Hbar) *Transaction {
-        if (self.frozen) @panic("Transaction is frozen");
+    pub fn setMaxTransactionFee(self: *Transaction, fee: Hbar) errors.HederaError!*Transaction {
+        if (self.frozen) return errors.HederaError.TransactionFrozen;
         self.max_transaction_fee = fee;
         return self;
     }

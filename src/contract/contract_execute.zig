@@ -1,4 +1,5 @@
 const std = @import("std");
+const errors = @import("../core/errors.zig");
 const ContractId = @import("../core/id.zig").ContractId;
 const AccountId = @import("../core/id.zig").AccountId;
 const Hbar = @import("../core/hbar.zig").Hbar;
@@ -297,8 +298,8 @@ pub const ContractExecuteTransaction = struct {
     }
     
     // SetContractID sets the contract ID to execute
-    pub fn setContractId(self: *ContractExecuteTransaction, contract_id: ContractId) *ContractExecuteTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setContractId(self: *ContractExecuteTransaction, contract_id: ContractId) errors.HederaError!*ContractExecuteTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.contract_id = contract_id;
         return self;
     }
@@ -309,8 +310,8 @@ pub const ContractExecuteTransaction = struct {
     }
     
     // SetGas sets the gas limit for the contract execution
-    pub fn setGas(self: *ContractExecuteTransaction, gas: u64) *ContractExecuteTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setGas(self: *ContractExecuteTransaction, gas: u64) errors.HederaError!*ContractExecuteTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.gas = @intCast(gas);
         return self;
     }
@@ -321,8 +322,8 @@ pub const ContractExecuteTransaction = struct {
     }
     
     // SetPayableAmount sets the amount of Hbar sent with the contract execution
-    pub fn setPayableAmount(self: *ContractExecuteTransaction, amount: Hbar) *ContractExecuteTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setPayableAmount(self: *ContractExecuteTransaction, amount: Hbar) errors.HederaError!*ContractExecuteTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.payable_amount = amount;
         return self;
     }
@@ -333,8 +334,8 @@ pub const ContractExecuteTransaction = struct {
     }
     
     // SetFunctionParameters sets the function parameters for the contract execution
-    pub fn setFunctionParameters(self: *ContractExecuteTransaction, parameters: []const u8) *ContractExecuteTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setFunctionParameters(self: *ContractExecuteTransaction, parameters: []const u8) errors.HederaError!*ContractExecuteTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         self.function_parameters = parameters;
         return self;
     }
@@ -345,8 +346,8 @@ pub const ContractExecuteTransaction = struct {
     }
     
     // SetFunction sets the function name and parameters for the contract execution
-    pub fn setFunction(self: *ContractExecuteTransaction, function_name: []const u8, parameters: ?*ContractFunctionParameters) *ContractExecuteTransaction {
-        if (self.base.frozen) @panic("transaction is frozen");
+    pub fn setFunction(self: *ContractExecuteTransaction, function_name: []const u8, parameters: ?*ContractFunctionParameters) errors.HederaError!*ContractExecuteTransaction {
+        try errors.requireNotFrozen(self.base.frozen);
         
         var params = parameters;
         if (params == null) {
@@ -354,8 +355,8 @@ pub const ContractExecuteTransaction = struct {
             params = &default_params;
         }
         
-        params.?.setFunction(function_name) catch @panic("failed to set function");
-        const data = params.?.build() catch @panic("failed to build parameters");
+        _ = params.?.setFunction(function_name);
+        const data = params.?.build() catch return errors.HederaError.SerializationFailed;
         self.function_parameters = data;
         return self;
     }
@@ -363,7 +364,7 @@ pub const ContractExecuteTransaction = struct {
     // Execute the transaction
     pub fn execute(self: *ContractExecuteTransaction, client: *Client) !TransactionResponse {
         if (self.contract_id == null) {
-            @panic("contract ID is required");
+            return error.ContractIdRequired;
         }
         
         return try self.base.execute(client);

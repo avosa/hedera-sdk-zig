@@ -197,4 +197,3 @@ test "ID protobuf deserialization" {
     const deserialized = try AccountId.fromProtobuf(bytes);
     
     try testing.expect(original.equals(deserialized));
-}

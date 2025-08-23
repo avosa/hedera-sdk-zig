@@ -27,7 +27,7 @@ test "ContractQuery through Mirror Node" {
     defer query.deinit();
     
     query.setContractId(ContractId.init(0, 0, 1000));
-    _ = query.setFunction("balanceOf");
+    _ = try query.setFunction("balanceOf");
     
     // Add address parameter
     var params = std.ArrayList(u8).init(allocator);
@@ -63,16 +63,16 @@ test "MirrorQuery for transactions" {
     );
     
     // Set transaction type filter
-    _ = query.setTransactionType(.CRYPTO_TRANSFER);
+    _ = try query.setTransactionType(.CRYPTO_TRANSFER);
     
     // Set result filter
-    _ = query.setResult(.SUCCESS);
+    _ = try query.setResult(.SUCCESS);
     
     // Set limit
-    _ = query.setLimit(100);
+    _ = try query.setLimit(100);
     
     // Set order
-    _ = query.setOrder(.DESC);
+    _ = try query.setOrder(.DESC);
     
     try testing.expectEqual(@as(u64, 100), query.account_id.?.account);
     try testing.expectEqual(@as(usize, 100), query.limit);
@@ -132,7 +132,7 @@ test "MirrorQuery for NFT info" {
         .serial_number = 1,
     };
     
-    _ = query.setNftId(nft_id);
+    _ = try query.setNftId(nft_id);
     
     try testing.expectEqual(@as(u64, 500), query.nft_id.?.token_id.num());
     try testing.expectEqual(@as(i64, 1), query.nft_id.?.serial_number);
@@ -149,7 +149,7 @@ test "TopicMessageQuery through Mirror Node" {
     query.setTopicId(TopicId.init(0, 0, 200));
     query.setStartTime(Timestamp.fromSeconds(1234567890));
     query.setEndTime(Timestamp.fromSeconds(1234567900));
-    _ = query.setLimit(100);
+    _ = try query.setLimit(100);
     
     try testing.expectEqual(@as(u64, 200), query.topic_id.?.num());
     try testing.expectEqual(@as(u32, 100), query.limit.?);
@@ -196,7 +196,7 @@ test "MirrorNode subscription" {
         }
     };
     
-    _ = subscription.setCallback(Callback.onMessage);
+    _ = try subscription.setCallback(Callback.onMessage);
     
     try testing.expectEqual(@as(u64, 200), subscription.topic_id.?.num());
     try testing.expect(subscription.callback != null);

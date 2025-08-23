@@ -10,6 +10,7 @@ const Transaction = @import("../transaction/transaction.zig").Transaction;
 const ResponseCode = @import("../transaction/transaction.zig").ResponseCode;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
+const errors = @import("../core/errors.zig");
 
 // Query header type
 pub const ResponseType = enum(i32) {
@@ -136,19 +137,19 @@ pub const Query = struct {
     }
     
     // Get cost of query
-    pub fn getCost(self: *Query, client: *Client) !Hbar {
+    pub fn getCost(self: *Query, client: *Client) errors.HederaError!Hbar {
         // Create cost query
         var cost_query = self.*;
         cost_query.response_type = .CostAnswer;
         cost_query.is_payment_required = false;
         
-        const response = cost_query.execute(client) catch return error.QueryExecutionFailed;
+        const response = cost_query.execute(client) catch return errors.HederaError.UnknownError;
         return Hbar.fromTinybars(@intCast(response.header.cost));
     }
     
     // Generate payment transaction
-    fn generatePaymentTransaction(self: *Query, client: *Client, node_id: AccountId, _: Hbar) !Transaction {
-        const operator = client.operator orelse return error.OperatorNotSet;
+    fn generatePaymentTransaction(self: *Query, client: *Client, node_id: AccountId, _: Hbar) errors.HederaError!Transaction {
+        const operator = client.operator orelse return error.MissingOperatorAccountId;
         
         // Create crypto transfer transaction for payment
         var payment = Transaction.init(self.allocator);
@@ -164,7 +165,7 @@ pub const Query = struct {
     }
     
     // Make payment for query
-    fn makePayment(self: *Query, client: *Client, node_id: AccountId) !void {
+    fn makePayment(self: *Query, client: *Client, node_id: AccountId) errors.HederaError!void {
         if (!self.is_payment_required) return;
         
         // Check if we already have a payment for this node
@@ -182,7 +183,7 @@ pub const Query = struct {
         // Check against max payment
         if (self.max_payment_amount) |max| {
             if (payment_amount.compare(max) == .gt) {
-                return error.ExceedsMaxQueryPayment;
+                return error.InsufficientTxFee; // Exceeds max query payment
             }
         }
         
@@ -193,9 +194,9 @@ pub const Query = struct {
     }
     
     // Execute query
-    pub fn execute(self: *Query, client: *Client) !QueryResponse {
+    pub fn execute(self: *Query, client: *Client) errors.HederaError!QueryResponse {
         if (self.executed.swap(true, .acquire)) {
-            return error.QueryAlreadyExecuted;
+            return error.InvalidParameter; // Query already executed
         }
         
         // Set node account IDs if not set
@@ -237,7 +238,7 @@ pub const Query = struct {
         defer writer.deinit();
         
         // Common query header fields
-        if (self.query_payment) |payment| {
+        if (self.payment_amount) |payment| {
             var payment_writer = ProtoWriter.init(self.allocator);
             defer payment_writer.deinit();
             
@@ -249,7 +250,7 @@ pub const Query = struct {
         }
         
         // Response type
-        try writer.writeEnum(2, @intFromEnum(self.response_type));
+        try writer.writeUint32(2, @intFromEnum(self.response_type));
         
         return writer.toOwnedSlice();
     }
@@ -343,7 +344,7 @@ pub const QueryResponse = struct {
     
     pub fn validateStatus(self: QueryResponse) !void {
         if (!self.header.node_transaction_precheck_code.isSuccess()) {
-            return error.QueryFailed;
+            return errors.HederaError.QueryRequestFailed;
         }
     }
 };

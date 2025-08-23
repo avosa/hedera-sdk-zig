@@ -6,6 +6,7 @@ const TokenId = @import("../core/id.zig").TokenId;
 const Timestamp = @import("../core/timestamp.zig").Timestamp;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const errors = @import("../core/errors.zig");
 
 // TokenUpdateNftsTransaction updates metadata for NFTs
 pub const TokenUpdateNftsTransaction = struct {
@@ -30,9 +31,10 @@ pub const TokenUpdateNftsTransaction = struct {
     }
     
     // Set the token ID
-    pub fn setTokenId(self: *TokenUpdateNftsTransaction, token_id: TokenId) *TokenUpdateNftsTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
+    pub fn setTokenId(self: *TokenUpdateNftsTransaction, token_id: TokenId) errors.HederaError!*TokenUpdateNftsTransaction {
+        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
         self.token_id = token_id;
+        return self;
     }
     
     // Add a serial number to update
@@ -41,21 +43,22 @@ pub const TokenUpdateNftsTransaction = struct {
     }
     
     // Set all serials to update
-    pub fn setSerials(self: *TokenUpdateNftsTransaction, serials: []const i64) *TokenUpdateNftsTransaction {
+    pub fn setSerials(self: *TokenUpdateNftsTransaction, serials: []const i64) !*TokenUpdateNftsTransaction {
         self.serials.clearAndFree();
         try self.serials.appendSlice(serials);
+        return self;
     }
     
     // Set the metadata for the NFTs
-    pub fn setMetadata(self: *TokenUpdateNftsTransaction, metadata: []const u8) *TokenUpdateNftsTransaction {
-        if (self.base.frozen) @panic("Transaction is frozen");
-        if (metadata.len > 100) return error.MetadataTooLong;
+    pub fn setMetadata(self: *TokenUpdateNftsTransaction, metadata: []const u8) !*TokenUpdateNftsTransaction {
+        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+        if (metadata.len > 100) return errors.HederaError.InvalidParameter;
         
         if (self.metadata) |old| {
             self.base.allocator.free(old);
-            return self;
         }
         self.metadata = try self.base.allocator.dupe(u8, metadata);
+        return self;
     }
     
     // Execute the transaction

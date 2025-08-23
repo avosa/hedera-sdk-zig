@@ -118,4 +118,3 @@ test "hedera.Timestamp negative nanos normalization" {
     
     try testing.expectEqual(@as(i64, 999), normalized.seconds);
     try testing.expectEqual(@as(i32, 500_000_000), normalized.nanos);
-}
