@@ -65,14 +65,23 @@ pub const TransactionResponse = struct {
     }
     
     pub fn getReceipt(self: *const Self, client: *Client) !TransactionReceipt {
-        return try self.getReceiptQuery(client).execute(client);
+        const query = try self.getReceiptQuery(client);
+        defer {
+            query.deinit();
+            self.allocator.destroy(query);
+        }
+        return try query.execute(client);
     }
     
     pub fn getReceiptAsync(self: *const Self, client: *Client) !TransactionReceipt {
-        return try self.getReceiptQuery(client)
-            .setValidateStatus(self.validate_status)
-            .setIncludeChildReceipts(self.include_child_receipts)
-            .executeAsync(client);
+        const query = try self.getReceiptQuery(client);
+        defer {
+            query.deinit();
+            self.allocator.destroy(query);
+        }
+        _ = query.setValidateStatus(self.validate_status);
+        _ = query.setIncludeChildReceipts(self.include_child_receipts);
+        return try query.executeAsync(client);
     }
     
     pub fn getRecord(self: *const Self, client: *Client) !TransactionRecord {
@@ -93,12 +102,14 @@ pub const TransactionResponse = struct {
             .executeAsync(client);
     }
     
-    fn getReceiptQuery(self: *const Self, client: *Client) !TransactionReceiptQuery {
+    fn getReceiptQuery(self: *const Self, client: *Client) !*TransactionReceiptQuery {
         _ = client;
-        return TransactionReceiptQuery.init(self.allocator)
-            .setTransactionId(self.transaction_id)
-            .setValidateStatus(self.validate_status)
-            .setIncludeChildReceipts(self.include_child_receipts);
+        const query_ptr = try self.allocator.create(TransactionReceiptQuery);
+        query_ptr.* = TransactionReceiptQuery.init(self.allocator);
+        _ = query_ptr.setTransactionId(self.transaction_id);
+        _ = query_ptr.setValidateStatus(self.validate_status);
+        _ = query_ptr.setIncludeChildReceipts(self.include_child_receipts);
+        return query_ptr;
     }
     
     // Retry transaction helper for throttled transactions

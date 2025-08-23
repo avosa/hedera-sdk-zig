@@ -96,8 +96,10 @@ pub const TransactionReceiptQuery = struct {
             return error.TransactionIdNotSet;
         }
         
-        const response_bytes = try self.query.execute(client, self.buildQuery());
-        const receipt = try self.parseResponse(response_bytes);
+        // Set the query data before executing
+        self.query.query_data = try self.buildQuery();
+        const response = try self.query.execute(client);
+        const receipt = try self.parseResponse(response.response);
         
         if (self.validate_status) {
             try receipt.validateStatus();
