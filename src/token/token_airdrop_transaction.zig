@@ -84,8 +84,8 @@ pub const TokenAirdropTransaction = struct {
     }
     
     // Freeze the transaction
-    pub fn freezeWith(self: *TokenAirdropTransaction, client: *Client) !void {
-        try self.base.freezeWith(client);
+    pub fn freezeWith(self: *TokenAirdropTransaction, client: *Client) !*Transaction {
+        return try self.base.freezeWith(client);
     }
     
     // Execute the transaction

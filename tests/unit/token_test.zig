@@ -55,7 +55,7 @@ test "Token create transaction" {
     _ = try tx.setMaxSupply(0);
     _ = try tx.setFreezeDefault(false);
     _ = try tx.setExpirationTime(hedera.Timestamp.fromSeconds(1234567890));
-    _ = try tx.setAutoRenewAccount(hedera.AccountId.init(0, 0, 200));
+    _ = try tx.setAutoRenewAccountId(hedera.AccountId.init(0, 0, 200));
     _ = try tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
     
     // Custom fees removed temporarily - structure needs alignment

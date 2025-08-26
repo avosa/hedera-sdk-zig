@@ -94,8 +94,8 @@ pub const TokenRejectTransaction = struct {
     }
     
     // Freeze the transaction
-    pub fn freezeWith(self: *TokenRejectTransaction, client: *Client) !void {
-        try self.base.freezeWith(client);
+    pub fn freezeWith(self: *TokenRejectTransaction, client: *Client) !*Transaction {
+        return try self.base.freezeWith(client);
     }
     
     // Execute the transaction

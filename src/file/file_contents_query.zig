@@ -5,6 +5,7 @@ const QueryResponse = @import("../query/query.zig").QueryResponse;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
+const WireType = @import("../protobuf/encoding.zig").WireType;
 const Hbar = @import("../core/hbar.zig").Hbar;
 
 // FileContents contains the contents of a file
@@ -27,10 +28,14 @@ pub const FileContentsQuery = struct {
     file_id: ?FileId,
     
     pub fn init(allocator: std.mem.Allocator) FileContentsQuery {
-        return FileContentsQuery{
+        var query = FileContentsQuery{
             .base = Query.init(allocator),
             .file_id = null,
         };
+        query.base.grpc_service_name = "proto.FileService";
+        query.base.grpc_method_name = "getFileContent";
+        query.base.is_payment_required = false;
+        return query;
     }
     
     pub fn deinit(self: *FileContentsQuery) void {
@@ -55,7 +60,12 @@ pub const FileContentsQuery = struct {
             return error.FileIdRequired;
         }
         
-        const response = try self.base.execute(client);
+        // Build the query bytes directly
+        const query_bytes = try self.buildQuery();
+        defer self.base.allocator.free(query_bytes);
+        
+        // Execute with the built bytes
+        const response = try self.base.executeWithBytes(client, query_bytes);
         return try self.parseResponse(response);
     }
     
@@ -86,37 +96,33 @@ pub const FileContentsQuery = struct {
         var writer = ProtoWriter.init(self.base.allocator);
         defer writer.deinit();
         
-        // Query message structure
-        // header = 1
-        var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
-        
-        // payment = 1
-        if (self.base.payment_transaction) |payment| {
-            try header_writer.writeMessage(1, payment);
-        }
-        
-        // responseType = 2
-        try header_writer.writeInt32(2, @intFromEnum(self.base.response_type));
-        
-        const header_bytes = try header_writer.toOwnedSlice();
-        defer self.base.allocator.free(header_bytes);
-        try writer.writeMessage(1, header_bytes);
-        
         // fileGetContents = 7 (oneof query)
         var contents_query_writer = ProtoWriter.init(self.base.allocator);
         defer contents_query_writer.deinit();
         
-        // fileID = 1
+        // header = 1 (inside the specific query)
+        var header_writer = ProtoWriter.init(self.base.allocator);
+        defer header_writer.deinit();
+        
+        // payment = 1 (optional for free queries)
+        // responseType = 2 (must be present even if 0)
+        try header_writer.writeTag(2, .Varint);
+        try header_writer.writeVarint(@as(u64, @intCast(@intFromEnum(self.base.response_type))));
+        
+        const header_bytes = try header_writer.toOwnedSlice();
+        defer self.base.allocator.free(header_bytes);
+        try contents_query_writer.writeMessage(1, header_bytes);
+        
+        // fileID = 2
         if (self.file_id) |file| {
             var file_writer = ProtoWriter.init(self.base.allocator);
             defer file_writer.deinit();
-            try file_writer.writeInt64(1, @intCast(file.shard));
-            try file_writer.writeInt64(2, @intCast(file.realm));
-            try file_writer.writeInt64(3, @intCast(file.num));
+            try file_writer.writeInt64(1, @intCast(file.entity.shard));
+            try file_writer.writeInt64(2, @intCast(file.entity.realm));
+            try file_writer.writeInt64(3, @intCast(file.entity.num));
             const file_bytes = try file_writer.toOwnedSlice();
             defer self.base.allocator.free(file_bytes);
-            try contents_query_writer.writeMessage(1, file_bytes);
+            try contents_query_writer.writeMessage(2, file_bytes);
         }
         
         const contents_query_bytes = try contents_query_writer.toOwnedSlice();
@@ -133,7 +139,7 @@ pub const FileContentsQuery = struct {
         var reader = ProtoReader.init(response.response_bytes);
         
         var contents = FileContents{
-            .file_id = FileId.init(0, 0, 0),
+            .file_id = FileId{ .entity = .{ .shard = 0, .realm = 0, .num = 0 } },
             .contents = "",
             .allocator = self.base.allocator,
         };
@@ -175,7 +181,7 @@ pub const FileContentsQuery = struct {
                                     }
                                 }
                                 
-                                contents.file_id = FileId.init(@intCast(shard), @intCast(realm), @intCast(num));
+                                contents.file_id = FileId{ .entity = .{ .shard = @intCast(shard), .realm = @intCast(realm), .num = @intCast(num) } };
                             },
                             2 => {
                                 // contents

@@ -17,7 +17,6 @@ pub const ContractUpdateTransaction = struct {
     contract_id: ?ContractId = null,
     expiration_time: ?Timestamp = null,
     admin_key: ?Key = null,
-    proxy_account_id: ?AccountId = null,
     auto_renew_period: ?Duration = null,
     file_id: ?FileId = null,
     contract_memo: ?[]const u8 = null,
@@ -41,79 +40,55 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // SetContractID sets the contract ID to update
-    pub fn SetContractID(self: *ContractUpdateTransaction, contract_id: ContractId) HederaError!*ContractUpdateTransaction {
+    pub fn setContractId(self: *ContractUpdateTransaction, contract_id: ContractId) HederaError!*ContractUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.contract_id = contract_id;
         return self;
     }
     
     // GetContractID returns the contract ID to update
-    pub fn GetContractID(self: *const ContractUpdateTransaction) ContractId {
+    pub fn getContractId(self: *const ContractUpdateTransaction) ContractId {
         return self.contract_id orelse ContractId{};
     }
     
     // SetExpirationTime sets the expiration time for the contract
-    pub fn SetExpirationTime(self: *ContractUpdateTransaction, expiration_time: Timestamp) HederaError!*ContractUpdateTransaction {
+    pub fn setExpirationTime(self: *ContractUpdateTransaction, expiration_time: Timestamp) HederaError!*ContractUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.expiration_time = expiration_time;
         return self;
     }
     
     // GetExpirationTime returns the expiration time for the contract
-    pub fn GetExpirationTime(self: *const ContractUpdateTransaction) Timestamp {
+    pub fn getExpirationTime(self: *const ContractUpdateTransaction) Timestamp {
         return self.expiration_time orelse Timestamp{};
     }
     
     // SetAdminKey sets the admin key for the contract
-    pub fn SetAdminKey(self: *ContractUpdateTransaction, key: Key) HederaError!*ContractUpdateTransaction {
+    pub fn setAdminKey(self: *ContractUpdateTransaction, key: Key) HederaError!*ContractUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.admin_key = key;
         return self;
     }
     
     // GetAdminKey returns the admin key for the contract
-    pub fn GetAdminKey(self: *const ContractUpdateTransaction) ?Key {
+    pub fn getAdminKey(self: *const ContractUpdateTransaction) ?Key {
         return self.admin_key;
     }
-    
-    // SetProxyAccountID sets the proxy account ID (deprecated)
-    pub fn SetProxyAccountID(self: *ContractUpdateTransaction, proxy_account_id: AccountId) HederaError!*ContractUpdateTransaction {
-        if (self.base.frozen) return error.TransactionFrozen;
-        self.proxy_account_id = proxy_account_id;
-        return self;
-    }
-    
-    // GetProxyAccountID returns the proxy account ID (deprecated)
-    pub fn GetProxyAccountID(self: *const ContractUpdateTransaction) AccountId {
-        return self.proxy_account_id orelse AccountId{};
-    }
-    
     // SetAutoRenewPeriod sets the auto renew period for the contract
-    pub fn SetAutoRenewPeriod(self: *ContractUpdateTransaction, period: Duration) HederaError!*ContractUpdateTransaction {
+    pub fn setAutoRenewPeriod(self: *ContractUpdateTransaction, period: Duration) HederaError!*ContractUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.auto_renew_period = period;
         return self;
     }
     
     // GetAutoRenewPeriod returns the auto renew period for the contract
-    pub fn GetAutoRenewPeriod(self: *const ContractUpdateTransaction) Duration {
+    pub fn getAutoRenewPeriod(self: *const ContractUpdateTransaction) Duration {
         return self.auto_renew_period orelse Duration{};
     }
     
-    // SetBytecodeFileID sets the file ID containing new bytecode (deprecated)
-    pub fn SetBytecodeFileID(self: *ContractUpdateTransaction, file_id: FileId) HederaError!*ContractUpdateTransaction {
-        if (self.base.frozen) return error.TransactionFrozen;
-        self.file_id = file_id;
-        return self;
-    }
-    
-    // GetBytecodeFileID returns the file ID containing new bytecode (deprecated)
-    pub fn GetBytecodeFileID(self: *const ContractUpdateTransaction) FileId {
-        return self.file_id orelse FileId{};
-    }
     
     // SetContractMemo sets the memo for the contract
-    pub fn SetContractMemo(self: *ContractUpdateTransaction, memo: []const u8) HederaError!*ContractUpdateTransaction {
+    pub fn setContractMemo(self: *ContractUpdateTransaction, memo: []const u8) HederaError!*ContractUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         
         if (self.contract_memo) |old_memo| {
@@ -125,12 +100,12 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // GetContractMemo returns the memo for the contract
-    pub fn GetContractMemo(self: *const ContractUpdateTransaction) []const u8 {
+    pub fn getContractMemo(self: *const ContractUpdateTransaction) []const u8 {
         return self.contract_memo orelse "";
     }
     
     // ClearContractMemo clears the contract memo
-    pub fn ClearContractMemo(self: *ContractUpdateTransaction) HederaError!*ContractUpdateTransaction {
+    pub fn clearContractMemo(self: *ContractUpdateTransaction) HederaError!*ContractUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         
         if (self.contract_memo) |memo| {
@@ -142,38 +117,38 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // SetMaxAutomaticTokenAssociations sets the maximum number of automatic token associations
-    pub fn SetMaxAutomaticTokenAssociations(self: *ContractUpdateTransaction, max: i32) HederaError!*ContractUpdateTransaction {
+    pub fn setMaxAutomaticTokenAssociations(self: *ContractUpdateTransaction, max: i32) HederaError!*ContractUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.max_automatic_token_associations = max;
         return self;
     }
     
     // GetMaxAutomaticTokenAssociations returns the maximum number of automatic token associations
-    pub fn GetMaxAutomaticTokenAssociations(self: *const ContractUpdateTransaction) i32 {
+    pub fn getMaxAutomaticTokenAssociations(self: *const ContractUpdateTransaction) i32 {
         return self.max_automatic_token_associations orelse 0;
     }
     
     // SetAutoRenewAccountID sets the auto renew account ID for the contract
-    pub fn SetAutoRenewAccountID(self: *ContractUpdateTransaction, account_id: AccountId) HederaError!*ContractUpdateTransaction {
+    pub fn setAutoRenewAccountId(self: *ContractUpdateTransaction, account_id: AccountId) HederaError!*ContractUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.auto_renew_account_id = account_id;
         return self;
     }
     
     // GetAutoRenewAccountID returns the auto renew account ID for the contract
-    pub fn GetAutoRenewAccountID(self: *const ContractUpdateTransaction) AccountId {
+    pub fn getAutoRenewAccountId(self: *const ContractUpdateTransaction) AccountId {
         return self.auto_renew_account_id orelse AccountId{};
     }
     
     // ClearAutoRenewAccountID clears the auto renew account ID
-    pub fn ClearAutoRenewAccountID(self: *ContractUpdateTransaction) HederaError!*ContractUpdateTransaction {
+    pub fn clearAutoRenewAccountId(self: *ContractUpdateTransaction) HederaError!*ContractUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.auto_renew_account_id = null;
         return self;
     }
     
     // SetStakedAccountID sets the staked account ID for the contract
-    pub fn SetStakedAccountID(self: *ContractUpdateTransaction, account_id: AccountId) HederaError!*ContractUpdateTransaction {
+    pub fn setStakedAccountId(self: *ContractUpdateTransaction, account_id: AccountId) HederaError!*ContractUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.staked_account_id = account_id;
         self.staked_node_id = null; // Clear node ID when setting account ID
@@ -181,12 +156,12 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // GetStakedAccountID returns the staked account ID for the contract
-    pub fn GetStakedAccountID(self: *const ContractUpdateTransaction) AccountId {
+    pub fn getStakedAccountId(self: *const ContractUpdateTransaction) AccountId {
         return self.staked_account_id orelse AccountId{};
     }
     
     // SetStakedNodeID sets the staked node ID for the contract
-    pub fn SetStakedNodeID(self: *ContractUpdateTransaction, node_id: i64) HederaError!*ContractUpdateTransaction {
+    pub fn setStakedNodeId(self: *ContractUpdateTransaction, node_id: i64) HederaError!*ContractUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.staked_node_id = node_id;
         self.staked_account_id = null; // Clear account ID when setting node ID
@@ -194,33 +169,33 @@ pub const ContractUpdateTransaction = struct {
     }
     
     // GetStakedNodeID returns the staked node ID for the contract
-    pub fn GetStakedNodeID(self: *const ContractUpdateTransaction) i64 {
+    pub fn getStakedNodeId(self: *const ContractUpdateTransaction) i64 {
         return self.staked_node_id orelse 0;
     }
     
     // ClearStakedAccountID clears the staked account ID
-    pub fn ClearStakedAccountID(self: *ContractUpdateTransaction) HederaError!*ContractUpdateTransaction {
+    pub fn clearStakedAccountId(self: *ContractUpdateTransaction) HederaError!*ContractUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.staked_account_id = AccountId{ .account = 0 };
         return self;
     }
     
     // ClearStakedNodeID clears the staked node ID
-    pub fn ClearStakedNodeID(self: *ContractUpdateTransaction) HederaError!*ContractUpdateTransaction {
+    pub fn clearStakedNodeId(self: *ContractUpdateTransaction) HederaError!*ContractUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.staked_node_id = -1;
         return self;
     }
     
     // SetDeclineStakingReward sets whether to decline staking rewards
-    pub fn SetDeclineStakingReward(self: *ContractUpdateTransaction, decline: bool) HederaError!*ContractUpdateTransaction {
+    pub fn setDeclineStakingReward(self: *ContractUpdateTransaction, decline: bool) HederaError!*ContractUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.decline_staking_reward = decline;
         return self;
     }
     
     // GetDeclineStakingReward returns whether to decline staking rewards
-    pub fn GetDeclineStakingReward(self: *const ContractUpdateTransaction) bool {
+    pub fn getDeclineStakingReward(self: *const ContractUpdateTransaction) bool {
         return self.decline_staking_reward orelse false;
     }
     
@@ -269,18 +244,6 @@ pub const ContractUpdateTransaction = struct {
             const key_bytes = try key.toProtobuf(self.base.allocator);
             defer self.base.allocator.free(key_bytes);
             try contract_writer.writeMessage(3, key_bytes);
-        }
-        
-        // proxyAccountID = 6 (deprecated)
-        if (self.proxy_account_id) |proxy| {
-            var proxy_writer = ProtoWriter.init(self.base.allocator);
-            defer proxy_writer.deinit();
-            try proxy_writer.writeInt64(1, @intCast(proxy.shard));
-            try proxy_writer.writeInt64(2, @intCast(proxy.realm));
-            try proxy_writer.writeInt64(3, @intCast(proxy.account));
-            const proxy_bytes = try proxy_writer.toOwnedSlice();
-            defer self.base.allocator.free(proxy_bytes);
-            try contract_writer.writeMessage(6, proxy_bytes);
         }
         
         // autoRenewPeriod = 7

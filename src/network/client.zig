@@ -239,7 +239,7 @@ pub const Client = struct {
     }
     
     // Submit transaction to network
-    pub fn submitTransaction(self: *Client, tx_bytes: []const u8, node_account_id: AccountId) !void {
+    pub fn submitTransaction(self: *Client, tx_bytes: []const u8, node_account_id: AccountId, service_name: []const u8, method_name: []const u8) !void {
         if (self.closed) return HederaError.ClientClosed;
         
         const max_attempts = self.config.max_attempts;
@@ -275,8 +275,8 @@ pub const Client = struct {
             
             // Submit transaction via gRPC
             _ = conn.call(
-                "proto.CryptoService",
-                "createAccount",
+                service_name,
+                method_name,
                 tx_bytes
             ) catch |err| {
                 node.increaseBackoff();
@@ -353,7 +353,7 @@ pub const Client = struct {
                 continue;
             };
             
-            // Submit query via gRPC
+            // Submit query via gRPC  
             const response = conn.call(
                 "proto.CryptoService",
                 "getTransactionReceipts",
@@ -378,7 +378,7 @@ pub const Client = struct {
         return last_error;
     }
     
-    // Execute generic query request on network
+    // Execute generic query request on network  
     pub fn executeQueryRequest(self: *Client, query_bytes: []const u8, node_account_id: AccountId, service_name: []const u8, method_name: []const u8) ![]u8 {
         if (self.closed) return HederaError.ClientClosed;
         

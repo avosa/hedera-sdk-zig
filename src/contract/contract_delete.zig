@@ -29,53 +29,53 @@ pub const ContractDeleteTransaction = struct {
         self.base.deinit();
     }
     
-    // SetContractID sets the contract to delete
-    pub fn SetContractID(self: *ContractDeleteTransaction, contract_id: ContractId) HederaError!*ContractDeleteTransaction {
+    // Set the contract to delete
+    pub fn setContractId(self: *ContractDeleteTransaction, contract_id: ContractId) HederaError!*ContractDeleteTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.contract_id = contract_id;
         return self;
     }
     
-    // GetContractID returns the contract to delete
-    pub fn GetContractID(self: *const ContractDeleteTransaction) ContractId {
+    // Get the contract to delete
+    pub fn getContractId(self: *const ContractDeleteTransaction) ContractId {
         return self.contract_id orelse ContractId{};
     }
     
-    // SetTransferAccountID sets the account to transfer remaining balance to
-    pub fn SetTransferAccountID(self: *ContractDeleteTransaction, account_id: AccountId) HederaError!*ContractDeleteTransaction {
+    // Set the account to transfer remaining balance to
+    pub fn setTransferAccountId(self: *ContractDeleteTransaction, account_id: AccountId) HederaError!*ContractDeleteTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.transfer_account_id = account_id;
         self.transfer_contract_id = null; // Clear contract ID when setting account ID
         return self;
     }
     
-    // GetTransferAccountID returns the account to transfer remaining balance to
-    pub fn GetTransferAccountID(self: *const ContractDeleteTransaction) AccountId {
+    // Get the account to transfer remaining balance to
+    pub fn getTransferAccountId(self: *const ContractDeleteTransaction) AccountId {
         return self.transfer_account_id orelse AccountId{};
     }
     
-    // SetTransferContractID sets the contract to transfer remaining balance to
-    pub fn SetTransferContractID(self: *ContractDeleteTransaction, contract_id: ContractId) HederaError!*ContractDeleteTransaction {
+    // Set the contract to transfer remaining balance to
+    pub fn setTransferContractId(self: *ContractDeleteTransaction, contract_id: ContractId) HederaError!*ContractDeleteTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.transfer_contract_id = contract_id;
         self.transfer_account_id = null; // Clear account ID when setting contract ID
         return self;
     }
     
-    // GetTransferContractID returns the contract to transfer remaining balance to
-    pub fn GetTransferContractID(self: *const ContractDeleteTransaction) ContractId {
+    // Get the contract to transfer remaining balance to
+    pub fn getTransferContractId(self: *const ContractDeleteTransaction) ContractId {
         return self.transfer_contract_id orelse ContractId{};
     }
     
-    // SetPermanentRemoval sets the permanent removal flag
-    pub fn SetPermanentRemoval(self: *ContractDeleteTransaction, permanent: bool) HederaError!*ContractDeleteTransaction {
+    // Set the permanent removal flag
+    pub fn setPermanentRemoval(self: *ContractDeleteTransaction, permanent: bool) HederaError!*ContractDeleteTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.permanent_removal = permanent;
         return self;
     }
     
-    // GetPermanentRemoval returns the permanent removal flag
-    pub fn GetPermanentRemoval(self: *const ContractDeleteTransaction) bool {
+    // Get the permanent removal flag
+    pub fn getPermanentRemoval(self: *const ContractDeleteTransaction) bool {
         return self.permanent_removal;
     }
     

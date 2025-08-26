@@ -1,13 +1,14 @@
 const std = @import("std");
 const errors = @import("../core/errors.zig");
-const HederaError = errors.HederaError;const TopicId = @import("../core/id.zig").TopicId;
+const HederaError = errors.HederaError;
+const TopicId = @import("../core/id.zig").TopicId;
 const AccountId = @import("../core/id.zig").AccountId;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
 const TransactionResponse = @import("../transaction/transaction.zig").TransactionResponse;
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const Hbar = @import("../core/hbar.zig").Hbar;
-const ScheduleCreateTransaction = @import("../schedule/schedule_create_transaction.zig").ScheduleCreateTransaction;
+const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 
 // CustomFeeLimit represents a custom fee limit
 pub const CustomFeeLimit = struct {
@@ -24,40 +25,38 @@ pub const CustomFeeLimit = struct {
 
 // TopicMessageSubmitTransaction submits a message to a consensus topic
 pub const TopicMessageSubmitTransaction = struct {
-    allocator: std.mem.Allocator,
-    transaction: Transaction,
+    base: Transaction,
     topic_id: ?TopicId,
     message: []const u8,
     max_chunks: u64,
     chunk_size: u64,
-    custom_fee_limits: std.ArrayList(*CustomFeeLimit),
     
-    pub fn init(allocator: std.mem.Allocator) !*TopicMessageSubmitTransaction {
-        const self = try allocator.create(TopicMessageSubmitTransaction);
-        self.* = TopicMessageSubmitTransaction{
-            .allocator = allocator,
-            .transaction = Transaction.init(allocator),
+    pub fn init(allocator: std.mem.Allocator) TopicMessageSubmitTransaction {
+        var transaction = TopicMessageSubmitTransaction{
+            .base = Transaction.init(allocator),
             .topic_id = null,
             .message = "",
             .max_chunks = 20,
             .chunk_size = 1024,
-            .custom_fee_limits = std.ArrayList(*CustomFeeLimit).init(allocator),
         };
-        return self;
+        transaction.base.buildTransactionBodyForNode = buildTransactionBodyForNode;
+        transaction.base.grpc_service_name = "proto.ConsensusService";
+        transaction.base.grpc_method_name = "submitMessage";
+        return transaction;
+    }
+    
+    fn buildTransactionBodyForNode(base_tx: *Transaction, _: AccountId) anyerror![]u8 {
+        const self: *TopicMessageSubmitTransaction = @fieldParentPtr("base", base_tx);
+        return self.buildTransactionBody();
     }
     
     pub fn deinit(self: *TopicMessageSubmitTransaction) void {
-        for (self.custom_fee_limits.items) |fee_limit| {
-            self.allocator.destroy(fee_limit);
-        }
-        self.custom_fee_limits.deinit();
-        self.transaction.deinit();
-        self.allocator.destroy(self);
+        self.base.deinit();
     }
     
     // SetTopicID sets the topic to submit message to
     pub fn setTopicId(self: *TopicMessageSubmitTransaction, topic_id: TopicId) !*TopicMessageSubmitTransaction {
-        try errors.requireNotFrozen(self.transaction.frozen);
+        if (self.base.frozen) return error.TransactionFrozen;
         self.topic_id = topic_id;
         return self;
     }
@@ -69,7 +68,7 @@ pub const TopicMessageSubmitTransaction = struct {
     
     // SetMessage sets the message to be submitted
     pub fn setMessage(self: *TopicMessageSubmitTransaction, message: []const u8) !*TopicMessageSubmitTransaction {
-        try errors.requireNotFrozen(self.transaction.frozen);
+        if (self.base.frozen) return error.TransactionFrozen;
         self.message = message;
         return self;
     }
@@ -81,7 +80,7 @@ pub const TopicMessageSubmitTransaction = struct {
     
     // SetMaxChunks sets the maximum amount of chunks to use to send the message
     pub fn setMaxChunks(self: *TopicMessageSubmitTransaction, max_chunks: u64) !*TopicMessageSubmitTransaction {
-        try errors.requireNotFrozen(self.transaction.frozen);
+        if (self.base.frozen) return error.TransactionFrozen;
         self.max_chunks = max_chunks;
         return self;
     }
@@ -93,7 +92,7 @@ pub const TopicMessageSubmitTransaction = struct {
     
     // SetChunkSize sets the chunk size to use to send the message
     pub fn setChunkSize(self: *TopicMessageSubmitTransaction, chunk_size: u64) !*TopicMessageSubmitTransaction {
-        try errors.requireNotFrozen(self.transaction.frozen);
+        if (self.base.frozen) return error.TransactionFrozen;
         self.chunk_size = chunk_size;
         return self;
     }
@@ -103,162 +102,126 @@ pub const TopicMessageSubmitTransaction = struct {
         return self.chunk_size;
     }
     
-    // SetCustomFeeLimits sets the maximum custom fee that the user is willing to pay for the message
-    pub fn setCustomFeeLimits(self: *TopicMessageSubmitTransaction, custom_fee_limits: []*CustomFeeLimit) !*TopicMessageSubmitTransaction {
-        try errors.requireNotFrozen(self.transaction.frozen);
-        
-        for (self.custom_fee_limits.items) |fee_limit| {
-            self.allocator.destroy(fee_limit);
-        }
-        self.custom_fee_limits.clearRetainingCapacity();
-        try errors.handleAppendSliceError(&self.custom_fee_limits, custom_fee_limits);
-        
-        return self;
+    // Freeze the transaction with client for execution
+    pub fn freezeWith(self: *TopicMessageSubmitTransaction, client: *Client) !*Transaction {
+        return try self.base.freezeWith(client);
     }
     
-    // AddCustomFeeLimit adds the maximum custom fee that the user is willing to pay for the message
-    pub fn addCustomFeeLimit(self: *TopicMessageSubmitTransaction, custom_fee_limit: *CustomFeeLimit) !*TopicMessageSubmitTransaction {
-        try errors.requireNotFrozen(self.transaction.frozen);
-        try errors.handleAppendError(&self.custom_fee_limits, custom_fee_limit);
-        return self;
+    // Sign the transaction with a private key
+    pub fn sign(self: *TopicMessageSubmitTransaction, private_key: anytype) !void {
+        _ = try self.base.sign(private_key);
     }
     
-    // ClearCustomFeeLimits clears the maximum custom fee that the user is willing to pay for the message
-    pub fn clearCustomFeeLimits(self: *TopicMessageSubmitTransaction) HederaError!*TopicMessageSubmitTransaction {
-        try errors.requireNotFrozen(self.transaction.frozen);
-        
-        for (self.custom_fee_limits.items) |fee_limit| {
-            self.allocator.destroy(fee_limit);
-        }
-        self.custom_fee_limits.clearRetainingCapacity();
-        
-        return self;
-    }
-    
-    // GetCustomFeeLimits gets the maximum custom fee that the user is willing to pay for the message
-    pub fn getCustomFeeLimits(self: *TopicMessageSubmitTransaction) []*CustomFeeLimit {
-        return self.custom_fee_limits.items;
-    }
-    
-    // Freeze prepares the transaction for execution
-    pub fn freeze(self: *TopicMessageSubmitTransaction) !*TopicMessageSubmitTransaction {
-        return try self.freezeWith(null);
-    }
-    
-    // FreezeWith prepares the transaction for execution with a client
-    pub fn freezeWith(self: *TopicMessageSubmitTransaction, client: ?*Client) !*TopicMessageSubmitTransaction {
-        // Validate chunk size
-        if (self.chunk_size == 0) {
-            return error.InvalidParameter;
-        }
-        
-        // Calculate required chunks
-        const chunks = (self.message.len + self.chunk_size - 1) / self.chunk_size;
-        if (chunks > self.max_chunks) {
-            return error.InvalidParameter;
-        }
-        
-        try self.transaction.freezeWith(client);
-        return self;
-    }
-    
-    // Execute executes the transaction
+    // Execute the transaction
     pub fn execute(self: *TopicMessageSubmitTransaction, client: *Client) !TransactionResponse {
         if (self.topic_id == null) {
-            return error.InvalidParameter;
+            return error.TopicIdRequired;
         }
         if (self.message.len == 0) {
-            return error.InvalidParameter;
+            return error.MessageRequired;
         }
         
-        const responses = try self.executeAll(client);
-        if (responses.len > 0) {
-            return responses[0];
+        return try self.base.execute(client);
+    }
+    
+    // Build transaction body
+    pub fn buildTransactionBody(self: *TopicMessageSubmitTransaction) ![]u8 {
+        var writer = ProtoWriter.init(self.base.allocator);
+        defer writer.deinit();
+        
+        // Common transaction fields
+        try self.writeCommonFields(&writer);
+        
+        // consensusSubmitMessage = 6 (oneof data)
+        var submit_writer = ProtoWriter.init(self.base.allocator);
+        defer submit_writer.deinit();
+        
+        // topicID = 1
+        if (self.topic_id) |topic| {
+            var topic_writer = ProtoWriter.init(self.base.allocator);
+            defer topic_writer.deinit();
+            try topic_writer.writeInt64(1, @intCast(topic.entity.shard));
+            try topic_writer.writeInt64(2, @intCast(topic.entity.realm));
+            try topic_writer.writeInt64(3, @intCast(topic.entity.num));
+            const topic_bytes = try topic_writer.toOwnedSlice();
+            defer self.base.allocator.free(topic_bytes);
+            try submit_writer.writeMessage(1, topic_bytes);
         }
         
-        return error.InvalidParameter;
-    }
-    
-    // ExecuteAll executes all the transactions with the provided client
-    pub fn executeAll(self: *TopicMessageSubmitTransaction, client: *Client) ![]TransactionResponse {
-        if (!self.transaction.frozen) {
-            _ = try self.freezeWith(client);
+        // message = 2
+        if (self.message.len > 0) {
+            try submit_writer.writeString(2, self.message);
         }
         
-        // Now, treat as single transaction - chunking implementation would be more complex
-        const response = try self.transaction.execute(client);
+        const submit_bytes = try submit_writer.toOwnedSlice();
+        defer self.base.allocator.free(submit_bytes);
+        try writer.writeMessage(6, submit_bytes);
         
-        var responses = try self.allocator.alloc(TransactionResponse, 1);
-        responses[0] = response;
-        
-        return responses;
+        return writer.toOwnedSlice();
     }
     
-    // Schedule creates a scheduled transaction
-    pub fn schedule(self: *TopicMessageSubmitTransaction) !*ScheduleCreateTransaction {
-        // Calculate required chunks
-        const chunks = (self.message.len + self.chunk_size - 1) / self.chunk_size;
-        if (chunks > 1) {
-            return error.InvalidParameter;
+    fn writeCommonFields(self: *TopicMessageSubmitTransaction, writer: *ProtoWriter) !void {
+        // transactionID = 1
+        if (self.base.transaction_id) |tx_id| {
+            var tx_id_writer = ProtoWriter.init(self.base.allocator);
+            defer tx_id_writer.deinit();
+            
+            var timestamp_writer = ProtoWriter.init(self.base.allocator);
+            defer timestamp_writer.deinit();
+            try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
+            try timestamp_writer.writeInt32(2, tx_id.valid_start.nanos);
+            const timestamp_bytes = try timestamp_writer.toOwnedSlice();
+            defer self.base.allocator.free(timestamp_bytes);
+            try tx_id_writer.writeMessage(1, timestamp_bytes);
+            
+            var account_writer = ProtoWriter.init(self.base.allocator);
+            defer account_writer.deinit();
+            try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
+            try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
+            try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
+            const account_bytes = try account_writer.toOwnedSlice();
+            defer self.base.allocator.free(account_bytes);
+            try tx_id_writer.writeMessage(2, account_bytes);
+            
+            if (tx_id.nonce) |n| {
+                try tx_id_writer.writeInt32(4, @intCast(n));
+            }
+            
+            const tx_id_bytes = try tx_id_writer.toOwnedSlice();
+            defer self.base.allocator.free(tx_id_bytes);
+            try writer.writeMessage(1, tx_id_bytes);
         }
         
-        return try self.transaction.schedule();
-    }
-    
-    // Sign signs the transaction
-    pub fn sign(self: *TopicMessageSubmitTransaction, private_key: anytype) !*TopicMessageSubmitTransaction {
-        try self.transaction.sign(private_key);
-        return self;
-    }
-    
-    // SignWith signs the transaction with a specific key
-    pub fn signWith(self: *TopicMessageSubmitTransaction, public_key: anytype, private_key: anytype) *TopicMessageSubmitTransaction {
-        self.transaction.signWith(public_key, private_key);
-        return self;
-    }
-    
-    // SetMaxTransactionFee sets the maximum transaction fee
-    pub fn setMaxTransactionFee(self: *TopicMessageSubmitTransaction, fee: Hbar) !*TopicMessageSubmitTransaction {
-        _ = self.transaction.setMaxTransactionFee(fee);
-        return self;
-    }
-    
-    // GetMaxTransactionFee returns the maximum transaction fee
-    pub fn getMaxTransactionFee(self: *TopicMessageSubmitTransaction) ?Hbar {
-        return self.transaction.getMaxTransactionFee();
-    }
-    
-    // SetTransactionMemo sets the transaction memo
-    pub fn setTransactionMemo(self: *TopicMessageSubmitTransaction, memo: []const u8) !*TopicMessageSubmitTransaction {
-        _ = self.transaction.setTransactionMemo(memo) catch {};
-        return self;
-    }
-    
-    // GetTransactionMemo returns the transaction memo
-    pub fn getTransactionMemo(self: *TopicMessageSubmitTransaction) []const u8 {
-        return self.transaction.getTransactionMemo();
-    }
-    
-    // SetNodeAccountIDs sets the node account IDs for this transaction
-    pub fn setNodeAccountIDs(self: *TopicMessageSubmitTransaction, node_account_ids: []const AccountId) !*TopicMessageSubmitTransaction {
-        _ = self.transaction.setNodeAccountIDs(node_account_ids);
-        return self;
-    }
-    
-    // GetNodeAccountIDs returns the node account IDs for this transaction
-    pub fn getNodeAccountIDs(self: *TopicMessageSubmitTransaction) []const AccountId {
-        return self.transaction.getNodeAccountIDs();
-    }
-    
-    // SetTransactionID sets the transaction ID
-    pub fn setTransactionId(self: *TopicMessageSubmitTransaction, transaction_id: TransactionId) !*TopicMessageSubmitTransaction {
-        _ = self.transaction.setTransactionId(transaction_id);
-        return self;
-    }
-    
-    // GetTransactionID returns the transaction ID
-    pub fn getTransactionId(self: *TopicMessageSubmitTransaction) ?TransactionId {
-        return self.transaction.getTransactionId();
+        // nodeAccountID = 2
+        if (self.base.node_account_ids.items.len > 0) {
+            var node_writer = ProtoWriter.init(self.base.allocator);
+            defer node_writer.deinit();
+            const node = self.base.node_account_ids.items[0];
+            try node_writer.writeInt64(1, @intCast(node.shard));
+            try node_writer.writeInt64(2, @intCast(node.realm));
+            try node_writer.writeInt64(3, @intCast(node.account));
+            const node_bytes = try node_writer.toOwnedSlice();
+            defer self.base.allocator.free(node_bytes);
+            try writer.writeMessage(2, node_bytes);
+        }
+        
+        // transactionFee = 3
+        if (self.base.max_transaction_fee) |fee| {
+            try writer.writeUint64(3, @intCast(fee.toTinybars()));
+        }
+        
+        // transactionValidDuration = 4
+        var duration_writer = ProtoWriter.init(self.base.allocator);
+        defer duration_writer.deinit();
+        try duration_writer.writeInt64(1, self.base.transaction_valid_duration.seconds);
+        const duration_bytes = try duration_writer.toOwnedSlice();
+        defer self.base.allocator.free(duration_bytes);
+        try writer.writeMessage(4, duration_bytes);
+        
+        // memo = 5
+        if (self.base.transaction_memo.len > 0) {
+            try writer.writeString(5, self.base.transaction_memo);
+        }
     }
 };
 

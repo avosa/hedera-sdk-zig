@@ -97,7 +97,7 @@ test "Topic message submit transaction" {
     defer arena.deinit();
     const allocator = arena.allocator();
     
-    var tx = try hedera.TopicMessageSubmitTransaction.init(allocator);
+    var tx = hedera.TopicMessageSubmitTransaction.init(allocator);
     defer tx.deinit();
     
     // Set topic ID
@@ -125,7 +125,7 @@ test "Topic message chunking" {
     defer arena.deinit();
     const allocator = arena.allocator();
     
-    var tx = try hedera.TopicMessageSubmitTransaction.init(allocator);
+    var tx = hedera.TopicMessageSubmitTransaction.init(allocator);
     defer tx.deinit();
     
     // Set topic ID

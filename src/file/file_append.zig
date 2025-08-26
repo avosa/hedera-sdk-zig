@@ -124,9 +124,9 @@ pub const FileAppendTransaction = struct {
             // Set transaction ID with nonce for chunks after the first
             if (i > 0) {
                 const chunk_tx_id = initial_tx_id.withNonce(@intCast(i));
-                try chunk_tx.base.setTransactionId(chunk_tx_id);
+                _ = try chunk_tx.base.setTransactionId(chunk_tx_id);
             } else {
-                try chunk_tx.base.setTransactionId(initial_tx_id);
+                _ = try chunk_tx.base.setTransactionId(initial_tx_id);
             }
             
             // Copy other transaction settings

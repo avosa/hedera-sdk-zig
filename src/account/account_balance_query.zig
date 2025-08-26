@@ -9,6 +9,7 @@ const QueryResponse = @import("../query/query.zig").QueryResponse;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
+const WireType = @import("../protobuf/encoding.zig").WireType;
 
 
 
@@ -123,7 +124,7 @@ pub const AccountBalanceQuery = struct {
     min_backoff: Duration,
     
     pub fn init(allocator: std.mem.Allocator) AccountBalanceQuery {
-        return AccountBalanceQuery{
+        var query = AccountBalanceQuery{
             .base = Query.init(allocator),
             .account_id = null,
             .contract_id = null,
@@ -131,6 +132,9 @@ pub const AccountBalanceQuery = struct {
             .max_backoff = Duration.fromSeconds(8),
             .min_backoff = Duration.fromMilliseconds(250),
         };
+        query.base.grpc_service_name = "proto.CryptoService";
+        query.base.grpc_method_name = "cryptoGetBalance";
+        return query;
     }
     
     pub fn deinit(self: *AccountBalanceQuery) void {
@@ -152,7 +156,7 @@ pub const AccountBalanceQuery = struct {
     }
     
     // Get max retry attempts
-    pub fn max_retry(self: AccountBalanceQuery) u32 {
+    pub fn maxRetry(self: AccountBalanceQuery) u32 {
         return self.base.max_attempts;
     }
     
@@ -206,11 +210,13 @@ pub const AccountBalanceQuery = struct {
             return error.AccountOrContractIdRequired;
         }
         
-        if (self.account_id) |aid| {
-            std.debug.print("\nQuerying balance for account: {}.{}.{}\n", .{ aid.shard, aid.realm, aid.account });
-        }
         
-        const response = try self.base.execute(client);
+        // Build the query bytes directly
+        const query_bytes = try self.buildQuery();
+        defer self.base.allocator.free(query_bytes);
+        
+        // Execute with the built bytes
+        const response = try self.base.executeWithBytes(client, query_bytes);
         return try self.parseResponse(response);
     }
     
@@ -226,25 +232,25 @@ pub const AccountBalanceQuery = struct {
         var writer = ProtoWriter.init(self.base.allocator);
         defer writer.deinit();
         
-        // Query message structure
-        // header = 1
-        var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
-        
-        // payment = 1 (optional for free queries)
-        // responseType = 2
-        try header_writer.writeInt32(2, @intFromEnum(self.base.response_type));
-        
-        const header_bytes = try header_writer.toOwnedSlice();
-        defer self.base.allocator.free(header_bytes);
-        try writer.writeMessage(1, header_bytes);
-        
-        // cryptogetAccountBalance = 2 (oneof query)
+        // cryptogetAccountBalance = 9 (oneof query)
         var balance_query_writer = ProtoWriter.init(self.base.allocator);
         defer balance_query_writer.deinit();
         
+        // header = 1 (inside the specific query)
+        var header_writer = ProtoWriter.init(self.base.allocator);
+        defer header_writer.deinit();
+        
+        // payment = 1 (optional for free queries - AccountBalance queries are free)
+        // responseType = 2 (must be present even if 0)
+        try header_writer.writeTag(2, .Varint);
+        try header_writer.writeVarint(@as(u64, @intCast(@intFromEnum(self.base.response_type))));
+        
+        const header_bytes = try header_writer.toOwnedSlice();
+        defer self.base.allocator.free(header_bytes);
+        try balance_query_writer.writeMessage(1, header_bytes);
+        
         if (self.account_id) |account| {
-            // accountID = 1
+            // accountID = 2
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
             try account_writer.writeInt64(1, @intCast(account.shard));
@@ -252,21 +258,23 @@ pub const AccountBalanceQuery = struct {
             try account_writer.writeInt64(3, @intCast(account.account));
             
             if (account.alias_key) |alias| {
-                try account_writer.writeString(4, alias);
-            } else if (account.evm_address) |evm| {
+                const alias_bytes = try alias.toBytes(self.base.allocator);
+                defer self.base.allocator.free(alias_bytes);
+                try account_writer.writeString(4, alias_bytes);
+            } else if (account.alias_evm_address) |evm| {
                 try account_writer.writeString(4, evm);
             }
             
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
-            try balance_query_writer.writeMessage(1, account_bytes);
+            try balance_query_writer.writeMessage(2, account_bytes);
         } else if (self.contract_id) |contract| {
-            // contractID = 2
+            // contractID = 3
             var contract_writer = ProtoWriter.init(self.base.allocator);
             defer contract_writer.deinit();
-            try contract_writer.writeInt64(1, @intCast(contract.shard));
-            try contract_writer.writeInt64(2, @intCast(contract.realm));
-            try contract_writer.writeInt64(3, @intCast(contract.num));
+            try contract_writer.writeInt64(1, @intCast(contract.entity.shard));
+            try contract_writer.writeInt64(2, @intCast(contract.entity.realm));
+            try contract_writer.writeInt64(3, @intCast(contract.entity.num));
             
             if (contract.evm_address) |evm| {
                 try contract_writer.writeString(4, evm);
@@ -274,12 +282,12 @@ pub const AccountBalanceQuery = struct {
             
             const contract_bytes = try contract_writer.toOwnedSlice();
             defer self.base.allocator.free(contract_bytes);
-            try balance_query_writer.writeMessage(2, contract_bytes);
+            try balance_query_writer.writeMessage(3, contract_bytes);
         }
         
         const balance_query_bytes = try balance_query_writer.toOwnedSlice();
         defer self.base.allocator.free(balance_query_bytes);
-        try writer.writeMessage(2, balance_query_bytes);
+        try writer.writeMessage(9, balance_query_bytes);
         
         return writer.toOwnedSlice();
     }
@@ -288,21 +296,12 @@ pub const AccountBalanceQuery = struct {
     fn parseResponse(self: *AccountBalanceQuery, response: QueryResponse) !AccountBalance {
         try response.validateStatus();
         
-        std.debug.print("Response bytes length: {d}\n", .{response.response_bytes.len});
-        std.debug.print("Response bytes (hex): ", .{});
-        for (response.response_bytes[0..@min(response.response_bytes.len, 50)]) |byte| {
-            std.debug.print("{x:0>2} ", .{byte});
-        }
-        std.debug.print("\n", .{});
-        
         var reader = ProtoReader.init(response.response_bytes);
         var balance = AccountBalance.init(self.base.allocator);
         
         // Parse CryptoGetAccountBalanceResponse
         while (reader.hasMore()) {
             const tag = try reader.readTag();
-            
-            std.debug.print("Field {d}, type {}\n", .{ tag.field_number, tag.wire_type });
             
             switch (tag.field_number) {
                 1 => {
@@ -316,7 +315,6 @@ pub const AccountBalanceQuery = struct {
                 3 => {
                     // balance (in tinybars)
                     const tinybars = try reader.readUint64();
-                    std.debug.print("Parsed balance: {d} tinybars\n", .{tinybars});
                     balance.hbars = try Hbar.fromTinybars(@intCast(tinybars));
                 },
                 4 => {

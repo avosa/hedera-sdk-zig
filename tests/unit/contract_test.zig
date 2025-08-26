@@ -259,7 +259,7 @@ test "Contract creation transaction" {
     _ = try tx.setAdminKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
     
     // Set memo
-    _ = try tx.setMemo("Test Contract");
+    _ = try tx.setContractMemo("Test Contract");
     
     // Set auto renew
     _ = try tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));

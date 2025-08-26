@@ -91,8 +91,13 @@ pub const TokenDissociateTransaction = struct {
     }
     
     // Freeze the transaction with client for execution
-    pub fn freezeWith(self: *TokenDissociateTransaction, client: *Client) !void {
-        try self.base.freezeWith(client);
+    pub fn freezeWith(self: *TokenDissociateTransaction, client: *Client) !*Transaction {
+        return try self.base.freezeWith(client);
+    }
+    
+    // Sign the transaction with a private key
+    pub fn sign(self: *TokenDissociateTransaction, private_key: anytype) !void {
+        _ = try self.base.sign(private_key);
     }
     
     // Execute the transaction

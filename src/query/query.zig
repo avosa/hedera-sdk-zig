@@ -70,13 +70,15 @@ pub const Query = struct {
     response_type: ResponseType,
     timestamp: ?Timestamp,
     max_attempts: u32,
+    
+    // gRPC service and method routing
+    grpc_service_name: []const u8,
+    grpc_method_name: []const u8,
     max_backoff: i64,
     min_backoff: i64,
     grpc_deadline: ?i64,
     is_payment_required: bool,
     executed: std.atomic.Value(bool),
-    service_name: []const u8,
-    method_name: []const u8,
     
     pub fn init(allocator: std.mem.Allocator) Query {
         return Query{
@@ -90,13 +92,13 @@ pub const Query = struct {
             .response_type = .AnswerOnly,
             .timestamp = null,
             .max_attempts = 10,
+            .grpc_service_name = "proto.CryptoService",
+            .grpc_method_name = "cryptoGetAccountBalance",
             .max_backoff = 8_000_000_000,
             .min_backoff = 250_000_000,
             .grpc_deadline = null,
             .is_payment_required = true,
             .executed = std.atomic.Value(bool).init(false),
-            .service_name = "proto.CryptoService",
-            .method_name = "cryptoGetAccountBalance", // Default, should be overridden
         };
     }
     
@@ -216,7 +218,7 @@ pub const Query = struct {
         }
         
         // Execute on network via client
-        const response_bytes = client.executeQueryRequest(query_bytes, self.node_account_ids.items[0], self.service_name, self.method_name) catch |err| {
+        const response_bytes = client.executeQueryRequest(query_bytes, self.node_account_ids.items[0], self.grpc_service_name, self.grpc_method_name) catch |err| {
             return switch (err) {
                 error.NoHealthyNodes => error.NoHealthyNodes,
                 error.NodeNotFound => error.InvalidNodeAccount,
@@ -285,7 +287,7 @@ pub const Query = struct {
         defer self.allocator.free(query_bytes);
         
         // Execute on network via client
-        const response_bytes = client.executeQueryRequest(query_bytes, self.node_account_ids.items[0], self.service_name, self.method_name) catch |err| {
+        const response_bytes = client.executeQueryRequest(query_bytes, self.node_account_ids.items[0], self.grpc_service_name, self.grpc_method_name) catch |err| {
             return switch (err) {
                 error.NoHealthyNodes => error.NoHealthyNodes,
                 error.NodeNotFound => error.InvalidNodeAccount,
@@ -333,6 +335,8 @@ pub const Query = struct {
         return QueryRequest{
             .query_bytes = query_bytes,
             .node_account_id = if (self.node_account_ids.items.len > 0) self.node_account_ids.items[0] else AccountId{},
+            .grpc_service_name = self.grpc_service_name,
+            .grpc_method_name = self.grpc_method_name,
         };
     }
     
@@ -408,8 +412,8 @@ pub const Query = struct {
 const QueryRequest = struct {
     query_bytes: []const u8,
     node_account_id: AccountId,
-    service_name: []const u8,
-    method_name: []const u8,
+    grpc_service_name: []const u8,
+    grpc_method_name: []const u8,
     
     pub const Response = struct {
         header: ResponseHeader,
@@ -419,8 +423,8 @@ const QueryRequest = struct {
     pub fn execute(self: QueryRequest, conn: *GrpcConnection) !Response {
         // Submit query via gRPC
         const response_bytes = try conn.call(
-            self.service_name,
-            self.method_name,
+            self.grpc_service_name,
+            self.grpc_method_name,
             self.query_bytes,
         );
         

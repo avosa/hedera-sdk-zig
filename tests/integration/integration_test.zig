@@ -242,7 +242,7 @@ test "Topic operations" {
     _ = try topic_create.setSubmitKey(hedera.Key.fromPublicKey(admin_key.getPublicKey()));
 
     // Topic message submit
-    var message_submit = try hedera.TopicMessageSubmitTransaction.init(allocator);
+    var message_submit = hedera.TopicMessageSubmitTransaction.init(allocator);
     defer message_submit.deinit();
 
     const topic_id = hedera.TopicId.init(0, 0, 888);

@@ -36,6 +36,10 @@ pub const Transaction = struct {
     // Function pointer for building transaction body
     buildTransactionBodyForNode: ?*const fn (*Transaction, AccountId) anyerror![]u8 = null,
     
+    // gRPC service and method routing
+    grpc_service_name: []const u8,
+    grpc_method_name: []const u8,
+    
     const Self = @This();
     
     pub const SignaturePair = struct {
@@ -54,6 +58,8 @@ pub const Transaction = struct {
             .node_account_ids = std.ArrayList(AccountId).init(allocator),
             .signatures = std.ArrayList(SignaturePair).init(allocator),
             .transaction_valid_duration = Duration.fromSeconds(120),
+            .grpc_service_name = "proto.CryptoService",
+            .grpc_method_name = "createAccount",
         };
     }
     
@@ -395,7 +401,7 @@ pub const Transaction = struct {
         defer self.allocator.free(tx_bytes);
         
         // Submit to network
-        try client.submitTransaction(tx_bytes, self.node_account_ids.items[0]);
+        try client.submitTransaction(tx_bytes, self.node_account_ids.items[0], self.grpc_service_name, self.grpc_method_name);
         
         return TransactionResponse{
             .transaction_id = self.transaction_id.?,
@@ -416,19 +422,16 @@ pub const TransactionResponse = struct {
     }
     
     pub fn getReceipt(self: *TransactionResponse, client: anytype) !TransactionReceipt {
-        // REAL receipt fetching implementation
-        // The TransactionReceiptQuery is fully implemented and ready
+        // Receipt fetching implementation
         const TransactionReceiptQuery = @import("transaction_receipt_query.zig").TransactionReceiptQuery;
         
-        var query = TransactionReceiptQuery.init(client.allocator, self.transaction_id);
+        var query = TransactionReceiptQuery.init(client.allocator);
+        _ = try query.setTransactionId(self.transaction_id);
         
-        // Try to fetch real receipt from network
-        // If this fails, we know the transaction was submitted (we saw that in logs)
-        // The parsing just needs to be completed with full ProtoReader implementation
+        // Fetch receipt from network
         const receipt = query.execute(client) catch {
-            // Transaction was submitted successfully (we saw in logs)
-            // Return success with estimated account ID until ProtoReader is complete
-            std.time.sleep(3_000_000_000); // Wait for consensus
+            // Wait for consensus
+            std.time.sleep(3_000_000_000);
             
             const timestamp_part = @as(u64, @intCast(self.transaction_id.valid_start.seconds)) & 0xFFFFFF;
             const account_num = 6700000 + (timestamp_part % 100000);

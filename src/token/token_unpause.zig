@@ -38,8 +38,8 @@ pub const TokenUnpauseTransaction = struct {
     }
     
     // Freeze the transaction with client for execution
-    pub fn freezeWith(self: *TokenUnpauseTransaction, client: *Client) !void {
-        try self.base.freezeWith(client);
+    pub fn freezeWith(self: *TokenUnpauseTransaction, client: *Client) !*Transaction {
+        return try self.base.freezeWith(client);
     }
     
     // Execute the transaction
