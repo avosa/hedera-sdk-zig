@@ -78,19 +78,54 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&run_test.step);
     }
 
-    // Build examples
+    // Build examples - all are directory-based with main.zig files
     const examples = [_][]const u8{
+        "account_allowance",
+        "account_create_token_transfer",
+        "account_create_with_alias",
+        "account_create_with_hts",
+        "alias_id_example",
+        "batch_transaction",
+        "clean_account_create",
+        "consensus_pub_sub",
+        "consensus_pub_sub_chunked",
+        "consensus_pub_sub_with_submit_key",
         "create_account",
+        "create_account_with_threshold_keys",
+        "debug_transaction",
+        "diagnose_account",
+        "create_file",
+        "create_simple_contract",
+        "custom_fees",
+        "delete_account",
+        "delete_file",
+        "file_append_chunked",
+        "generate_key",
+        "generate_key_with_mnemonic",
+        "get_account_balance",
+        "get_file_contents",
+        "multi_app_transfer",
+        "schedule_multisig_transaction",
+        "schedule_transfer_example",
+        "staking",
+        "token_airdrop",
+        "token_create_transfer",
+        "token_reject",
+        "token_update_keys",
+        "token_update_metadata",
+        "token_update_nfts",
+        "topic_with_admin_key",
         "transfer_crypto",
-        "create_token",
-        "submit_message",
-        "smart_contract",
+        "transfer_tokens",
+        "update_account_public_key",
+        "zero_token_operations",
     };
 
+    // Build all directory-based examples  
     for (examples) |example| {
         const example_exe = b.addExecutable(.{
             .name = example,
-            .root_source_file = b.path(b.fmt("examples/{s}.zig", .{example})),
+            .root_source_file = b.path(b.fmt("examples/{s}/main.zig", .{example})),
             .target = target,
             .optimize = optimize,
         });

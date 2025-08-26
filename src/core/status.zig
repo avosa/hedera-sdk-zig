@@ -314,5 +314,5 @@ pub const Status = enum(i32) {
     }
 };
 
-// Alias for compatibility with other modules
+
 pub const StatusCode = Status;

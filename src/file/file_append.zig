@@ -34,18 +34,18 @@ pub const FileAppendTransaction = struct {
     }
     
     // Set the file ID to append to
-    pub fn setFileId(self: *FileAppendTransaction, file_id: FileId) errors.HederaError!*FileAppendTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setFileId(self: *FileAppendTransaction, file_id: FileId) !*FileAppendTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.file_id = file_id;
         return self;
     }
     
     // Set the contents to append
-    pub fn setContents(self: *FileAppendTransaction, contents: []const u8) errors.HederaError!*FileAppendTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setContents(self: *FileAppendTransaction, contents: []const u8) !*FileAppendTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (contents.len > MAX_CHUNK_SIZE * MAX_CHUNKS) {
-            return errors.HederaError.MaxFileSizeExceeded;
+            return error.InvalidParameter;
         }
         
         self.contents = contents;
@@ -53,11 +53,11 @@ pub const FileAppendTransaction = struct {
     }
     
     // Set chunk size for multi-chunk appends
-    pub fn setChunkSize(self: *FileAppendTransaction, size: usize) errors.HederaError!*FileAppendTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setChunkSize(self: *FileAppendTransaction, size: usize) !*FileAppendTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (size == 0 or size > MAX_CHUNK_SIZE) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidParameter;
         }
         
         self.chunk_size = size;
@@ -65,11 +65,11 @@ pub const FileAppendTransaction = struct {
     }
     
     // Set max chunks
-    pub fn setMaxChunks(self: *FileAppendTransaction, max_chunks: u32) errors.HederaError!*FileAppendTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setMaxChunks(self: *FileAppendTransaction, max_chunks: u32) !*FileAppendTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (max_chunks == 0 or max_chunks > MAX_CHUNKS) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidParameter;
         }
         
         self.max_chunks = max_chunks;
@@ -241,3 +241,5 @@ pub const FileAppendTransaction = struct {
         }
     }
 };
+
+

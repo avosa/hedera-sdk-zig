@@ -6,7 +6,7 @@ const Key = @import("../crypto/key.zig").Key;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const errors = @import("../core/errors.zig");
-
+const HederaError = errors.HederaError;
 // ServiceEndpoint represents a network service endpoint
 pub const ServiceEndpoint = struct {
     ip_address: []const u8,
@@ -57,67 +57,67 @@ pub const NodeCreateTransaction = struct {
     }
     
     // Set the account ID for the node
-    pub fn setAccountId(self: *NodeCreateTransaction, account_id: AccountId) errors.HederaError!*NodeCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setAccountId(self: *NodeCreateTransaction, account_id: AccountId) !*NodeCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.account_id = account_id;
         return self;
     }
     
     // Set the description
-    pub fn setDescription(self: *NodeCreateTransaction, description: []const u8) errors.HederaError!*NodeCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setDescription(self: *NodeCreateTransaction, description: []const u8) !*NodeCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         if (self.description) |old| {
             self.base.allocator.free(old);
         }
-        self.description = errors.handleDupeError(self.base.allocator, description) catch return errors.HederaError.OutOfMemory;
+        self.description = errors.handleDupeError(self.base.allocator, description) catch return error.InvalidParameter;
         return self;
     }
     
     // Add a gossip endpoint
-    pub fn addGossipEndpoint(self: *NodeCreateTransaction, endpoint: ServiceEndpoint) errors.HederaError!void {
-        const duped_ip = errors.handleDupeError(self.base.allocator, endpoint.ip_address) catch return errors.HederaError.OutOfMemory;
-        const duped_domain = errors.handleDupeError(self.base.allocator, endpoint.domain_name) catch return errors.HederaError.OutOfMemory;
+    pub fn addGossipEndpoint(self: *NodeCreateTransaction, endpoint: ServiceEndpoint) HederaError!void {
+        const duped_ip = errors.handleDupeError(self.base.allocator, endpoint.ip_address) catch return error.InvalidParameter;
+        const duped_domain = errors.handleDupeError(self.base.allocator, endpoint.domain_name) catch return error.InvalidParameter;
         errors.handleAppendError(&self.gossip_endpoints, ServiceEndpoint{
             .ip_address = duped_ip,
             .port = endpoint.port,
             .domain_name = duped_domain,
-        }) catch return errors.HederaError.OutOfMemory;
+        }) catch return error.InvalidParameter;
     }
     
     // Add a service endpoint
-    pub fn addServiceEndpoint(self: *NodeCreateTransaction, endpoint: ServiceEndpoint) errors.HederaError!void {
-        const duped_ip = errors.handleDupeError(self.base.allocator, endpoint.ip_address) catch return errors.HederaError.OutOfMemory;
-        const duped_domain = errors.handleDupeError(self.base.allocator, endpoint.domain_name) catch return errors.HederaError.OutOfMemory;
+    pub fn addServiceEndpoint(self: *NodeCreateTransaction, endpoint: ServiceEndpoint) HederaError!void {
+        const duped_ip = errors.handleDupeError(self.base.allocator, endpoint.ip_address) catch return error.InvalidParameter;
+        const duped_domain = errors.handleDupeError(self.base.allocator, endpoint.domain_name) catch return error.InvalidParameter;
         errors.handleAppendError(&self.service_endpoints, ServiceEndpoint{
             .ip_address = duped_ip,
             .port = endpoint.port,
             .domain_name = duped_domain,
-        }) catch return errors.HederaError.OutOfMemory;
+        }) catch return error.InvalidParameter;
     }
     
     // Set the gossip CA certificate
-    pub fn setGossipCaCertificate(self: *NodeCreateTransaction, certificate: []const u8) errors.HederaError!*NodeCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setGossipCaCertificate(self: *NodeCreateTransaction, certificate: []const u8) !*NodeCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         if (self.gossip_ca_certificate) |old| {
             self.base.allocator.free(old);
         }
-        self.gossip_ca_certificate = errors.handleDupeError(self.base.allocator, certificate) catch return errors.HederaError.OutOfMemory;
+        self.gossip_ca_certificate = errors.handleDupeError(self.base.allocator, certificate) catch return error.InvalidParameter;
         return self;
     }
     
     // Set the gRPC certificate hash
-    pub fn setGrpcCertificateHash(self: *NodeCreateTransaction, hash: []const u8) errors.HederaError!*NodeCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setGrpcCertificateHash(self: *NodeCreateTransaction, hash: []const u8) !*NodeCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         if (self.grpc_certificate_hash) |old| {
             self.base.allocator.free(old);
         }
-        self.grpc_certificate_hash = errors.handleDupeError(self.base.allocator, hash) catch return errors.HederaError.OutOfMemory;
+        self.grpc_certificate_hash = errors.handleDupeError(self.base.allocator, hash) catch return error.InvalidParameter;
         return self;
     }
     
     // Set the admin key
-    pub fn setAdminKey(self: *NodeCreateTransaction, key: Key) errors.HederaError!*NodeCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setAdminKey(self: *NodeCreateTransaction, key: Key) !*NodeCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.admin_key = key;
         return self;
     }
@@ -220,4 +220,12 @@ pub const NodeCreateTransaction = struct {
         // Write standard transaction fields
         try self.base.writeCommonFields(writer);
     }
+    
+    // Freeze the transaction with client
+    pub fn freezeWith(self: *NodeCreateTransaction, client: *Client) !*NodeCreateTransaction {
+        try self.base.freezeWith(client);
+        return self;
+    }
 };
+
+

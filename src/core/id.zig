@@ -1,5 +1,7 @@
 const std = @import("std");
 const errors = @import("errors.zig");
+const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
+const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 
 // Hedera network shard and realm constants
 pub const MAINNET_SHARD: u64 = 0;
@@ -143,7 +145,7 @@ pub const AccountId = struct {
         };
     }
     
-    // Accessor method for compatibility with other ID types
+    
     pub fn num(self: AccountId) u64 {
         return self.account;
     }
@@ -174,9 +176,48 @@ pub const AccountId = struct {
         };
     }
     
-    // Match Go SDK's AccountIDFromString naming pattern
+    
     pub fn accountIdFromString(allocator: std.mem.Allocator, str: []const u8) !AccountId {
         return fromString(allocator, str);
+    }
+    
+    // Create AccountId from EVM address (20 bytes or hex string)
+    pub fn fromEvmAddress(allocator: std.mem.Allocator, evm_address: []const u8) !AccountId {
+        var address_str: []u8 = undefined;
+        
+        if (std.mem.startsWith(u8, evm_address, "0x")) {
+            // Already a hex string
+            if (evm_address.len != 42) return error.InvalidParameter;
+            address_str = try allocator.dupe(u8, evm_address);
+        } else if (evm_address.len == 20) {
+            // Raw bytes - convert to hex string
+            address_str = try std.fmt.allocPrint(allocator, "0x{}", .{std.fmt.fmtSliceHexLower(evm_address)});
+        } else {
+            return error.InvalidParameter;
+        }
+        
+        return AccountId{
+            .shard = 0,
+            .realm = 0,
+            .account = 0,
+            .alias_key = null,
+            .alias_evm_address = address_str,
+            .checksum = null,
+        };
+    }
+    
+    pub fn deinit(self: *AccountId, allocator: std.mem.Allocator) void {
+        if (self.alias_evm_address) |addr| {
+            allocator.free(addr);
+            self.alias_evm_address = null;
+        }
+        // Note: alias_key is a pointer to PublicKey, not owned by AccountId
+        // so we don't free it here
+        self.alias_key = null;
+        if (self.checksum) |cs| {
+            allocator.free(cs);
+            self.checksum = null;
+        }
     }
     
     pub fn toString(self: AccountId, allocator: std.mem.Allocator) ![]u8 {
@@ -239,9 +280,85 @@ pub const AccountId = struct {
     }
     
     pub fn fromProtobufBytes(allocator: std.mem.Allocator, bytes: []const u8) !AccountId {
-        _ = allocator; // Not used for simple parsing
-        // For now, assume protobuf bytes are the same as raw bytes
-        return try fromBytes(bytes);
+        return fromProtobuf(allocator, bytes);
+    }
+    
+    pub fn fromProtobuf(allocator: std.mem.Allocator, bytes: []const u8) !AccountId {
+        if (bytes.len == 0) {
+            return AccountId.init(0, 0, 0);
+        }
+        
+        var reader = ProtoReader.init(bytes);
+        var shard: u64 = 0;
+        var realm: u64 = 0;
+        var account: u64 = 0;
+        var alias_bytes: ?[]const u8 = null;
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            
+            switch (tag.field_number) {
+                1 => {
+                    // shard
+                    shard = @intCast(try reader.readInt64());
+                },
+                2 => {
+                    // realm
+                    realm = @intCast(try reader.readInt64());
+                },
+                3 => {
+                    // account
+                    account = @intCast(try reader.readInt64());
+                },
+                4 => {
+                    // alias
+                    alias_bytes = try reader.readBytes();
+                },
+                else => {
+                    // Skip unknown fields
+                    try reader.skipField(tag.wire_type);
+                },
+            }
+        }
+        
+        var result = AccountId.init(shard, realm, account);
+        
+        // Handle alias if present
+        if (alias_bytes) |alias| {
+            if (alias.len == 20) {
+                // EVM address alias
+                result.alias_evm_address = try std.fmt.allocPrint(allocator, "0x{}", .{std.fmt.fmtSliceHexLower(alias)});
+            }
+            // Could also be a key alias, but we'd need to parse that
+        }
+        
+        return result;
+    }
+    
+    pub fn toProtobuf(self: AccountId, allocator: std.mem.Allocator) ![]u8 {
+        var writer = ProtoWriter.init(allocator);
+        defer writer.deinit();
+        
+        if (self.shard != 0) {
+            try writer.writeInt64(1, @intCast(self.shard));
+        }
+        if (self.realm != 0) {
+            try writer.writeInt64(2, @intCast(self.realm));
+        }
+        if (self.account != 0) {
+            try writer.writeInt64(3, @intCast(self.account));
+        }
+        
+        // Handle alias
+        if (self.alias_evm_address) |evm_addr| {
+            if (std.mem.startsWith(u8, evm_addr, "0x") and evm_addr.len == 42) {
+                var alias_bytes: [20]u8 = undefined;
+                _ = try std.fmt.hexToBytes(&alias_bytes, evm_addr[2..]);
+                try writer.writeString(4, &alias_bytes);
+            }
+        }
+        
+        return writer.toOwnedSlice();
     }
     
     pub fn equals(self: AccountId, other: AccountId) bool {
@@ -277,7 +394,7 @@ pub const ContractId = struct {
     entity: EntityId,
     evm_address: ?[]const u8 = null,
     
-    // Accessor properties for compatibility
+    
     pub fn shard(self: ContractId) u64 {
         return self.entity.shard;
     }
@@ -371,12 +488,50 @@ pub const ContractId = struct {
     }
     
     pub fn fromProtobufBytes(allocator: std.mem.Allocator, bytes: []const u8) !ContractId {
-        _ = allocator; // Not used for simple parsing
-        const entity = try EntityId.fromBytes(bytes);
-        return ContractId{ 
-            .entity = entity,
-            .evm_address = null 
-        };
+        return fromProtobuf(allocator, bytes);
+    }
+    
+    pub fn fromProtobuf(allocator: std.mem.Allocator, bytes: []const u8) !ContractId {
+        _ = allocator;
+        
+        if (bytes.len == 0) {
+            return ContractId.init(0, 0, 0);
+        }
+        
+        var reader = ProtoReader.init(bytes);
+        var shard_val: u64 = 0;
+        var realm_val: u64 = 0;
+        var contract_num: u64 = 0;
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            
+            switch (tag.field_number) {
+                1 => shard_val = @intCast(try reader.readInt64()),
+                2 => realm_val = @intCast(try reader.readInt64()),
+                3 => contract_num = @intCast(try reader.readInt64()),
+                else => try reader.skipField(tag.wire_type),
+            }
+        }
+        
+        return ContractId.init(shard_val, realm_val, contract_num);
+    }
+    
+    pub fn toProtobuf(self: ContractId, allocator: std.mem.Allocator) ![]u8 {
+        var writer = ProtoWriter.init(allocator);
+        defer writer.deinit();
+        
+        if (self.entity.shard != 0) {
+            try writer.writeInt64(1, @intCast(self.entity.shard));
+        }
+        if (self.entity.realm != 0) {
+            try writer.writeInt64(2, @intCast(self.entity.realm));
+        }
+        if (self.entity.num != 0) {
+            try writer.writeInt64(3, @intCast(self.entity.num));
+        }
+        
+        return writer.toOwnedSlice();
     }
 };
 
@@ -394,7 +549,7 @@ pub const FileId = struct {
         };
     }
     
-    // Accessor methods for compatibility
+    
     pub fn shard(self: FileId) u64 {
         return self.entity.shard;
     }
@@ -421,15 +576,61 @@ pub const FileId = struct {
     }
     
     pub fn fromProtobufBytes(allocator: std.mem.Allocator, bytes: []const u8) !FileId {
-        _ = allocator; // Not used for simple parsing
-        const entity = try EntityId.fromBytes(bytes);
-        return FileId{ .entity = entity };
+        return fromProtobuf(allocator, bytes);
     }
     
-    // Special system file IDs
-    pub const ADDRESS_BOOK = FileId.init(0, 0, 101);
-    pub const FEE_SCHEDULE = FileId.init(0, 0, 111);
-    pub const EXCHANGE_RATES = FileId.init(0, 0, 112);
+    pub fn fromProtobuf(allocator: std.mem.Allocator, bytes: []const u8) !FileId {
+        _ = allocator;
+        
+        if (bytes.len == 0) {
+            return FileId.init(0, 0, 0);
+        }
+        
+        var reader = ProtoReader.init(bytes);
+        var shard_val: u64 = 0;
+        var realm_val: u64 = 0;
+        var file_num: u64 = 0;
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            
+            switch (tag.field_number) {
+                1 => shard_val = @intCast(try reader.readInt64()),
+                2 => realm_val = @intCast(try reader.readInt64()),
+                3 => file_num = @intCast(try reader.readInt64()),
+                else => try reader.skipField(tag.wire_type),
+            }
+        }
+        
+        return FileId.init(shard_val, realm_val, file_num);
+    }
+    
+    pub fn toProtobuf(self: FileId, allocator: std.mem.Allocator) ![]u8 {
+        var writer = ProtoWriter.init(allocator);
+        defer writer.deinit();
+        
+        if (self.entity.shard != 0) {
+            try writer.writeInt64(1, @intCast(self.entity.shard));
+        }
+        if (self.entity.realm != 0) {
+            try writer.writeInt64(2, @intCast(self.entity.realm));
+        }
+        if (self.entity.num != 0) {
+            try writer.writeInt64(3, @intCast(self.entity.num));
+        }
+        
+        return writer.toOwnedSlice();
+    }
+    
+    // Import system file IDs from config
+    const Config = @import("config.zig");
+    pub const ADDRESS_BOOK = Config.SystemFiles.ADDRESS_BOOK;
+    pub const FEE_SCHEDULE = Config.SystemFiles.FEE_SCHEDULE;
+    pub const EXCHANGE_RATES = Config.SystemFiles.EXCHANGE_RATES;
+    pub const NODE_DETAILS = Config.SystemFiles.NODE_DETAILS;
+    pub const APPLICATION_PROPERTIES = Config.SystemFiles.APPLICATION_PROPERTIES;
+    pub const API_PERMISSIONS = Config.SystemFiles.API_PERMISSIONS;
+    pub const THROTTLES = Config.SystemFiles.THROTTLES;
 };
 
 // TokenId represents a token on Hedera
@@ -446,7 +647,7 @@ pub const TokenId = struct {
         };
     }
     
-    // Accessor methods for compatibility
+    
     pub fn shard(self: TokenId) u64 {
         return self.entity.shard;
     }
@@ -473,9 +674,50 @@ pub const TokenId = struct {
     }
     
     pub fn fromProtobufBytes(allocator: std.mem.Allocator, bytes: []const u8) !TokenId {
-        _ = allocator; // Not used for simple parsing
-        const entity = try EntityId.fromBytes(bytes);
-        return TokenId{ .entity = entity };
+        return fromProtobuf(allocator, bytes);
+    }
+    
+    pub fn fromProtobuf(allocator: std.mem.Allocator, bytes: []const u8) !TokenId {
+        _ = allocator;
+        
+        if (bytes.len == 0) {
+            return TokenId.init(0, 0, 0);
+        }
+        
+        var reader = ProtoReader.init(bytes);
+        var shard_val: u64 = 0;
+        var realm_val: u64 = 0;
+        var token_num: u64 = 0;
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            
+            switch (tag.field_number) {
+                1 => shard_val = @intCast(try reader.readInt64()),
+                2 => realm_val = @intCast(try reader.readInt64()),
+                3 => token_num = @intCast(try reader.readInt64()),
+                else => try reader.skipField(tag.wire_type),
+            }
+        }
+        
+        return TokenId.init(shard_val, realm_val, token_num);
+    }
+    
+    pub fn toProtobuf(self: TokenId, allocator: std.mem.Allocator) ![]u8 {
+        var writer = ProtoWriter.init(allocator);
+        defer writer.deinit();
+        
+        if (self.entity.shard != 0) {
+            try writer.writeInt64(1, @intCast(self.entity.shard));
+        }
+        if (self.entity.realm != 0) {
+            try writer.writeInt64(2, @intCast(self.entity.realm));
+        }
+        if (self.entity.num != 0) {
+            try writer.writeInt64(3, @intCast(self.entity.num));
+        }
+        
+        return writer.toOwnedSlice();
     }
     
     // HashContext for use in HashMap
@@ -510,7 +752,7 @@ pub const TopicId = struct {
         };
     }
     
-    // Accessor methods for compatibility
+    
     pub fn shard(self: TopicId) u64 {
         return self.entity.shard;
     }
@@ -537,9 +779,50 @@ pub const TopicId = struct {
     }
     
     pub fn fromProtobufBytes(allocator: std.mem.Allocator, bytes: []const u8) !TopicId {
-        _ = allocator; // Not used for simple parsing
-        const entity = try EntityId.fromBytes(bytes);
-        return TopicId{ .entity = entity };
+        return fromProtobuf(allocator, bytes);
+    }
+    
+    pub fn fromProtobuf(allocator: std.mem.Allocator, bytes: []const u8) !TopicId {
+        _ = allocator;
+        
+        if (bytes.len == 0) {
+            return TopicId.init(0, 0, 0);
+        }
+        
+        var reader = ProtoReader.init(bytes);
+        var shard_val: u64 = 0;
+        var realm_val: u64 = 0;
+        var topic_num: u64 = 0;
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            
+            switch (tag.field_number) {
+                1 => shard_val = @intCast(try reader.readInt64()),
+                2 => realm_val = @intCast(try reader.readInt64()),
+                3 => topic_num = @intCast(try reader.readInt64()),
+                else => try reader.skipField(tag.wire_type),
+            }
+        }
+        
+        return TopicId.init(shard_val, realm_val, topic_num);
+    }
+    
+    pub fn toProtobuf(self: TopicId, allocator: std.mem.Allocator) ![]u8 {
+        var writer = ProtoWriter.init(allocator);
+        defer writer.deinit();
+        
+        if (self.entity.shard != 0) {
+            try writer.writeInt64(1, @intCast(self.entity.shard));
+        }
+        if (self.entity.realm != 0) {
+            try writer.writeInt64(2, @intCast(self.entity.realm));
+        }
+        if (self.entity.num != 0) {
+            try writer.writeInt64(3, @intCast(self.entity.num));
+        }
+        
+        return writer.toOwnedSlice();
     }
 };
 
@@ -557,7 +840,7 @@ pub const ScheduleId = struct {
         };
     }
     
-    // Accessor methods for compatibility
+    
     pub fn shard(self: ScheduleId) u64 {
         return self.entity.shard;
     }
@@ -584,9 +867,50 @@ pub const ScheduleId = struct {
     }
     
     pub fn fromProtobufBytes(allocator: std.mem.Allocator, bytes: []const u8) !ScheduleId {
-        _ = allocator; // Not used for simple parsing
-        const entity = try EntityId.fromBytes(bytes);
-        return ScheduleId{ .entity = entity };
+        return fromProtobuf(allocator, bytes);
+    }
+    
+    pub fn fromProtobuf(allocator: std.mem.Allocator, bytes: []const u8) !ScheduleId {
+        _ = allocator;
+        
+        if (bytes.len == 0) {
+            return ScheduleId.init(0, 0, 0);
+        }
+        
+        var reader = ProtoReader.init(bytes);
+        var shard_val: u64 = 0;
+        var realm_val: u64 = 0;
+        var schedule_num: u64 = 0;
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            
+            switch (tag.field_number) {
+                1 => shard_val = @intCast(try reader.readInt64()),
+                2 => realm_val = @intCast(try reader.readInt64()),
+                3 => schedule_num = @intCast(try reader.readInt64()),
+                else => try reader.skipField(tag.wire_type),
+            }
+        }
+        
+        return ScheduleId.init(shard_val, realm_val, schedule_num);
+    }
+    
+    pub fn toProtobuf(self: ScheduleId, allocator: std.mem.Allocator) ![]u8 {
+        var writer = ProtoWriter.init(allocator);
+        defer writer.deinit();
+        
+        if (self.entity.shard != 0) {
+            try writer.writeInt64(1, @intCast(self.entity.shard));
+        }
+        if (self.entity.realm != 0) {
+            try writer.writeInt64(2, @intCast(self.entity.realm));
+        }
+        if (self.entity.num != 0) {
+            try writer.writeInt64(3, @intCast(self.entity.num));
+        }
+        
+        return writer.toOwnedSlice();
     }
 };
 

@@ -2,7 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 // Protobuf reader implementation
-pub const ProtobufReader = struct {
+pub const ProtoReader = struct {
     data: []const u8,
     pos: usize,
     allocator: Allocator,
@@ -108,13 +108,13 @@ pub const ProtobufReader = struct {
 
     pub fn readMessage(self: *Self, comptime T: type) !T {
         const message_bytes = try self.readLengthDelimited();
-        var sub_reader = ProtobufReader.init(self.allocator, message_bytes);
+        var sub_reader = ProtoReader.init(self.allocator, message_bytes);
         return try T.fromProtobuf(&sub_reader);
     }
 
     pub fn readPackedRepeated(self: *Self, comptime T: type, list: *std.ArrayList(T)) !void {
         const packed_bytes = try self.readLengthDelimited();
-        var packed_reader = ProtobufReader.init(self.allocator, packed_bytes);
+        var packed_reader = ProtoReader.init(self.allocator, packed_bytes);
 
         while (packed_reader.pos < packed_bytes.len) {
             const value = switch (T) {
@@ -134,7 +134,7 @@ pub const ProtobufReader = struct {
         return self.pos;
     }
 
-    pub fn setPosition(self: *Self, pos: usize) *Self {
+    pub fn setPosition(self: *Self, pos: usize) !*Self {
         if (pos > self.data.len) return error.InvalidPosition;
         self.pos = pos;
     }
@@ -181,7 +181,7 @@ pub const ProtobufReader = struct {
     }
 
     pub const Field = struct {
-        reader: *ProtobufReader,
+        reader: *ProtoReader,
         tag: u32,
         wire_type: u3,
 
@@ -342,7 +342,7 @@ pub fn getDefaultValue(comptime T: type) T {
 
 // Message validation
 pub fn validateMessage(data: []const u8) !void {
-    var reader = ProtobufReader.init(std.testing.allocator, data);
+    var reader = ProtoReader.init(std.testing.allocator, data);
 
     while (try reader.nextField()) |field| {
         if (!isValidFieldNumber(field.tag)) {

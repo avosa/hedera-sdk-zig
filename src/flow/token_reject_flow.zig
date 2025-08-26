@@ -36,46 +36,54 @@ pub const TokenRejectFlow = struct {
     }
     
     // Set owner ID
-    pub fn setOwnerId(self: *TokenRejectFlow, owner_id: AccountId) *TokenRejectFlow {
+    pub fn setOwnerId(self: *TokenRejectFlow, owner_id: AccountId) !*TokenRejectFlow {
         self.owner_id = owner_id;
+        return self;
     }
     
     // Set token IDs
-    pub fn setTokenIds(self: *TokenRejectFlow, ids: []const TokenId) *TokenRejectFlow {
+    pub fn setTokenIds(self: *TokenRejectFlow, ids: []const TokenId) !*TokenRejectFlow {
         self.token_ids.clearRetainingCapacity();
         try self.token_ids.appendSlice(ids);
+        return self;
     }
     
     // Add token ID
-    pub fn addTokenId(self: *TokenRejectFlow, id: TokenId) !void {
+    pub fn addTokenId(self: *TokenRejectFlow, id: TokenId) !*TokenRejectFlow {
         try self.token_ids.append(id);
+        return self;
     }
     
     // Set NFT IDs
-    pub fn setNftIds(self: *TokenRejectFlow, ids: []const NftId) *TokenRejectFlow {
+    pub fn setNftIds(self: *TokenRejectFlow, ids: []const NftId) !*TokenRejectFlow {
         self.nft_ids.clearRetainingCapacity();
         try self.nft_ids.appendSlice(ids);
+        return self;
     }
     
     // Add NFT ID
-    pub fn addNftId(self: *TokenRejectFlow, id: NftId) !void {
+    pub fn addNftId(self: *TokenRejectFlow, id: NftId) !*TokenRejectFlow {
         try self.nft_ids.append(id);
+        return self;
     }
     
     // Sign with private key
-    pub fn sign(self: *TokenRejectFlow, private_key: PrivateKey) void {
+    pub fn sign(self: *TokenRejectFlow, private_key: PrivateKey) *TokenRejectFlow {
         self.sign_private_key = private_key;
+        return self;
     }
     
     // Sign with public key and signer
-    pub fn signWith(self: *TokenRejectFlow, public_key: PublicKey, signer: TransactionSigner) void {
+    pub fn signWith(self: *TokenRejectFlow, public_key: PublicKey, signer: TransactionSigner) *TokenRejectFlow {
         self.sign_public_key = public_key;
         self.transaction_signer = signer;
+        return self;
     }
     
     // Freeze with client
-    pub fn freezeWith(self: *TokenRejectFlow, client: *Client) !void {
+    pub fn freezeWith(self: *TokenRejectFlow, client: *Client) !*TokenRejectFlow {
         self.freeze_with_client = client;
+        return self;
     }
     
     // Create token dissociate transaction
@@ -84,7 +92,6 @@ pub const TokenRejectFlow = struct {
         
         if (self.owner_id) |owner_id| {
             try token_dissociate.setAccountId(owner_id);
-            return self;
         }
         
         // Collect all unique token IDs from both token_ids and nft_ids
@@ -188,3 +195,8 @@ pub const TokenRejectFlow = struct {
         return token_reject_response;
     }
 };
+
+// Creates a new token rejection flow
+pub fn tokenRejectFlow(allocator: std.mem.Allocator) TokenRejectFlow {
+    return TokenRejectFlow.init(allocator);
+}

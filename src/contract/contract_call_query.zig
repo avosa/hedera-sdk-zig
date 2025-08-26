@@ -17,7 +17,7 @@ pub const ContractCallQuery = struct {
     contract_id: ?ContractId,
     gas: i64,
     function_parameters: []const u8,
-    function_name: []const u8 = "",  // For Go SDK compatibility
+    function_name: []const u8 = "",
     max_result_size: i64,
     sender_id: ?AccountId,
     
@@ -38,26 +38,26 @@ pub const ContractCallQuery = struct {
     }
     
     // Set the contract to call
-    pub fn setContractId(self: *ContractCallQuery, contract_id: ContractId) *ContractCallQuery {
+    pub fn setContractId(self: *ContractCallQuery, contract_id: ContractId) !*ContractCallQuery {
         self.contract_id = contract_id;
         return self;
     }
     
     // Set gas limit for the call
-    pub fn setGas(self: *ContractCallQuery, gas: i64) errors.HederaError!*ContractCallQuery {
+    pub fn setGas(self: *ContractCallQuery, gas: i64) !*ContractCallQuery {
         try errors.requirePositive(gas);
         self.gas = gas;
         return self;
     }
     
     // Set function parameters
-    pub fn setFunctionParameters(self: *ContractCallQuery, params: []const u8) *ContractCallQuery {
+    pub fn setFunctionParameters(self: *ContractCallQuery, params: []const u8) !*ContractCallQuery {
         self.function_parameters = params;
         return self;
     }
     
     // Set function with parameters using builder
-    pub fn setFunction(self: *ContractCallQuery, name: []const u8, params: ?ContractFunctionParameters) errors.HederaError!*ContractCallQuery {
+    pub fn setFunction(self: *ContractCallQuery, name: []const u8, params: ?ContractFunctionParameters) !*ContractCallQuery {
         var full_params = std.ArrayList(u8).init(self.base.allocator);
         defer full_params.deinit();
         
@@ -187,7 +187,7 @@ pub const ContractCallQuery = struct {
             hasher.update(type_string.items);
             
             // Encode parameters
-            const encoded_params = p.encode(self.base.allocator) catch return errors.HederaError.SerializationFailed;
+            const encoded_params = p.encode(self.base.allocator) catch return error.InvalidParameter;
             defer self.base.allocator.free(encoded_params);
             try errors.handleAppendSliceError(&full_params, encoded_params);
         }
@@ -206,20 +206,20 @@ pub const ContractCallQuery = struct {
     }
     
     // Set maximum result size
-    pub fn setMaxResultSize(self: *ContractCallQuery, size: i64) errors.HederaError!*ContractCallQuery {
+    pub fn setMaxResultSize(self: *ContractCallQuery, size: i64) !*ContractCallQuery {
         try errors.requirePositive(size);
         self.max_result_size = size;
         return self;
     }
     
     // Set sender account ID
-    pub fn setSenderId(self: *ContractCallQuery, sender_id: AccountId) *ContractCallQuery {
+    pub fn setSenderId(self: *ContractCallQuery, sender_id: AccountId) !*ContractCallQuery {
         self.sender_id = sender_id;
         return self;
     }
     
     // Set query payment
-    pub fn setQueryPayment(self: *ContractCallQuery, payment: Hbar) *ContractCallQuery {
+    pub fn setQueryPayment(self: *ContractCallQuery, payment: Hbar) !*ContractCallQuery {
         self.base.payment_amount = payment;
         return self;
     }
@@ -514,3 +514,5 @@ pub const ContractCallQuery = struct {
         return result;
     }
 };
+
+// Factory function for creating a new ContractCallQuery

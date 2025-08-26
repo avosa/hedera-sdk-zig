@@ -38,13 +38,13 @@ pub const ContractBytecodeQuery = struct {
     }
     
     // Set the contract ID to query bytecode for
-    pub fn setContractId(self: *ContractBytecodeQuery, contract_id: ContractId) *ContractBytecodeQuery {
+    pub fn setContractId(self: *ContractBytecodeQuery, contract_id: ContractId) !*ContractBytecodeQuery {
         self.contract_id = contract_id;
         return self;
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *ContractBytecodeQuery, payment: Hbar) *ContractBytecodeQuery {
+    pub fn setQueryPayment(self: *ContractBytecodeQuery, payment: Hbar) !*ContractBytecodeQuery {
         self.base.payment_amount = payment;
         return self;
     }
@@ -163,3 +163,5 @@ pub const ContractBytecodeQuery = struct {
         return bytecode_result;
     }
 };
+
+// Factory function for creating a new ContractBytecodeQuery

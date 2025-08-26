@@ -1,6 +1,6 @@
 const std = @import("std");
 const errors = @import("../core/errors.zig");
-const TopicId = @import("../core/id.zig").TopicId;
+const HederaError = errors.HederaError;const TopicId = @import("../core/id.zig").TopicId;
 const AccountId = @import("../core/id.zig").AccountId;
 const Key = @import("../crypto/key.zig").Key;
 const Timestamp = @import("../core/timestamp.zig").Timestamp;
@@ -46,7 +46,7 @@ pub const TopicUpdateTransaction = struct {
         };
         
         // Set default auto renew period
-        _ = self.setAutoRenewPeriod(Duration{ .seconds = 7890000, .nanos = 0 }) catch return errors.HederaError.OutOfMemory;
+        _ = self.setAutoRenewPeriod(Duration{ .seconds = 7890000, .nanos = 0 }) catch return error.InvalidParameter;
         
         return self;
     }
@@ -62,7 +62,7 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // SetTopicID sets the topic to be updated
-    pub fn setTopicId(self: *TopicUpdateTransaction, topic_id: TopicId) errors.HederaError!*TopicUpdateTransaction {
+    pub fn setTopicId(self: *TopicUpdateTransaction, topic_id: TopicId) !*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.topic_id = topic_id;
         return self;
@@ -74,7 +74,7 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // SetAdminKey sets the key required to update/delete the topic
-    pub fn setAdminKey(self: *TopicUpdateTransaction, public_key: Key) errors.HederaError!*TopicUpdateTransaction {
+    pub fn setAdminKey(self: *TopicUpdateTransaction, public_key: Key) !*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.admin_key = public_key;
         return self;
@@ -86,7 +86,7 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // SetSubmitKey sets the key allowed to submit messages to the topic
-    pub fn setSubmitKey(self: *TopicUpdateTransaction, public_key: Key) errors.HederaError!*TopicUpdateTransaction {
+    pub fn setSubmitKey(self: *TopicUpdateTransaction, public_key: Key) !*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.submit_key = public_key;
         return self;
@@ -98,7 +98,7 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // SetFeeScheduleKey sets the key which allows updates to the topic's fees
-    pub fn setFeeScheduleKey(self: *TopicUpdateTransaction, public_key: Key) errors.HederaError!*TopicUpdateTransaction {
+    pub fn setFeeScheduleKey(self: *TopicUpdateTransaction, public_key: Key) !*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.fee_schedule_key = public_key;
         return self;
@@ -110,7 +110,7 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // SetFeeExemptKeys sets the keys that will be exempt from paying fees
-    pub fn setFeeExemptKeys(self: *TopicUpdateTransaction, keys: []const Key) errors.HederaError!*TopicUpdateTransaction {
+    pub fn setFeeExemptKeys(self: *TopicUpdateTransaction, keys: []const Key) !*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.fee_exempt_keys.clearRetainingCapacity();
         try errors.handleAppendSliceError(&self.fee_exempt_keys, keys);
@@ -118,14 +118,14 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // AddFeeExemptKey adds a key that will be exempt from paying fees
-    pub fn addFeeExemptKey(self: *TopicUpdateTransaction, key: Key) errors.HederaError!*TopicUpdateTransaction {
+    pub fn addFeeExemptKey(self: *TopicUpdateTransaction, key: Key) !*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         try errors.handleAppendError(&self.fee_exempt_keys, key);
         return self;
     }
     
     // ClearFeeExemptKeys removes all keys that will be exempt from paying fees
-    pub fn clearFeeExemptKeys(self: *TopicUpdateTransaction) errors.HederaError!*TopicUpdateTransaction {
+    pub fn clearFeeExemptKeys(self: *TopicUpdateTransaction) HederaError!*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.fee_exempt_keys.clearRetainingCapacity();
         return self;
@@ -137,7 +137,7 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // SetCustomFees sets the fixed fees to assess when a message is submitted to the topic
-    pub fn setCustomFees(self: *TopicUpdateTransaction, fees: []*CustomFixedFee) errors.HederaError!*TopicUpdateTransaction {
+    pub fn setCustomFees(self: *TopicUpdateTransaction, fees: []*CustomFixedFee) !*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         for (self.custom_fees.items) |fee| {
             self.allocator.destroy(fee);
@@ -148,14 +148,14 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // AddCustomFee adds a fixed fee to assess when a message is submitted to the topic
-    pub fn addCustomFee(self: *TopicUpdateTransaction, fee: *CustomFixedFee) errors.HederaError!*TopicUpdateTransaction {
+    pub fn addCustomFee(self: *TopicUpdateTransaction, fee: *CustomFixedFee) !*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         try errors.handleAppendError(&self.custom_fees, fee);
         return self;
     }
     
     // ClearCustomFees removes all fixed fees to assess when a message is submitted to the topic
-    pub fn clearCustomFees(self: *TopicUpdateTransaction) errors.HederaError!*TopicUpdateTransaction {
+    pub fn clearCustomFees(self: *TopicUpdateTransaction) HederaError!*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         for (self.custom_fees.items) |fee| {
             self.allocator.destroy(fee);
@@ -170,7 +170,7 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // SetTopicMemo sets a short publicly visible memo about the topic
-    pub fn setTopicMemo(self: *TopicUpdateTransaction, memo: []const u8) errors.HederaError!*TopicUpdateTransaction {
+    pub fn setTopicMemo(self: *TopicUpdateTransaction, memo: []const u8) !*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.memo = memo;
         return self;
@@ -182,7 +182,7 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // SetExpirationTime sets the effective timestamp at which all transactions and queries will fail
-    pub fn setExpirationTime(self: *TopicUpdateTransaction, expiration: Timestamp) errors.HederaError!*TopicUpdateTransaction {
+    pub fn setExpirationTime(self: *TopicUpdateTransaction, expiration: Timestamp) !*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.expiration_time = expiration;
         return self;
@@ -194,7 +194,7 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // SetAutoRenewPeriod sets the amount of time to extend the topic's lifetime automatically
-    pub fn setAutoRenewPeriod(self: *TopicUpdateTransaction, period: Duration) errors.HederaError!*TopicUpdateTransaction {
+    pub fn setAutoRenewPeriod(self: *TopicUpdateTransaction, period: Duration) !*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.auto_renew_period = period;
         return self;
@@ -206,7 +206,7 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // SetAutoRenewAccountID sets the optional account to be used at the topic's expirationTime
-    pub fn setAutoRenewAccountId(self: *TopicUpdateTransaction, auto_renew_account_id: AccountId) errors.HederaError!*TopicUpdateTransaction {
+    pub fn setAutoRenewAccountId(self: *TopicUpdateTransaction, auto_renew_account_id: AccountId) !*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.auto_renew_account_id = auto_renew_account_id;
         return self;
@@ -218,19 +218,19 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // ClearTopicMemo explicitly clears any memo on the topic by sending an empty string as the memo
-    pub fn clearTopicMemo(self: *TopicUpdateTransaction) errors.HederaError!*TopicUpdateTransaction {
+    pub fn clearTopicMemo(self: *TopicUpdateTransaction) HederaError!*TopicUpdateTransaction {
         return try self.setTopicMemo("");
     }
     
     // ClearAdminKey explicitly clears any admin key on the topic by sending an empty key list as the key
-    pub fn clearAdminKey(self: *TopicUpdateTransaction) errors.HederaError!*TopicUpdateTransaction {
+    pub fn clearAdminKey(self: *TopicUpdateTransaction) HederaError!*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.admin_key = null;
         return self;
     }
     
     // ClearSubmitKey explicitly clears any submit key on the topic by sending an empty key list as the key
-    pub fn clearSubmitKey(self: *TopicUpdateTransaction) errors.HederaError!*TopicUpdateTransaction {
+    pub fn clearSubmitKey(self: *TopicUpdateTransaction) HederaError!*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.submit_key = null;
         self.clear_submit_key = true;
@@ -238,7 +238,7 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // ClearAutoRenewAccountID explicitly clears any auto renew account ID on the topic
-    pub fn clearAutoRenewAccountID(self: *TopicUpdateTransaction) errors.HederaError!*TopicUpdateTransaction {
+    pub fn clearAutoRenewAccountID(self: *TopicUpdateTransaction) HederaError!*TopicUpdateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.auto_renew_account_id = AccountId{};
         return self;
@@ -247,7 +247,7 @@ pub const TopicUpdateTransaction = struct {
     // Execute executes the transaction
     pub fn execute(self: *TopicUpdateTransaction, client: *Client) !TransactionResponse {
         if (self.topic_id == null) {
-            return errors.HederaError.InvalidTopicId;
+            return error.InvalidParameter;
         }
         return try self.transaction.execute(client);
     }
@@ -276,7 +276,7 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // SetMaxTransactionFee sets the maximum transaction fee
-    pub fn setMaxTransactionFee(self: *TopicUpdateTransaction, fee: Hbar) *TopicUpdateTransaction {
+    pub fn setMaxTransactionFee(self: *TopicUpdateTransaction, fee: Hbar) !*TopicUpdateTransaction {
         _ = self.transaction.setMaxTransactionFee(fee);
         return self;
     }
@@ -287,7 +287,7 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // SetTransactionMemo sets the transaction memo
-    pub fn setTransactionMemo(self: *TopicUpdateTransaction, memo: []const u8) *TopicUpdateTransaction {
+    pub fn setTransactionMemo(self: *TopicUpdateTransaction, memo: []const u8) !*TopicUpdateTransaction {
         _ = self.transaction.setTransactionMemo(memo);
         return self;
     }
@@ -298,7 +298,7 @@ pub const TopicUpdateTransaction = struct {
     }
     
     // SetNodeAccountIDs sets the node account IDs for this transaction
-    pub fn setNodeAccountIDs(self: *TopicUpdateTransaction, node_account_ids: []const AccountId) *TopicUpdateTransaction {
+    pub fn setNodeAccountIDs(self: *TopicUpdateTransaction, node_account_ids: []const AccountId) !*TopicUpdateTransaction {
         _ = self.transaction.setNodeAccountIDs(node_account_ids);
         return self;
     }
@@ -310,6 +310,3 @@ pub const TopicUpdateTransaction = struct {
 };
 
 // NewTopicUpdateTransaction creates a TopicUpdateTransaction
-pub fn newTopicUpdateTransaction(allocator: std.mem.Allocator) !*TopicUpdateTransaction {
-    return try TopicUpdateTransaction.init(allocator);
-}

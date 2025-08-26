@@ -38,7 +38,7 @@ pub const TokenCancelAirdropTransaction = struct {
     }
     
     // Set all pending airdrops to cancel
-    pub fn setPendingAirdrops(self: *TokenCancelAirdropTransaction, pending_airdrops: []const PendingAirdropId) *TokenCancelAirdropTransaction {
+    pub fn setPendingAirdrops(self: *TokenCancelAirdropTransaction, pending_airdrops: []const PendingAirdropId) !*TokenCancelAirdropTransaction {
         self.pending_airdrops.clearAndFree();
         try self.pending_airdrops.appendSlice(pending_airdrops);
         return self;
@@ -138,3 +138,5 @@ pub const TokenCancelAirdropTransaction = struct {
         try self.base.writeCommonFields(writer);
     }
 };
+
+

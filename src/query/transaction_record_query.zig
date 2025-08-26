@@ -13,6 +13,8 @@ const TokenTransfer = @import("../transfer/transfer_transaction.zig").TokenTrans
 const NftTransfer = @import("../transfer/transfer_transaction.zig").NftTransfer;
 const TransactionReceipt = @import("receipt_query.zig").TransactionReceipt;
 
+
+
 // Use the consolidated TransactionRecord from transaction module
 pub const TransactionRecord = @import("../transaction/transaction_record.zig").TransactionRecord;
 pub const ContractFunctionResult = @import("../contract/contract_execute.zig").ContractFunctionResult;
@@ -38,24 +40,24 @@ pub const TransactionRecordQuery = struct {
     }
     
     // Set the transaction ID to query
-    pub fn setTransactionId(self: *TransactionRecordQuery, id: TransactionId) *TransactionRecordQuery {
+    pub fn setTransactionId(self: *TransactionRecordQuery, id: TransactionId) !*TransactionRecordQuery {
         self.transaction_id = id;
         return self;
     }
     
     // Include child transaction records
-    pub fn setIncludeChildren(self: *TransactionRecordQuery, include: bool) *TransactionRecordQuery {
+    pub fn setIncludeChildren(self: *TransactionRecordQuery, include: bool) !*TransactionRecordQuery {
         self.include_children = include;
         return self;
     }
     
     // Alias for setIncludeChildren to match TransactionResponse usage
-    pub fn setIncludeChildRecords(self: *TransactionRecordQuery, include: bool) *TransactionRecordQuery {
+    pub fn setIncludeChildRecords(self: *TransactionRecordQuery, include: bool) !*TransactionRecordQuery {
         return self.setIncludeChildren(include);
     }
     
     // Include duplicate transaction records
-    pub fn setIncludeDuplicates(self: *TransactionRecordQuery, include: bool) *TransactionRecordQuery {
+    pub fn setIncludeDuplicates(self: *TransactionRecordQuery, include: bool) !*TransactionRecordQuery {
         self.include_duplicates = include;
         return self;
     }
@@ -173,7 +175,7 @@ pub const TransactionRecordQuery = struct {
         try response.validateStatus();
         
         var reader = ProtoReader.init(response.response_bytes);
-        const receipt = TransactionReceipt.init(self.base.allocator);
+        const receipt = TransactionReceipt.init(self.base.allocator, .OK);
         const tx_id = self.transaction_id orelse TransactionId.generate(AccountId.init(0, 0, 0));
         var record = TransactionRecord.init(self.base.allocator, receipt, tx_id);
         
@@ -210,7 +212,7 @@ pub const TransactionRecordQuery = struct {
                 },
                 5 => {
                     // Memo
-                    record.memo = try reader.readString();
+                    record.transaction_memo = try reader.readString();
                 },
                 6 => {
                     // Transaction fee
@@ -220,7 +222,7 @@ pub const TransactionRecordQuery = struct {
                 7 => {
                     // Contract function result
                     const result_bytes = try reader.readBytes();
-                    record.contract_function_result = try ContractFunctionResult.fromProtobuf(self.base.allocator, result_bytes);
+                    record.call_result = try ContractFunctionResult.fromProtobuf(self.base.allocator, result_bytes);
                 },
                 8 => {
                     // Transfer list

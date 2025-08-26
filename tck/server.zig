@@ -35,34 +35,34 @@ pub const TCKServer = struct {
         
         var listener = address.listen(.{}) catch |err| switch (err) {
             error.AddressInUse => {
-                log.err("❌ Port {d} is already in use!", .{self.port});
-                log.err("💡 Another TCK server or application might already be running on this port.", .{});
-                log.err("💡 Try stopping the other service or using a different port with:", .{});
+                log.err("ERROR: Port {d} is already in use!", .{self.port});
+                log.err("INFO: Another TCK server or application might already be running on this port.", .{});
+                log.err("INFO: Try stopping the other service or using a different port with:", .{});
                 log.err("   TCK_PORT=8545 zig build run", .{});
                 return error.PortAlreadyInUse;
             },
             error.PermissionDenied => {
-                log.err("❌ Permission denied when trying to bind to port {d}!", .{self.port});
-                log.err("💡 Ports below 1024 require administrator privileges.", .{});
-                log.err("💡 Try using a port above 1024 or run with appropriate permissions.", .{});
+                log.err("ERROR: Permission denied when trying to bind to port {d}!", .{self.port});
+                log.err("INFO: Ports below 1024 require administrator privileges.", .{});
+                log.err("INFO: Try using a port above 1024 or run with appropriate permissions.", .{});
                 return error.InsufficientPermissions;
             },
             error.AddressNotAvailable => {
-                log.err("❌ The address 0.0.0.0:{d} is not available!", .{self.port});
-                log.err("💡 This might be a network configuration issue.", .{});
+                log.err("ERROR: The address 0.0.0.0:{d} is not available!", .{self.port});
+                log.err("INFO: This might be a network configuration issue.", .{});
                 return error.AddressUnavailable;
             },
             else => {
-                log.err("❌ Failed to start TCK server on port {d}: {}", .{ self.port, err });
-                log.err("💡 Please check your network configuration and try again.", .{});
+                log.err("ERROR: Failed to start TCK server on port {d}: {}", .{ self.port, err });
+                log.err("INFO: Please check your network configuration and try again.", .{});
                 return err;
             },
         };
         defer listener.deinit();
         
-        log.info("✅ TCK Server listening on port {d}", .{self.port});
-        log.info("🚀 Ready to receive JSON-RPC requests", .{});
-        log.info("💡 Send JSON-RPC requests to http://localhost:{d}", .{self.port});
+        log.info("SUCCESS: TCK Server listening on port {d}", .{self.port});
+        log.info("LAUNCH: Ready to receive JSON-RPC requests", .{});
+        log.info("INFO: Send JSON-RPC requests to http://localhost:{d}", .{self.port});
         
         while (true) {
             const connection = try listener.accept();
@@ -283,7 +283,7 @@ pub fn main() !void {
     defer if (!std.mem.eql(u8, port_str, "8544")) allocator.free(port_str);
     const port = try std.fmt.parseInt(u16, port_str, 10);
     
-    log.info("Starting Hedera SDK Zig TCK Server", .{});
+    log.info("Starting TCK Server", .{});
     log.info("Version: 1.0.0", .{});
     
     var server = TCKServer.init(allocator, port);
@@ -291,19 +291,19 @@ pub fn main() !void {
     
     server.start() catch |err| switch (err) {
         error.PortAlreadyInUse => {
-            log.err("⛔ Cannot start TCK server - port {d} is already in use.", .{port});
+            log.err(" Cannot start TCK server - port {d} is already in use.", .{port});
             std.process.exit(1);
         },
         error.InsufficientPermissions => {
-            log.err("⛔ Cannot start TCK server - insufficient permissions for port {d}.", .{port});
+            log.err(" Cannot start TCK server - insufficient permissions for port {d}.", .{port});
             std.process.exit(1);
         },
         error.AddressUnavailable => {
-            log.err("⛔ Cannot start TCK server - address not available.", .{});
+            log.err(" Cannot start TCK server - address not available.", .{});
             std.process.exit(1);
         },
         else => {
-            log.err("⛔ Failed to start TCK server: {}", .{err});
+            log.err(" Failed to start TCK server: {}", .{err});
             std.process.exit(1);
         },
     };

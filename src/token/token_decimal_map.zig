@@ -164,7 +164,7 @@ pub const TokenDecimalMap = struct {
     }
 
     // Set decimal places with validation
-    pub fn setDecimals(self: *TokenDecimalMap, token_id: TokenId, decimals: u32) *TokenDecimalMap {
+    pub fn setDecimals(self: *TokenDecimalMap, token_id: TokenId, decimals: u32) !*TokenDecimalMap {
         if (!isValidDecimals(decimals)) {
             return error.InvalidDecimals;
         }

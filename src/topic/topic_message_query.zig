@@ -46,31 +46,31 @@ pub const TopicMessageQuery = struct {
     }
     
     // Set the start time for the query
-    pub fn setStartTime(self: *TopicMessageQuery, start_time: Timestamp) *TopicMessageQuery {
+    pub fn setStartTime(self: *TopicMessageQuery, start_time: Timestamp) !*TopicMessageQuery {
         self.start_time = start_time;
         return self;
     }
     
     // Set the end time for the query
-    pub fn setEndTime(self: *TopicMessageQuery, end_time: Timestamp) *TopicMessageQuery {
+    pub fn setEndTime(self: *TopicMessageQuery, end_time: Timestamp) !*TopicMessageQuery {
         self.end_time = end_time;
         return self;
     }
     
     // Set the maximum number of messages to return
-    pub fn setLimit(self: *TopicMessageQuery, limit: u32) *TopicMessageQuery {
+    pub fn setLimit(self: *TopicMessageQuery, limit: u32) !*TopicMessageQuery {
         self.limit = limit;
         return self;
     }
     
     // Set the order of messages (ascending or descending by timestamp)
-    pub fn setOrder(self: *TopicMessageQuery, order: Order) *TopicMessageQuery {
+    pub fn setOrder(self: *TopicMessageQuery, order: Order) !*TopicMessageQuery {
         self.order = order;
         return self;
     }
     
     // Set max retry attempts
-    pub fn setMaxRetry(self: *TopicMessageQuery, max_retry: u32) *TopicMessageQuery {
+    pub fn setMaxRetry(self: *TopicMessageQuery, max_retry: u32) !*TopicMessageQuery {
         self.max_retry = max_retry;
         return self;
     }
@@ -313,6 +313,8 @@ pub const TopicMessageQuery = struct {
         };
     }
 };
+
+// Factory function for creating a new TopicMessageQuery
 
 // Topic message from consensus service
 pub const TopicMessage = struct {

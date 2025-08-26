@@ -1,4 +1,6 @@
 const std = @import("std");
+const errors = @import("../core/errors.zig");
+const HederaError = errors.HederaError;
 const AccountId = @import("../core/id.zig").AccountId;
 const TokenId = @import("../core/id.zig").TokenId;
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
@@ -784,7 +786,7 @@ pub const MirrorNodeClient = struct {
         const parsed = try parser.parse(body);
         defer parsed.deinit();
         
-        const balances_json = parsed.root.object.get("balances") orelse return error.InvalidResponse;
+        const balances_json = parsed.root.object.get("balances") orelse return HederaError.InvalidProtobuf;
         const balance_array = balances_json.array;
         
         var balances = try self.allocator.alloc(AccountBalance, balance_array.items.len);
@@ -840,7 +842,7 @@ pub const MirrorNodeClient = struct {
         const parsed = try parser.parse(body);
         defer parsed.deinit();
         
-        const txs = parsed.root.object.get("transactions") orelse return error.InvalidResponse;
+        const txs = parsed.root.object.get("transactions") orelse return HederaError.InvalidProtobuf;
         const tx_array = txs.array;
         
         var transactions = try self.allocator.alloc(Transaction, tx_array.items.len);

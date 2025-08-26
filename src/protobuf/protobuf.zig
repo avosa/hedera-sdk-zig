@@ -1,7 +1,7 @@
 const std = @import("std");
 
 // Export complete protobuf implementation
-pub const ProtobufReader = @import("reader.zig").ProtobufReader;
+pub const ProtobufReader = @import("reader.zig").ProtoReader;
 pub const ProtobufWriter = @import("writer.zig").ProtobufWriter;
 pub const WireType = @import("writer.zig").WireType;
 pub const MessageBuilder = @import("writer.zig").MessageBuilder;

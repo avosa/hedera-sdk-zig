@@ -4,12 +4,13 @@ const TokenId = @import("../core/id.zig").TokenId;
 const NftId = @import("../core/id.zig").NftId;
 const Hbar = @import("../core/hbar.zig").Hbar;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
-const TransactionResponse = @import("../transaction/transaction.zig").TransactionResponse;
+const TransactionResponse = @import("../transaction/transaction_response.zig").TransactionResponse;
+const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const errors = @import("../core/errors.zig");
-
-// Transfer alias for Go SDK compatibility  
+const HederaError = errors.HederaError;
+  
 pub const Transfer = HbarTransfer;
 
 // HbarTransfer represents a transfer of HBAR between accounts
@@ -33,10 +34,48 @@ pub const HbarTransfer = struct {
             .is_approved = true,
         };
     }
+    
+    // Parse HbarTransfer from protobuf bytes
+    pub fn fromProtobuf(allocator: std.mem.Allocator, bytes: []const u8) !HbarTransfer {
+        var reader = @import("../protobuf/encoding.zig").ProtoReader.init(bytes);
+        
+        var result = HbarTransfer{
+            .account_id = AccountId{ .shard = 0, .realm = 0, .account = 0 },
+            .amount = Hbar{ .tinybars = 0 },
+            .is_approved = false,
+        };
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            switch (tag.field_number) {
+                1 => {
+                    // accountID
+                    const account_bytes = try reader.readMessage();
+                    result.account_id = try AccountId.fromProtobufBytes(allocator, account_bytes);
+                },
+                2 => {
+                    // amount
+                    const amount = try reader.readInt64();
+                    result.amount = try Hbar.fromTinybars(amount);
+                },
+                3 => {
+                    // is_approval
+                    result.is_approved = try reader.readBool();
+                },
+                else => try reader.skipField(tag.wire_type),
+            }
+        }
+        
+        return result;
+    }
 };
 
-// Import AccountAmount from transfer.zig to eliminate redundancy
-pub const AccountAmount = @import("transfer.zig").AccountAmount;
+// AccountAmount represents an account and amount pair
+pub const AccountAmount = struct {
+    account_id: AccountId,
+    amount: i64,
+    is_approved: bool = false,
+};
 
 // TokenTransfer represents a fungible token transfer
 pub const TokenTransfer = struct {
@@ -45,7 +84,7 @@ pub const TokenTransfer = struct {
     amount: i64,
     is_approved: bool = false,
     expected_decimals: ?u32 = null,
-    transfers: std.ArrayList(AccountAmount),  // For compatibility
+    transfers: std.ArrayList(AccountAmount),  
     
     pub fn init(token_id: TokenId, account_id: AccountId, amount: i64, allocator: std.mem.Allocator) TokenTransfer {
         return TokenTransfer{
@@ -120,13 +159,16 @@ pub const TransferTransaction = struct {
     token_decimals: std.AutoHashMap(TokenId, u32),
     
     pub fn init(allocator: std.mem.Allocator) TransferTransaction {
-        return TransferTransaction{
+        var transfer = TransferTransaction{
             .base = Transaction.init(allocator),
             .hbar_transfers = std.ArrayList(HbarTransfer).init(allocator),
             .token_transfers = std.ArrayList(TokenTransfer).init(allocator),
             .nft_transfers = std.ArrayList(NftTransfer).init(allocator),
             .token_decimals = std.AutoHashMap(TokenId, u32).init(allocator),
         };
+        // Set the function pointer for building transaction body
+        transfer.base.buildTransactionBodyForNode = buildTransactionBodyForNode;
+        return transfer;
     }
     
     pub fn deinit(self: *TransferTransaction) void {
@@ -137,134 +179,141 @@ pub const TransferTransaction = struct {
         self.token_decimals.deinit();
     }
     
-    // Includes an HBAR transfer in the transaction
-    pub fn addHbarTransfer(self: *TransferTransaction, account_id: AccountId, amount: Hbar) errors.HederaError!void {
-        try errors.requireNotFrozen(self.base.frozen);
+    // Add HBAR transfer to the transaction
+    pub fn addHbarTransfer(self: *TransferTransaction, account_id: AccountId, amount: Hbar) HederaError!*TransferTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         // Check if account already has a transfer
         for (self.hbar_transfers.items) |*transfer| {
             if (transfer.account_id.equals(account_id)) {
                 // Combine amounts
                 transfer.amount = try transfer.amount.add(amount);
-                return;
+                return self;
             }
         }
         
         // Create new transfer entry
         try errors.handleAppendError(&self.hbar_transfers, HbarTransfer.init(account_id, amount));
+        return self;
     }
     
-    // Includes an approved HBAR transfer in the transaction
-    pub fn addApprovedHbarTransfer(self: *TransferTransaction, account_id: AccountId, amount: Hbar) errors.HederaError!void {
-        try errors.requireNotFrozen(self.base.frozen);
+    // Add approved HBAR transfer to the transaction
+    pub fn addApprovedHbarTransfer(self: *TransferTransaction, account_id: AccountId, amount: Hbar) HederaError!*TransferTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         // Check if account already has a transfer
         for (self.hbar_transfers.items) |*transfer| {
             if (transfer.account_id.equals(account_id)) {
                 transfer.amount = try transfer.amount.add(amount);
                 transfer.is_approved = true;
-                return;
+                return self;
             }
         }
         
         // Create new approved transfer entry
         try errors.handleAppendError(&self.hbar_transfers, HbarTransfer.initApproved(account_id, amount));
+        return self;
     }
     
-    // Includes a token transfer in the transaction
-    pub fn addTokenTransfer(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64) errors.HederaError!void {
-        try errors.requireNotFrozen(self.base.frozen);
+    // Add token transfer to the transaction
+    pub fn addTokenTransfer(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64) HederaError!*TransferTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         // Check if this token-account pair already has a transfer
         for (self.token_transfers.items) |*transfer| {
             if (transfer.token_id.equals(token_id) and transfer.account_id.equals(account_id)) {
                 transfer.amount += amount;
-                return;
+                return self;
             }
         }
         
         // Create new transfer entry
         try errors.handleAppendError(&self.token_transfers, TokenTransfer.init(token_id, account_id, amount, self.base.allocator));
+        return self;
     }
     
-    // Includes a token transfer in the transaction with decimals
-    pub fn addTokenTransferWithDecimals(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64, decimals: u32) errors.HederaError!void {
-        try errors.requireNotFrozen(self.base.frozen);
+    // Add token transfer with decimals to the transaction
+    pub fn addTokenTransferWithDecimals(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64, decimals: u32) HederaError!*TransferTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         // Store expected decimals
-        self.token_decimals.put(token_id, decimals) catch return errors.HederaError.OutOfMemory;
+        self.token_decimals.put(token_id, decimals) catch return error.InvalidParameter;
         
         // Check if this token-account pair already has a transfer
         for (self.token_transfers.items) |*transfer| {
             if (transfer.token_id.equals(token_id) and transfer.account_id.equals(account_id)) {
                 transfer.amount += amount;
                 transfer.expected_decimals = decimals;
-                return;
+                return self;
             }
         }
         
         // Create new transfer entry
         try errors.handleAppendError(&self.token_transfers, TokenTransfer.initWithDecimals(token_id, account_id, amount, decimals, self.base.allocator));
+        return self;
     }
     
-    // Includes an approved token transfer in the transaction
-    pub fn addApprovedTokenTransfer(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64) errors.HederaError!void {
-        try errors.requireNotFrozen(self.base.frozen);
+    // Add approved token transfer to the transaction
+    pub fn addApprovedTokenTransfer(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64) HederaError!*TransferTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         // Check if this token-account pair already has a transfer
         for (self.token_transfers.items) |*transfer| {
             if (transfer.token_id.equals(token_id) and transfer.account_id.equals(account_id)) {
                 transfer.amount += amount;
                 transfer.is_approved = true;
-                return;
+                return self;
             }
         }
         
         // Create new approved transfer entry
         try errors.handleAppendError(&self.token_transfers, TokenTransfer.initApproved(token_id, account_id, amount, self.base.allocator));
+        return self;
     }
     
-    // Includes an NFT transfer in the transaction
-    pub fn addNftTransfer(self: *TransferTransaction, nft_id: NftId, sender: AccountId, receiver: AccountId) errors.HederaError!void {
-        try errors.requireNotFrozen(self.base.frozen);
+    // Add NFT transfer to the transaction
+    pub fn addNftTransfer(self: *TransferTransaction, nft_id: NftId, sender: AccountId, receiver: AccountId) HederaError!*TransferTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         // Check for duplicate (same NFT with same sender/receiver)
         for (self.nft_transfers.items) |transfer| {
             if (transfer.nft_id.equals(nft_id) and 
                 transfer.sender_account_id.equals(sender) and 
                 transfer.receiver_account_id.equals(receiver)) {
-                return errors.HederaError.InvalidParameter;
+                return error.InvalidParameter;
             }
         }
         
         try errors.handleAppendError(&self.nft_transfers, NftTransfer.init(nft_id, sender, receiver));
+        return self;
     }
     
-    // Includes an approved NFT transfer in the transaction
-    pub fn addApprovedNftTransfer(self: *TransferTransaction, nft_id: NftId, sender: AccountId, receiver: AccountId) errors.HederaError!void {
-        try errors.requireNotFrozen(self.base.frozen);
+    // Add approved NFT transfer to the transaction
+    pub fn addApprovedNftTransfer(self: *TransferTransaction, nft_id: NftId, sender: AccountId, receiver: AccountId) HederaError!*TransferTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         // Check for duplicate (same NFT with same sender/receiver)
         for (self.nft_transfers.items) |transfer| {
             if (transfer.nft_id.equals(nft_id) and 
                 transfer.sender_account_id.equals(sender) and 
                 transfer.receiver_account_id.equals(receiver)) {
-                return errors.HederaError.InvalidParameter;
+                return error.InvalidParameter;
             }
         }
         
         try errors.handleAppendError(&self.nft_transfers, NftTransfer.initApproved(nft_id, sender, receiver));
+        return self;
     }
     
     // Validate transfers sum to zero
-    fn validateTransfers(self: *TransferTransaction) errors.HederaError!void {
+    fn validateTransfers(self: *TransferTransaction) HederaError!void {
         // Validate HBAR transfers
         var hbar_sum = Hbar.zero();
         for (self.hbar_transfers.items) |transfer| {
             hbar_sum = try hbar_sum.add(transfer.amount);
         }
         if (!hbar_sum.isZero()) {
-            return errors.HederaError.InvalidAccountAmounts;
+            return error.InvalidParameter;
         }
         
         // Validate token transfers per token
@@ -273,48 +322,89 @@ pub const TransferTransaction = struct {
         
         for (self.token_transfers.items) |transfer| {
             const current = token_sums.get(transfer.token_id) orelse 0;
-            token_sums.put(transfer.token_id, current + transfer.amount) catch return errors.HederaError.OutOfMemory;
+            token_sums.put(transfer.token_id, current + transfer.amount) catch return error.InvalidParameter;
         }
         
         var iter = token_sums.iterator();
         while (iter.next()) |entry| {
             if (entry.value_ptr.* != 0) {
-                return errors.HederaError.TransfersNotZeroSumForToken;
+                return error.InvalidParameter;
             }
         }
     }
     
     // Freeze the transaction
-    pub fn freeze(self: *TransferTransaction) errors.HederaError!void {
+    pub fn freeze(self: *TransferTransaction) HederaError!*TransferTransaction {
         try self.validateTransfers();
-        self.base.freeze() catch return errors.HederaError.InvalidTransaction;
+        self.base.freeze() catch return error.InvalidParameter;
+        return self;
+    }
+    
+    // Set transaction ID
+    pub fn setTransactionId(self: *TransferTransaction, transaction_id: TransactionId) !*TransferTransaction {
+        _ = try self.base.setTransactionId(transaction_id);
+        return self;
     }
     
     // Freeze with client
-    pub fn freezeWith(self: *TransferTransaction, client: *Client) errors.HederaError!void {
+    // Set transaction memo
+    pub fn setTransactionMemo(self: *TransferTransaction, memo: []const u8) !*TransferTransaction {
+        _ = try self.base.setTransactionMemo(memo);
+        return self;
+    }
+    
+    pub fn freezeWith(self: *TransferTransaction, client: *Client) HederaError!*TransferTransaction {
         try self.validateTransfers();
-        self.base.freezeWith(client) catch return errors.HederaError.InvalidTransaction;
+        _ = self.base.freezeWith(client) catch return error.InvalidParameter;
+        return self;
     }
     
     // Sign the transaction
-    pub fn sign(self: *TransferTransaction, private_key: anytype) errors.HederaError!void {
-        self.base.sign(private_key) catch return errors.HederaError.InvalidSignature;
+    pub fn sign(self: *TransferTransaction, private_key: anytype) !*TransferTransaction {
+        _ = self.base.sign(private_key) catch return error.InvalidParameter;
+        return self;
     }
     
     // Sign with operator
-    pub fn signWithOperator(self: *TransferTransaction, client: *Client) errors.HederaError!void {
-        self.base.signWithOperator(client) catch return errors.HederaError.InvalidSignature;
+    pub fn signWithOperator(self: *TransferTransaction, client: *Client) HederaError!*TransferTransaction {
+        self.base.signWithOperator(client) catch return error.InvalidParameter;
+        return self;
     }
     
     // Execute the transaction
-    pub fn execute(self: *TransferTransaction, client: *Client) errors.HederaError!TransactionResponse {
+    pub fn execute(self: *TransferTransaction, client: *Client) HederaError!TransactionResponse {
         if (self.hbar_transfers.items.len == 0 and 
             self.token_transfers.items.len == 0 and 
             self.nft_transfers.items.len == 0) {
-            return errors.HederaError.EmptyTransactionBody;
+            return error.InvalidParameter;
         }
         
-        return self.base.execute(client) catch return errors.HederaError.InvalidTransaction;
+        // Check if any transfer involves an EVM address (hollow account creation)
+        var has_evm_address = false;
+        for (self.hbar_transfers.items) |transfer| {
+            if (transfer.account_id.alias_evm_address != null) {
+                has_evm_address = true;
+                break;
+            }
+        }
+        
+        // Execute the base transaction
+        const base_response = self.base.execute(client) catch return error.InvalidParameter;
+        
+        // Create a proper TransactionResponse with all fields
+        var response = try TransactionResponse.init(
+            self.base.allocator, 
+            base_response.transaction_id,
+            base_response.node_account_id,
+            base_response.hash orelse &[_]u8{},
+        );
+        
+        // Enable child receipts for EVM address transfers (hollow account creation)
+        if (has_evm_address) {
+            _ = try response.setIncludeChildReceipts(true);
+        }
+        
+        return response;
     }
     
     // Build transaction body
@@ -398,9 +488,9 @@ pub const TransferTransaction = struct {
                 // token = 1
                 var token_writer = ProtoWriter.init(self.base.allocator);
                 defer token_writer.deinit();
-                try token_writer.writeInt64(1, @intCast(entry.key_ptr.*.shard));
-                try token_writer.writeInt64(2, @intCast(entry.key_ptr.*.realm));
-                try token_writer.writeInt64(3, @intCast(entry.key_ptr.*.account));
+                try token_writer.writeInt64(1, @intCast(entry.key_ptr.*.entity.shard));
+                try token_writer.writeInt64(2, @intCast(entry.key_ptr.*.entity.realm));
+                try token_writer.writeInt64(3, @intCast(entry.key_ptr.*.entity.num));
                 const token_bytes = try token_writer.toOwnedSlice();
                 defer self.base.allocator.free(token_bytes);
                 try token_list_writer.writeMessage(1, token_bytes);
@@ -474,9 +564,9 @@ pub const TransferTransaction = struct {
                 // token = 1
                 var token_writer = ProtoWriter.init(self.base.allocator);
                 defer token_writer.deinit();
-                try token_writer.writeInt64(1, @intCast(entry.key_ptr.*.shard));
-                try token_writer.writeInt64(2, @intCast(entry.key_ptr.*.realm));
-                try token_writer.writeInt64(3, @intCast(entry.key_ptr.*.account));
+                try token_writer.writeInt64(1, @intCast(entry.key_ptr.*.entity.shard));
+                try token_writer.writeInt64(2, @intCast(entry.key_ptr.*.entity.realm));
+                try token_writer.writeInt64(3, @intCast(entry.key_ptr.*.entity.num));
                 const token_bytes = try token_writer.toOwnedSlice();
                 defer self.base.allocator.free(token_bytes);
                 try nft_list_writer.writeMessage(1, token_bytes);
@@ -507,7 +597,7 @@ pub const TransferTransaction = struct {
                     try nft_transfer_writer.writeMessage(2, receiver_bytes);
                     
                     // serialNumber = 3
-                    try nft_transfer_writer.writeInt64(3, transfer.nft_id.serial_number);
+                    try nft_transfer_writer.writeInt64(3, @intCast(transfer.nft_id.serial_number));
                     
                     // isApproval = 4
                     if (transfer.is_approved) {
@@ -581,7 +671,7 @@ pub const TransferTransaction = struct {
         // transactionValidDuration = 4
         var duration_writer = ProtoWriter.init(self.base.allocator);
         defer duration_writer.deinit();
-        try duration_writer.writeInt64(1, self.base.transaction_valid_duration.seconds);
+        try duration_writer.writeInt64(1, self.base.transaction_valid_duration.toSeconds());
         const duration_bytes = try duration_writer.toOwnedSlice();
         defer self.base.allocator.free(duration_bytes);
         try writer.writeMessage(4, duration_bytes);
@@ -591,9 +681,13 @@ pub const TransferTransaction = struct {
             try writer.writeString(5, self.base.transaction_memo);
         }
     }
+    
+    // Wrapper function for Transaction base class function pointer
+    pub fn buildTransactionBodyForNode(transaction: *Transaction, node: AccountId) anyerror![]u8 {
+        const self = @as(*TransferTransaction, @fieldParentPtr("base", transaction));
+        _ = node; // Node parameter not needed for transfer transactions
+        return self.buildTransactionBody();
+    }
 };
 
-// Factory function matching Hedera SDK patterns
-pub fn newTransferTransaction(allocator: std.mem.Allocator) TransferTransaction {
-    return TransferTransaction.init(allocator);
-}
+

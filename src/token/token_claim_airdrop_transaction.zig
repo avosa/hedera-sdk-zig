@@ -31,7 +31,7 @@ pub const TokenClaimAirdropTransaction = struct {
     }
     
     // Set all pending airdrops to claim
-    pub fn setPendingAirdrops(self: *TokenClaimAirdropTransaction, pending_airdrops: []const PendingAirdropId) *TokenClaimAirdropTransaction {
+    pub fn setPendingAirdrops(self: *TokenClaimAirdropTransaction, pending_airdrops: []const PendingAirdropId) !*TokenClaimAirdropTransaction {
         self.pending_airdrops.clearAndFree();
         try self.pending_airdrops.appendSlice(pending_airdrops);
         return self;
@@ -132,3 +132,5 @@ pub const TokenClaimAirdropTransaction = struct {
         try self.base.writeCommonFields(writer);
     }
 };
+
+

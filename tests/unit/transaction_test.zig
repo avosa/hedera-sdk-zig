@@ -126,7 +126,7 @@ test "Transaction freeze and sign" {
     const operator_id = hedera.AccountId.init(0, 0, 1001);
     const operator_key = try hedera.Ed25519PrivateKey.generate();
     
-    _ = client.setOperator(operator_id, .{ .ed25519 = operator_key });
+    _ = try client.setOperator(operator_id, .{ .ed25519 = operator_key });
     
     // Create transaction
     var tx = hedera.TransferTransaction.init(allocator);
@@ -139,11 +139,11 @@ test "Transaction freeze and sign" {
     _ = try tx.addHbarTransfer(account2, try hedera.Hbar.from(10));
     
     // Freeze transaction
-    try tx.base.freezeWith(&client);
+    _ = try tx.base.freezeWith(&client);
     try testing.expect(tx.base.frozen);
     
     // Sign transaction
-    try tx.base.sign(operator_key);
+    _ = try tx.base.sign(operator_key);
     try testing.expectEqual(@as(usize, 1), tx.base.signatures.items.len);
     
     // Cannot modify frozen transaction (would panic - removed test as frozen transactions use @panic)
@@ -172,12 +172,12 @@ test "Transaction signature map" {
     const key3 = try hedera.Ed25519PrivateKey.generate();
     
     // Freeze transaction before signing
-    try tx.base.freezeWith(null);
+    _ = try tx.base.freezeWith(null);
     
     // Add signatures
-    try tx.base.sign(key1);
-    try tx.base.sign(key2);
-    try tx.base.sign(key3);
+    _ = try tx.base.sign(key1);
+    _ = try tx.base.sign(key2);
+    _ = try tx.base.sign(key3);
     
     // Verify all signatures were added
     try testing.expectEqual(@as(usize, 3), tx.base.signatures.items.len);
@@ -240,16 +240,16 @@ test "Transfer transaction token transfers" {
     const account2 = hedera.AccountId.init(0, 0, 200);
     
     // Add token transfers
-    try transfer.addTokenTransfer(token_id, account1, -500);
-    try transfer.addTokenTransfer(token_id, account2, 500);
+    _ = try transfer.addTokenTransfer(token_id, account1, -500);
+    _ = try transfer.addTokenTransfer(token_id, account2, 500);
     
     // Verify token transfers
     // Should have 2 token transfers (one for each account)
     try testing.expectEqual(@as(usize, 2), transfer.token_transfers.items.len);
     
     // Add approved token transfer
-    try transfer.addApprovedTokenTransfer(token_id, account1, -100);
-    try transfer.addApprovedTokenTransfer(token_id, account2, 100);
+    _ = try transfer.addApprovedTokenTransfer(token_id, account1, -100);
+    _ = try transfer.addApprovedTokenTransfer(token_id, account2, 100);
     
     try testing.expectEqual(@as(usize, 2), transfer.token_transfers.items.len);
     
@@ -259,11 +259,11 @@ test "Transfer transaction token transfers" {
         .serial_number = 1,
     };
     
-    try transfer.addNftTransfer(nft_id, account1, account2);
+    _ = try transfer.addNftTransfer(nft_id, account1, account2);
     try testing.expectEqual(@as(usize, 1), transfer.nft_transfers.items.len);
     
     // Add approved NFT transfer
-    try transfer.addApprovedNftTransfer(nft_id, account2, account1);
+    _ = try transfer.addApprovedNftTransfer(nft_id, account2, account1);
     try testing.expectEqual(@as(usize, 2), transfer.nft_transfers.items.len);
 }
 
@@ -281,8 +281,8 @@ test "Transfer transaction with decimals" {
     
     // Add token transfer with decimals
     const decimals: u32 = 8;
-    try transfer.addTokenTransferWithDecimals(token_id, account1, -1000, decimals);
-    try transfer.addTokenTransferWithDecimals(token_id, account2, 1000, decimals);
+    _ = try transfer.addTokenTransferWithDecimals(token_id, account1, -1000, decimals);
+    _ = try transfer.addTokenTransferWithDecimals(token_id, account2, 1000, decimals);
     
     // Verify expected decimals are set
     try testing.expectEqual(@as(usize, 2), transfer.token_transfers.items.len);
@@ -457,7 +457,7 @@ test "Transaction builder pattern" {
     const allocator = arena.allocator();
     
     // Test method chaining with account create transaction
-    var tx = hedera.newAccountCreateTransaction(allocator);
+    var tx = hedera.accountCreateTransaction(allocator);
     defer tx.deinit();
     
     const key = try hedera.Ed25519PrivateKey.generate();
@@ -597,17 +597,17 @@ test "Transaction signature management" {
     _ = try tx.addHbarTransfer(account2, try hedera.Hbar.from(50));
     
     // Freeze before signing
-    try tx.base.freezeWith(null);
+    _ = try tx.base.freezeWith(null);
     
     // Generate keys for testing
     const key1 = try hedera.Ed25519PrivateKey.generate();
     const key2 = try hedera.Ed25519PrivateKey.generate();
     
     // Test signing with private keys
-    try tx.base.sign(key1);
+    _ = try tx.base.sign(key1);
     try testing.expectEqual(@as(usize, 1), tx.base.signatures.items.len);
     
-    try tx.base.sign(key2);
+    _ = try tx.base.sign(key2);
     try testing.expectEqual(@as(usize, 2), tx.base.signatures.items.len);
     
     // Test adding signature manually
@@ -672,7 +672,7 @@ test "Transaction freeze state edge cases" {
     _ = try tx.addHbarTransfer(account2, try hedera.Hbar.from(25));
     
     // Freeze with null client (should use defaults)
-    try tx.base.freezeWith(null);
+    _ = try tx.base.freezeWith(null);
     try testing.expect(tx.base.frozen);
     try testing.expect(tx.base.transaction_id != null);
     

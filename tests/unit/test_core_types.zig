@@ -91,7 +91,7 @@ test "Hbar creation and conversion" {
     try testing.expectEqual(@as(i64, 10_000_000_000), hbar_from_hbar.toTinybars());
     try testing.expectEqual(@as(f64, 100.0), hbar_from_hbar.toHbars());
     
-    const hbar_from_tinybars = hedera.Hbar.fromTinybars(50_000_000_000);
+    const hbar_from_tinybars = try hedera.Hbar.fromTinybars(50_000_000_000);
     try testing.expectEqual(@as(i64, 50_000_000_000), hbar_from_tinybars.toTinybars());
     try testing.expectEqual(@as(f64, 500.0), hbar_from_tinybars.toHbars());
     

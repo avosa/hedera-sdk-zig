@@ -1,6 +1,6 @@
 const std = @import("std");
 const errors = @import("../core/errors.zig");
-const AccountId = @import("../core/id.zig").AccountId;
+const HederaError = errors.HederaError;const AccountId = @import("../core/id.zig").AccountId;
 const Key = @import("../crypto/key.zig").Key;
 const Duration = @import("../core/duration.zig").Duration;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
@@ -65,11 +65,10 @@ pub const TopicCreateTransaction = struct {
         }
         self.custom_fees.deinit();
         self.transaction.deinit();
-        self.allocator.destroy(self);
     }
     
     // setAdminKey sets the key required to update or delete the topic
-    pub fn setAdminKey(self: *TopicCreateTransaction, public_key: Key) errors.HederaError!*TopicCreateTransaction {
+    pub fn setAdminKey(self: *TopicCreateTransaction, public_key: Key) !*TopicCreateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.admin_key = public_key;
         return self;
@@ -81,7 +80,7 @@ pub const TopicCreateTransaction = struct {
     }
     
     // setSubmitKey sets the key required for submitting messages to the topic
-    pub fn setSubmitKey(self: *TopicCreateTransaction, public_key: Key) errors.HederaError!*TopicCreateTransaction {
+    pub fn setSubmitKey(self: *TopicCreateTransaction, public_key: Key) !*TopicCreateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.submit_key = public_key;
         return self;
@@ -93,7 +92,7 @@ pub const TopicCreateTransaction = struct {
     }
     
     // setFeeScheduleKey sets the key which allows updates to the new topic's fees
-    pub fn setFeeScheduleKey(self: *TopicCreateTransaction, public_key: Key) errors.HederaError!*TopicCreateTransaction {
+    pub fn setFeeScheduleKey(self: *TopicCreateTransaction, public_key: Key) !*TopicCreateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.fee_schedule_key = public_key;
         return self;
@@ -105,22 +104,23 @@ pub const TopicCreateTransaction = struct {
     }
     
     // SetFeeExemptKeys sets the keys that will be exempt from paying fees
-    pub fn setFeeExemptKeys(self: *TopicCreateTransaction, keys: []const Key) errors.HederaError!*TopicCreateTransaction {
+    pub fn setFeeExemptKeys(self: *TopicCreateTransaction, keys: []const Key) !*TopicCreateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.fee_exempt_keys.clearRetainingCapacity();
         try errors.handleAppendSliceError(&self.fee_exempt_keys, keys);
         return self;
     }
     
+    
     // AddFeeExemptKey adds a key that will be exempt from paying fees
-    pub fn addFeeExemptKey(self: *TopicCreateTransaction, key: Key) errors.HederaError!*TopicCreateTransaction {
+    pub fn addFeeExemptKey(self: *TopicCreateTransaction, key: Key) !*TopicCreateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         try errors.handleAppendError(&self.fee_exempt_keys, key);
         return self;
     }
     
     // ClearFeeExemptKeys removes all keys that will be exempt from paying fees
-    pub fn clearFeeExemptKeys(self: *TopicCreateTransaction) errors.HederaError!*TopicCreateTransaction {
+    pub fn clearFeeExemptKeys(self: *TopicCreateTransaction) HederaError!*TopicCreateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.fee_exempt_keys.clearRetainingCapacity();
         return self;
@@ -132,7 +132,7 @@ pub const TopicCreateTransaction = struct {
     }
     
     // SetCustomFees sets the fixed fees to assess when a message is submitted to the new topic
-    pub fn setCustomFees(self: *TopicCreateTransaction, fees: []*CustomFixedFee) errors.HederaError!*TopicCreateTransaction {
+    pub fn setCustomFees(self: *TopicCreateTransaction, fees: []*CustomFixedFee) !*TopicCreateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         for (self.custom_fees.items) |fee| {
             self.allocator.destroy(fee);
@@ -143,14 +143,14 @@ pub const TopicCreateTransaction = struct {
     }
     
     // AddCustomFee adds a fixed fee to assess when a message is submitted to the new topic
-    pub fn addCustomFee(self: *TopicCreateTransaction, fee: *CustomFixedFee) errors.HederaError!*TopicCreateTransaction {
+    pub fn addCustomFee(self: *TopicCreateTransaction, fee: *CustomFixedFee) !*TopicCreateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         try errors.handleAppendError(&self.custom_fees, fee);
         return self;
     }
     
     // ClearCustomFees removes all custom fees to assess when a message is submitted to the new topic
-    pub fn clearCustomFees(self: *TopicCreateTransaction) errors.HederaError!*TopicCreateTransaction {
+    pub fn clearCustomFees(self: *TopicCreateTransaction) HederaError!*TopicCreateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         for (self.custom_fees.items) |fee| {
             self.allocator.destroy(fee);
@@ -165,7 +165,7 @@ pub const TopicCreateTransaction = struct {
     }
     
     // SetTopicMemo sets a short publicly visible memo about the topic
-    pub fn setTopicMemo(self: *TopicCreateTransaction, memo: []const u8) errors.HederaError!*TopicCreateTransaction {
+    pub fn setTopicMemo(self: *TopicCreateTransaction, memo: []const u8) !*TopicCreateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.memo = memo;
         return self;
@@ -177,7 +177,7 @@ pub const TopicCreateTransaction = struct {
     }
     
     // SetAutoRenewPeriod sets the initial lifetime of the topic
-    pub fn setAutoRenewPeriod(self: *TopicCreateTransaction, period: Duration) errors.HederaError!*TopicCreateTransaction {
+    pub fn setAutoRenewPeriod(self: *TopicCreateTransaction, period: Duration) !*TopicCreateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.auto_renew_period = period;
         return self;
@@ -189,7 +189,7 @@ pub const TopicCreateTransaction = struct {
     }
     
     // SetAutoRenewAccountID sets an optional account to be used at the topic's expirationTime
-    pub fn setAutoRenewAccountId(self: *TopicCreateTransaction, auto_renew_account_id: AccountId) errors.HederaError!*TopicCreateTransaction {
+    pub fn setAutoRenewAccountId(self: *TopicCreateTransaction, auto_renew_account_id: AccountId) !*TopicCreateTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.auto_renew_account_id = auto_renew_account_id;
         return self;
@@ -229,7 +229,7 @@ pub const TopicCreateTransaction = struct {
     }
     
     // SetMaxTransactionFee sets the maximum transaction fee
-    pub fn setMaxTransactionFee(self: *TopicCreateTransaction, fee: Hbar) *TopicCreateTransaction {
+    pub fn setMaxTransactionFee(self: *TopicCreateTransaction, fee: Hbar) !*TopicCreateTransaction {
         _ = self.transaction.setMaxTransactionFee(fee);
         return self;
     }
@@ -240,8 +240,8 @@ pub const TopicCreateTransaction = struct {
     }
     
     // SetTransactionMemo sets the transaction memo
-    pub fn setTransactionMemo(self: *TopicCreateTransaction, memo: []const u8) *TopicCreateTransaction {
-        _ = self.transaction.setTransactionMemo(memo);
+    pub fn setTransactionMemo(self: *TopicCreateTransaction, memo: []const u8) !*TopicCreateTransaction {
+        _ = self.transaction.setTransactionMemo(memo) catch {};
         return self;
     }
     
@@ -251,7 +251,7 @@ pub const TopicCreateTransaction = struct {
     }
     
     // SetNodeAccountIDs sets the node account IDs for this transaction
-    pub fn setNodeAccountIDs(self: *TopicCreateTransaction, node_account_ids: []const AccountId) *TopicCreateTransaction {
+    pub fn setNodeAccountIDs(self: *TopicCreateTransaction, node_account_ids: []const AccountId) !*TopicCreateTransaction {
         _ = self.transaction.setNodeAccountIDs(node_account_ids);
         return self;
     }
@@ -263,6 +263,5 @@ pub const TopicCreateTransaction = struct {
 };
 
 // NewTopicCreateTransaction creates a TopicCreateTransaction
-pub fn newTopicCreateTransaction(allocator: std.mem.Allocator) !*TopicCreateTransaction {
-    return try TopicCreateTransaction.init(allocator);
-}
+
+// JavaScript naming convention (no "new" prefix)

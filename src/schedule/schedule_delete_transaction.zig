@@ -22,8 +22,8 @@ pub const ScheduleDeleteTransaction = struct {
     }
     
     // Set the schedule ID to delete
-    pub fn setScheduleId(self: *ScheduleDeleteTransaction, schedule_id: ScheduleId) errors.HederaError!*ScheduleDeleteTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setScheduleId(self: *ScheduleDeleteTransaction, schedule_id: ScheduleId) !*ScheduleDeleteTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.schedule_id = schedule_id;
         return self;
     }
@@ -65,3 +65,5 @@ pub const ScheduleDeleteTransaction = struct {
         return writer.toOwnedSlice();
     }
 };
+
+

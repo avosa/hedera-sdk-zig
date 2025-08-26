@@ -1,10 +1,11 @@
 const std = @import("std");
 const testing = std.testing;
-const AccountAllowance = @import("account_allowance.zig").AccountAllowance;
-const hedera.AccountId = @import("delete_account_id.zig").hedera.AccountId;
-const hedera.TokenId = @import("../token/token_id.zig").hedera.TokenId;
-const hedera.NftId = @import("../token/nft_id.zig").hedera.NftId;
-const hedera.Hbar = @import("../core/hbar.zig").hedera.Hbar;
+const hedera = @import("hedera");
+const AccountAllowance = hedera.AccountAllowance;
+const AccountId = hedera.AccountId;
+const TokenId = hedera.TokenId;
+const NftId = hedera.NftId;
+const Hbar = hedera.Hbar;
 
 test "HbarAllowance creation and methods" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);

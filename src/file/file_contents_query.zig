@@ -38,13 +38,13 @@ pub const FileContentsQuery = struct {
     }
     
     // Set the file ID to query contents for
-    pub fn setFileId(self: *FileContentsQuery, file_id: FileId) *FileContentsQuery {
+    pub fn setFileId(self: *FileContentsQuery, file_id: FileId) !*FileContentsQuery {
         self.file_id = file_id;
         return self;
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *FileContentsQuery, payment: Hbar) *FileContentsQuery {
+    pub fn setQueryPayment(self: *FileContentsQuery, payment: Hbar) !*FileContentsQuery {
         self.base.payment_amount = payment;
         return self;
     }
@@ -197,3 +197,5 @@ pub const FileContentsQuery = struct {
         return contents;
     }
 };
+
+// Factory function for creating a new FileContentsQuery

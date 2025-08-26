@@ -15,7 +15,7 @@ pub const ScheduleCreateTransaction = struct {
     payer_account_id: ?AccountId = null,
     admin_key: ?Key = null,
     schedulable_transaction: ?*Transaction = null,
-    scheduled_transaction: ?*Transaction = null,  // Alias for compatibility
+    scheduled_transaction: ?*Transaction = null,
     memo: ?[]const u8 = null,
     expiration_time: ?Timestamp = null,
     wait_for_expiry: bool = false,
@@ -38,22 +38,22 @@ pub const ScheduleCreateTransaction = struct {
     }
     
     // Set the payer account ID for the scheduled transaction
-    pub fn setPayerAccountId(self: *ScheduleCreateTransaction, payer_account_id: AccountId) errors.HederaError!*ScheduleCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setPayerAccountId(self: *ScheduleCreateTransaction, payer_account_id: AccountId) !*ScheduleCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.payer_account_id = payer_account_id;
         return self;
     }
     
     // Set the admin key that can delete the schedule
-    pub fn setAdminKey(self: *ScheduleCreateTransaction, key: Key) errors.HederaError!*ScheduleCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setAdminKey(self: *ScheduleCreateTransaction, key: Key) !*ScheduleCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.admin_key = key;
         return self;
     }
     
     // Set the transaction to be scheduled
-    pub fn setScheduledTransaction(self: *ScheduleCreateTransaction, transaction: *Transaction) errors.HederaError!*ScheduleCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setScheduledTransaction(self: *ScheduleCreateTransaction, transaction: *Transaction) !*ScheduleCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (self.schedulable_transaction) |old_tx| {
             old_tx.deinit();
@@ -66,8 +66,8 @@ pub const ScheduleCreateTransaction = struct {
     }
     
     // Set the memo for the schedule
-    pub fn setMemo(self: *ScheduleCreateTransaction, memo: []const u8) errors.HederaError!*ScheduleCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setMemo(self: *ScheduleCreateTransaction, memo: []const u8) !*ScheduleCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         try errors.requireMaxLength(memo, 100);
         
         if (self.memo) |old_memo| {
@@ -79,21 +79,27 @@ pub const ScheduleCreateTransaction = struct {
     }
     
     // Set the schedule memo (alias for setMemo)
-    pub fn setScheduleMemo(self: *ScheduleCreateTransaction, memo: []const u8) errors.HederaError!*ScheduleCreateTransaction {
+    pub fn setScheduleMemo(self: *ScheduleCreateTransaction, memo: []const u8) !*ScheduleCreateTransaction {
         return self.setMemo(memo);
     }
     
     // Set the expiration time for the schedule
-    pub fn setExpirationTime(self: *ScheduleCreateTransaction, expiration_time: Timestamp) errors.HederaError!*ScheduleCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setExpirationTime(self: *ScheduleCreateTransaction, expiration_time: Timestamp) !*ScheduleCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.expiration_time = expiration_time;
         return self;
     }
     
     // Set whether to wait for expiry before execution
-    pub fn setWaitForExpiry(self: *ScheduleCreateTransaction, wait: bool) errors.HederaError!*ScheduleCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setWaitForExpiry(self: *ScheduleCreateTransaction, wait: bool) !*ScheduleCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.wait_for_expiry = wait;
+        return self;
+    }
+    
+    // Freeze the transaction with client
+    pub fn freezeWith(self: *ScheduleCreateTransaction, client: *Client) !*ScheduleCreateTransaction {
+        try self.base.freezeWith(client);
         return self;
     }
     
@@ -169,3 +175,7 @@ pub const ScheduleCreateTransaction = struct {
         return writer.toOwnedSlice();
     }
 };
+
+
+
+// JavaScript naming convention (no "new" prefix)

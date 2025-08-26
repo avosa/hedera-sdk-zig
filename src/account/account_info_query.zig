@@ -12,6 +12,8 @@ const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
 const TokenRelationship = @import("../token/token_info_query.zig").TokenRelationship;
 
+
+
 // StakingInfo consolidated inside AccountInfoQuery to eliminate redundancy
 pub const StakingInfo = struct {
     decline_reward: bool,
@@ -83,6 +85,63 @@ pub const StakingInfo = struct {
         }
         
         return info;
+    }
+    
+    // Parse StakingInfo from protobuf bytes  
+    pub fn fromProtobuf(allocator: std.mem.Allocator, data: []const u8) !StakingInfo {
+        var reader = ProtoReader.init(data);
+        return decode(&reader, allocator);
+    }
+    
+    // Convert StakingInfo to protobuf bytes
+    pub fn toProtobuf(self: *const StakingInfo, allocator: std.mem.Allocator) ![]u8 {
+        var writer = ProtoWriter.init(allocator);
+        defer writer.deinit();
+        
+        // DeclineReward (field 1)
+        if (self.decline_reward) {
+            try writer.writeBool(1, self.decline_reward);
+        }
+        
+        // StakePeriodStart (field 2)
+        if (self.stake_period_start) |timestamp| {
+            var timestamp_writer = ProtoWriter.init(allocator);
+            defer timestamp_writer.deinit();
+            try timestamp_writer.writeInt64(1, timestamp.seconds);
+            try timestamp_writer.writeInt32(2, timestamp.nanos);
+            const timestamp_bytes = try timestamp_writer.toOwnedSlice();
+            defer allocator.free(timestamp_bytes);
+            try writer.writeMessage(2, timestamp_bytes);
+        }
+        
+        // PendingReward (field 3)
+        if (self.pending_reward != 0) {
+            try writer.writeInt64(3, self.pending_reward);
+        }
+        
+        // StakedToMe (field 4)
+        if (self.staked_to_me != 0) {
+            try writer.writeInt64(4, self.staked_to_me);
+        }
+        
+        // StakedAccountId (field 5)
+        if (self.staked_account_id) |account_id| {
+            var account_writer = ProtoWriter.init(allocator);
+            defer account_writer.deinit();
+            try account_writer.writeInt64(1, @intCast(account_id.shard));
+            try account_writer.writeInt64(2, @intCast(account_id.realm));
+            try account_writer.writeInt64(3, @intCast(account_id.account));
+            const account_bytes = try account_writer.toOwnedSlice();
+            defer allocator.free(account_bytes);
+            try writer.writeMessage(5, account_bytes);
+        }
+        
+        // StakedNodeId (field 6)
+        if (self.staked_node_id) |node_id| {
+            try writer.writeInt64(6, node_id);
+        }
+        
+        return writer.toOwnedSlice();
     }
 };
 
@@ -158,6 +217,271 @@ pub const AccountInfo = struct {
         }
         self.token_relationships.deinit();
     }
+    
+    // Parse AccountInfo from protobuf bytes
+    pub fn fromProtobuf(allocator: std.mem.Allocator, data: []const u8) !AccountInfo {
+        var reader = ProtoReader.init(data);
+        var info = AccountInfo.init(allocator);
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            
+            switch (tag.field_number) {
+                1 => {
+                    // AccountID
+                    const account_bytes = try reader.readBytes();
+                    var account_reader = ProtoReader.init(account_bytes);
+                    
+                    var shard: i64 = 0;
+                    var realm: i64 = 0;
+                    var account: i64 = 0;
+                    
+                    while (account_reader.hasMore()) {
+                        const a_tag = try account_reader.readTag();
+                        switch (a_tag.field_number) {
+                            1 => shard = try account_reader.readInt64(),
+                            2 => realm = try account_reader.readInt64(),
+                            3 => account = try account_reader.readInt64(),
+                            else => try account_reader.skipField(a_tag.wire_type),
+                        }
+                    }
+                    
+                    info.account_id = AccountId.init(@intCast(shard), @intCast(realm), @intCast(account));
+                },
+                2 => {
+                    // ContractAccountID
+                    const contract_id_bytes = try reader.readString();
+                    info.contract_account_id = try allocator.dupe(u8, contract_id_bytes);
+                    info._contract_account_id_allocated = true;
+                },
+                3 => {
+                    // Deleted
+                    info.deleted = try reader.readBool();
+                },
+                4 => {
+                    // ProxyAccountID
+                    const proxy_bytes = try reader.readBytes();
+                    var proxy_reader = ProtoReader.init(proxy_bytes);
+                    
+                    var shard: i64 = 0;
+                    var realm: i64 = 0;
+                    var proxy: i64 = 0;
+                    
+                    while (proxy_reader.hasMore()) {
+                        const p_tag = try proxy_reader.readTag();
+                        switch (p_tag.field_number) {
+                            1 => shard = try proxy_reader.readInt64(),
+                            2 => realm = try proxy_reader.readInt64(),
+                            3 => proxy = try proxy_reader.readInt64(),
+                            else => try proxy_reader.skipField(p_tag.wire_type),
+                        }
+                    }
+                    
+                    if (proxy != 0) {
+                        info.proxy_account_id = AccountId.init(@intCast(shard), @intCast(realm), @intCast(proxy));
+                    }
+                },
+                5 => {
+                    // ProxyReceived
+                    info.proxy_received = try reader.readInt64();
+                },
+                6 => {
+                    // Key
+                    const key_bytes = try reader.readBytes();
+                    info.key = try PublicKey.fromProtobuf(allocator, key_bytes);
+                },
+                7 => {
+                    // Balance (in tinybars)
+                    const balance_tinybars = try reader.readUint64();
+                    info.balance = try Hbar.fromTinybars(@intCast(balance_tinybars));
+                },
+                10 => {
+                    // ReceiverSignatureRequired
+                    info.receiver_signature_required = try reader.readBool();
+                },
+                11 => {
+                    // ExpirationTime
+                    const expiration_bytes = try reader.readBytes();
+                    var exp_reader = ProtoReader.init(expiration_bytes);
+                    
+                    while (exp_reader.hasMore()) {
+                        const e_tag = try exp_reader.readTag();
+                        switch (e_tag.field_number) {
+                            1 => info.expiration_time.seconds = try exp_reader.readInt64(),
+                            2 => info.expiration_time.nanos = try exp_reader.readInt32(),
+                            else => try exp_reader.skipField(e_tag.wire_type),
+                        }
+                    }
+                },
+                12 => {
+                    // AutoRenewPeriod
+                    const duration_bytes = try reader.readBytes();
+                    var dur_reader = ProtoReader.init(duration_bytes);
+                    
+                    while (dur_reader.hasMore()) {
+                        const d_tag = try dur_reader.readTag();
+                        switch (d_tag.field_number) {
+                            1 => info.auto_renew_period.seconds = try dur_reader.readInt64(),
+                            2 => info.auto_renew_period.nanos = try dur_reader.readInt32(),
+                            else => try dur_reader.skipField(d_tag.wire_type),
+                        }
+                    }
+                },
+                16 => {
+                    // Memo
+                    const memo_bytes = try reader.readString();
+                    info.memo = try allocator.dupe(u8, memo_bytes);
+                    info._memo_allocated = true;
+                },
+                17 => {
+                    // OwnedNfts
+                    info.owned_nfts = try reader.readInt64();
+                },
+                18 => {
+                    // MaxAutomaticTokenAssociations
+                    info.max_automatic_token_associations = try reader.readInt32();
+                },
+                19 => {
+                    // Alias
+                    const alias_bytes = try reader.readBytes();
+                    info.alias = try allocator.dupe(u8, alias_bytes);
+                    info._alias_allocated = true;
+                },
+                20 => {
+                    // LedgerID
+                    const ledger_bytes = try reader.readBytes();
+                    info.ledger_id = try allocator.dupe(u8, ledger_bytes);
+                    info._ledger_id_allocated = true;
+                },
+                21 => {
+                    // EthereumNonce
+                    info.ethereum_nonce = try reader.readInt64();
+                },
+                22 => {
+                    // StakingInfo
+                    const staking_bytes = try reader.readBytes();
+                    var staking_reader = ProtoReader.init(staking_bytes);
+                    info.staking_info = try StakingInfo.decode(&staking_reader, allocator);
+                },
+                else => try reader.skipField(tag.wire_type),
+            }
+        }
+        
+        return info;
+    }
+    
+    // Convert AccountInfo to protobuf bytes
+    pub fn toProtobuf(self: *const AccountInfo, allocator: std.mem.Allocator) ![]u8 {
+        var writer = ProtoWriter.init(allocator);
+        defer writer.deinit();
+        
+        // AccountID (field 1)
+        var account_writer = ProtoWriter.init(allocator);
+        defer account_writer.deinit();
+        try account_writer.writeInt64(1, @intCast(self.account_id.shard));
+        try account_writer.writeInt64(2, @intCast(self.account_id.realm));
+        try account_writer.writeInt64(3, @intCast(self.account_id.account));
+        const account_bytes = try account_writer.toOwnedSlice();
+        defer allocator.free(account_bytes);
+        try writer.writeMessage(1, account_bytes);
+        
+        // ContractAccountID (field 2)
+        if (self.contract_account_id.len > 0) {
+            try writer.writeString(2, self.contract_account_id);
+        }
+        
+        // Deleted (field 3)
+        if (self.deleted) {
+            try writer.writeBool(3, self.deleted);
+        }
+        
+        // ProxyAccountID (field 4)
+        if (self.proxy_account_id) |proxy_id| {
+            var proxy_writer = ProtoWriter.init(allocator);
+            defer proxy_writer.deinit();
+            try proxy_writer.writeInt64(1, @intCast(proxy_id.shard));
+            try proxy_writer.writeInt64(2, @intCast(proxy_id.realm));
+            try proxy_writer.writeInt64(3, @intCast(proxy_id.account));
+            const proxy_bytes = try proxy_writer.toOwnedSlice();
+            defer allocator.free(proxy_bytes);
+            try writer.writeMessage(4, proxy_bytes);
+        }
+        
+        // ProxyReceived (field 5)
+        if (self.proxy_received != 0) {
+            try writer.writeInt64(5, self.proxy_received);
+        }
+        
+        // Key (field 6)
+        const key_bytes = try self.key.toBytes(allocator);
+        defer allocator.free(key_bytes);
+        try writer.writeMessage(6, key_bytes);
+        
+        // Balance (field 7) - in tinybars
+        try writer.writeUint64(7, @intCast(self.balance.toTinybars()));
+        
+        // ReceiverSignatureRequired (field 10)
+        if (self.receiver_signature_required) {
+            try writer.writeBool(10, self.receiver_signature_required);
+        }
+        
+        // ExpirationTime (field 11)
+        var expiration_writer = ProtoWriter.init(allocator);
+        defer expiration_writer.deinit();
+        try expiration_writer.writeInt64(1, self.expiration_time.seconds);
+        try expiration_writer.writeInt32(2, self.expiration_time.nanos);
+        const expiration_bytes = try expiration_writer.toOwnedSlice();
+        defer allocator.free(expiration_bytes);
+        try writer.writeMessage(11, expiration_bytes);
+        
+        // AutoRenewPeriod (field 12)
+        var duration_writer = ProtoWriter.init(allocator);
+        defer duration_writer.deinit();
+        try duration_writer.writeInt64(1, self.auto_renew_period.seconds);
+        try duration_writer.writeInt32(2, self.auto_renew_period.nanos);
+        const duration_bytes = try duration_writer.toOwnedSlice();
+        defer allocator.free(duration_bytes);
+        try writer.writeMessage(12, duration_bytes);
+        
+        // Memo (field 16)
+        if (self.memo.len > 0) {
+            try writer.writeString(16, self.memo);
+        }
+        
+        // OwnedNfts (field 17)
+        if (self.owned_nfts != 0) {
+            try writer.writeInt64(17, self.owned_nfts);
+        }
+        
+        // MaxAutomaticTokenAssociations (field 18)
+        if (self.max_automatic_token_associations != 0) {
+            try writer.writeInt32(18, self.max_automatic_token_associations);
+        }
+        
+        // Alias (field 19)
+        if (self.alias.len > 0) {
+            try writer.writeString(19, self.alias);
+        }
+        
+        // LedgerID (field 20)
+        if (self.ledger_id.len > 0) {
+            try writer.writeString(20, self.ledger_id);
+        }
+        
+        // EthereumNonce (field 21)
+        if (self.ethereum_nonce != 0) {
+            try writer.writeInt64(21, self.ethereum_nonce);
+        }
+        
+        // StakingInfo (field 22)
+        if (self.staking_info) |staking_info| {
+            const staking_bytes = try staking_info.toProtobuf(allocator);
+            defer allocator.free(staking_bytes);
+            try writer.writeMessage(22, staking_bytes);
+        }
+        
+        return writer.toOwnedSlice();
+    }
 };
 
 // AccountInfoQuery retrieves comprehensive information about an account  
@@ -194,28 +518,28 @@ pub const AccountInfoQuery = struct {
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *AccountInfoQuery, payment: Hbar) *AccountInfoQuery {
+    pub fn setQueryPayment(self: *AccountInfoQuery, payment: Hbar) !*AccountInfoQuery {
         self.base.payment_amount = payment;
         return self;
     }
     
     // Set max retry attempts
-    pub fn setMaxRetry(self: *AccountInfoQuery, max_retry: u32) *AccountInfoQuery {
+    pub fn setMaxRetry(self: *AccountInfoQuery, max_retry: u32) !*AccountInfoQuery {
         self.max_retry = max_retry;
-        _ = self.base.setMaxRetry(max_retry);
+        _ = try self.base.setMaxRetry(max_retry);
         return self;
     }
     
     // Set max backoff
-    pub fn setMaxBackoff(self: *AccountInfoQuery, max_backoff: Duration) *AccountInfoQuery {
+    pub fn setMaxBackoff(self: *AccountInfoQuery, max_backoff: Duration) !*AccountInfoQuery {
         self.max_backoff = max_backoff;
-        _ = self.base.setMaxBackoff(max_backoff.toMilliseconds());
+        _ = try self.base.setMaxBackoff(max_backoff.toMilliseconds());
         return self;
     }
     
-    pub fn setMinBackoff(self: *AccountInfoQuery, min_backoff: Duration) *AccountInfoQuery {
+    pub fn setMinBackoff(self: *AccountInfoQuery, min_backoff: Duration) !*AccountInfoQuery {
         self.min_backoff = min_backoff;
-        _ = self.base.setMinBackoff(min_backoff.toMilliseconds());
+        _ = try self.base.setMinBackoff(min_backoff.toMilliseconds());
         return self;
     }
     
@@ -419,7 +743,7 @@ pub const AccountInfoQuery = struct {
                             6 => {
                                 // key
                                 const key_bytes = try account_reader.readMessage();
-                                info.key = try PublicKey.fromProtobuf(key_bytes, self.base.allocator);
+                                info.key = try PublicKey.fromProtobuf(self.base.allocator, key_bytes);
                             },
                             7 => {
                                 // balance in tinybars

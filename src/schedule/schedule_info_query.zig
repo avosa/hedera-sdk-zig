@@ -87,13 +87,13 @@ pub const ScheduleInfoQuery = struct {
     }
     
     // Set the schedule ID to query
-    pub fn setScheduleId(self: *ScheduleInfoQuery, schedule_id: ScheduleId) *ScheduleInfoQuery {
+    pub fn setScheduleId(self: *ScheduleInfoQuery, schedule_id: ScheduleId) !*ScheduleInfoQuery {
         self.schedule_id = schedule_id;
         return self;
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *ScheduleInfoQuery, payment: Hbar) *ScheduleInfoQuery {
+    pub fn setQueryPayment(self: *ScheduleInfoQuery, payment: Hbar) !*ScheduleInfoQuery {
         self.base.payment_amount = payment;
         return self;
     }
@@ -358,3 +358,5 @@ pub const ScheduleInfoQuery = struct {
         return info;
     }
 };
+
+// Factory function for creating a new ScheduleInfoQuery

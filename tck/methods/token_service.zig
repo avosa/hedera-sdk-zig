@@ -10,7 +10,7 @@ pub fn createToken(allocator: std.mem.Allocator, client: ?*hedera.Client, params
     const p = params orelse return error.MissingParams;
     
     // Create transaction
-    var tx = hedera.newTokenCreateTransaction(allocator);
+    var tx = hedera.tokenCreateTransaction(allocator);
     defer tx.deinit();
     
     // Set name

@@ -27,12 +27,12 @@ pub const CustomFractionalFee = struct {
         };
     }
 
-    pub fn setNumerator(self: *CustomFractionalFee, numerator: u64) *CustomFractionalFee {
+    pub fn setNumerator(self: *CustomFractionalFee, numerator: u64) !*CustomFractionalFee {
         self.numerator = numerator;
         return self;
     }
 
-    pub fn setDenominator(self: *CustomFractionalFee, denominator: u64) *CustomFractionalFee {
+    pub fn setDenominator(self: *CustomFractionalFee, denominator: u64) !*CustomFractionalFee {
         if (denominator == 0) {
             self.denominator = 1;
         } else {
@@ -42,33 +42,33 @@ pub const CustomFractionalFee = struct {
         return self;
     }
 
-    pub fn setFraction(self: *CustomFractionalFee, numerator: u64, denominator: u64) *CustomFractionalFee {
+    pub fn setFraction(self: *CustomFractionalFee, numerator: u64, denominator: u64) !*CustomFractionalFee {
         self.numerator = numerator;
         self.denominator = if (denominator == 0) 1 else denominator;
         return self;
     }
 
-    pub fn setMinimumAmount(self: *CustomFractionalFee, minimum: u64) *CustomFractionalFee {
+    pub fn setMinimumAmount(self: *CustomFractionalFee, minimum: u64) !*CustomFractionalFee {
         self.minimum_amount = minimum;
         return self;
     }
 
-    pub fn setMaximumAmount(self: *CustomFractionalFee, maximum: u64) *CustomFractionalFee {
+    pub fn setMaximumAmount(self: *CustomFractionalFee, maximum: u64) !*CustomFractionalFee {
         self.maximum_amount = maximum;
         return self;
     }
 
-    pub fn setNetOfTransfers(self: *CustomFractionalFee, net_of_transfers: bool) *CustomFractionalFee {
+    pub fn setNetOfTransfers(self: *CustomFractionalFee, net_of_transfers: bool) !*CustomFractionalFee {
         self.net_of_transfers = net_of_transfers;
         return self;
     }
 
-    pub fn setFeeCollectorAccountId(self: *CustomFractionalFee, account_id: AccountId) *CustomFractionalFee {
+    pub fn setFeeCollectorAccountId(self: *CustomFractionalFee, account_id: AccountId) !*CustomFractionalFee {
         self.fee_collector_account_id = account_id;
         return self;
     }
 
-    pub fn setAllCollectorsAreExempt(self: *CustomFractionalFee, exempt: bool) *CustomFractionalFee {
+    pub fn setAllCollectorsAreExempt(self: *CustomFractionalFee, exempt: bool) !*CustomFractionalFee {
         self.all_collectors_are_exempt = exempt;
         return self;
     }

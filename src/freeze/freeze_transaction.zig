@@ -47,10 +47,10 @@ pub const FreezeTransaction = struct {
     }
     
     // Set freeze start time
-    pub fn setStartTime(self: *FreezeTransaction, hour: u8, min: u8) errors.HederaError!*FreezeTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
-        if (hour >= 24) return errors.HederaError.InvalidParameter;
-        if (min >= 60) return errors.HederaError.InvalidParameter;
+    pub fn setStartTime(self: *FreezeTransaction, hour: u8, min: u8) !*FreezeTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
+        if (hour >= 24) return error.InvalidParameter;
+        if (min >= 60) return error.InvalidParameter;
         
         self.start_hour = hour;
         self.start_min = min;
@@ -58,10 +58,10 @@ pub const FreezeTransaction = struct {
     }
     
     // Set freeze end time
-    pub fn setEndTime(self: *FreezeTransaction, hour: u8, min: u8) errors.HederaError!*FreezeTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
-        if (hour >= 24) return errors.HederaError.InvalidParameter;
-        if (min >= 60) return errors.HederaError.InvalidParameter;
+    pub fn setEndTime(self: *FreezeTransaction, hour: u8, min: u8) !*FreezeTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
+        if (hour >= 24) return error.InvalidParameter;
+        if (min >= 60) return error.InvalidParameter;
         
         self.end_hour = hour;
         self.end_min = min;
@@ -69,23 +69,23 @@ pub const FreezeTransaction = struct {
     }
     
     // Set update file
-    pub fn setUpdateFile(self: *FreezeTransaction, file_id: FileId) errors.HederaError!*FreezeTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setUpdateFile(self: *FreezeTransaction, file_id: FileId) !*FreezeTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.update_file = file_id;
         return self;
     }
     
     // Set file hash
-    pub fn setFileHash(self: *FreezeTransaction, hash: []const u8) errors.HederaError!*FreezeTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
-        if (hash.len != 48) return errors.HederaError.InvalidParameter; // SHA-384 hash
+    pub fn setFileHash(self: *FreezeTransaction, hash: []const u8) !*FreezeTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
+        if (hash.len != 48) return error.InvalidParameter; // SHA-384 hash
         self.file_hash = hash;
         return self;
     }
     
     // Set freeze type
-    pub fn setFreezeType(self: *FreezeTransaction, freeze_type: FreezeType) errors.HederaError!*FreezeTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setFreezeType(self: *FreezeTransaction, freeze_type: FreezeType) !*FreezeTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.freeze_type = freeze_type;
         return self;
     }
@@ -230,4 +230,12 @@ pub const FreezeTransaction = struct {
             try writer.writeString(5, self.base.transaction_memo);
         }
     }
+    
+    // Freeze the transaction with client
+    pub fn freezeWith(self: *FreezeTransaction, client: *Client) !*FreezeTransaction {
+        try self.base.freezeWith(client);
+        return self;
+    }
 };
+
+

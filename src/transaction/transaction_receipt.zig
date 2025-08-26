@@ -25,7 +25,7 @@ pub const TransactionReceipt = struct {
     total_supply: u64,
     schedule_id: ?ScheduleId,
     scheduled_transaction_id: ?TransactionId,
-    serial_numbers: []const i64,
+    serial_numbers: []i64,
     node_id: u64,
     duplicates: []const TransactionReceipt,
     children: []const TransactionReceipt,
@@ -82,42 +82,42 @@ pub const TransactionReceipt = struct {
         }
     }
     
-    pub fn setExchangeRate(self: *Self, exchange_rate: ExchangeRate) *Self {
+    pub fn setExchangeRate(self: *Self, exchange_rate: ExchangeRate) !*Self {
         self.exchange_rate = exchange_rate;
         return self;
     }
     
-    pub fn setNextExchangeRate(self: *Self, next_exchange_rate: ExchangeRate) *Self {
+    pub fn setNextExchangeRate(self: *Self, next_exchange_rate: ExchangeRate) !*Self {
         self.next_exchange_rate = next_exchange_rate;
         return self;
     }
     
-    pub fn setTopicId(self: *Self, topic_id: TopicId) *Self {
+    pub fn setTopicId(self: *Self, topic_id: TopicId) !*Self {
         self.topic_id = topic_id;
         return self;
     }
     
-    pub fn setFileId(self: *Self, file_id: FileId) *Self {
+    pub fn setFileId(self: *Self, file_id: FileId) !*Self {
         self.file_id = file_id;
         return self;
     }
     
-    pub fn setContractId(self: *Self, contract_id: ContractId) *Self {
+    pub fn setContractId(self: *Self, contract_id: ContractId) !*Self {
         self.contract_id = contract_id;
         return self;
     }
     
-    pub fn setAccountId(self: *Self, account_id: AccountId) *Self {
+    pub fn setAccountId(self: *Self, account_id: AccountId) !*Self {
         self.account_id = account_id;
         return self;
     }
     
-    pub fn setTokenId(self: *Self, token_id: TokenId) *Self {
+    pub fn setTokenId(self: *Self, token_id: TokenId) !*Self {
         self.token_id = token_id;
         return self;
     }
     
-    pub fn setTopicSequenceNumber(self: *Self, sequence_number: u64) *Self {
+    pub fn setTopicSequenceNumber(self: *Self, sequence_number: u64) !*Self {
         self.topic_sequence_number = sequence_number;
         return self;
     }
@@ -130,22 +130,22 @@ pub const TransactionReceipt = struct {
         return self;
     }
     
-    pub fn setTopicRunningHashVersion(self: *Self, version: u64) *Self {
+    pub fn setTopicRunningHashVersion(self: *Self, version: u64) !*Self {
         self.topic_running_hash_version = version;
         return self;
     }
     
-    pub fn setTotalSupply(self: *Self, total_supply: u64) *Self {
+    pub fn setTotalSupply(self: *Self, total_supply: u64) !*Self {
         self.total_supply = total_supply;
         return self;
     }
     
-    pub fn setScheduleId(self: *Self, schedule_id: ScheduleId) *Self {
+    pub fn setScheduleId(self: *Self, schedule_id: ScheduleId) !*Self {
         self.schedule_id = schedule_id;
         return self;
     }
     
-    pub fn setScheduledTransactionId(self: *Self, transaction_id: TransactionId) *Self {
+    pub fn setScheduledTransactionId(self: *Self, transaction_id: TransactionId) !*Self {
         self.scheduled_transaction_id = transaction_id;
         return self;
     }
@@ -158,7 +158,7 @@ pub const TransactionReceipt = struct {
         return self;
     }
     
-    pub fn setNodeId(self: *Self, node_id: u64) *Self {
+    pub fn setNodeId(self: *Self, node_id: u64) !*Self {
         self.node_id = node_id;
         return self;
     }
@@ -195,7 +195,7 @@ pub const TransactionReceipt = struct {
         return self;
     }
     
-    pub fn setTransactionId(self: *Self, transaction_id: TransactionId) *Self {
+    pub fn setTransactionId(self: *Self, transaction_id: TransactionId) !*Self {
         self.transaction_id = transaction_id;
         return self;
     }
@@ -403,11 +403,11 @@ pub const TransactionReceipt = struct {
     
     pub fn fromProtobufBytes(allocator: Allocator, bytes: []const u8) !Self {
         // Protobuf deserialization implementation
-        // This would use a full protobuf library in production
+        // This would use a full protobuf library in deployment
         
         var receipt = Self.init(allocator, .OK);
         
-        var reader = ProtobufReader.init(allocator, bytes);
+        var reader = ProtobufReader.init(bytes);
         
         while (try reader.nextField()) |field| {
             switch (field.tag) {
@@ -610,6 +610,120 @@ pub const TransactionReceipt = struct {
         return cloned;
     }
     
+    // Parse from protobuf bytes
+    pub fn fromProtobuf(allocator: Allocator, data: []const u8) !Self {
+        const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
+        var reader = ProtoReader.init(data);
+        var receipt = Self.init(allocator, .OK);
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            switch (tag.field_number) {
+                1 => {
+                    // Status
+                    receipt.status = @enumFromInt(try reader.readInt32());
+                },
+                2 => {
+                    // Account ID
+                    const account_bytes = try reader.readBytes();
+                    var account_reader = ProtoReader.init(account_bytes);
+                    var shard: i64 = 0;
+                    var realm: i64 = 0;
+                    var account: i64 = 0;
+                    
+                    while (account_reader.hasMore()) {
+                        const account_tag = try account_reader.readTag();
+                        switch (account_tag.field_number) {
+                            1 => shard = try account_reader.readInt64(),
+                            2 => realm = try account_reader.readInt64(),
+                            3 => account = try account_reader.readInt64(),
+                            else => try account_reader.skipField(account_tag.wire_type),
+                        }
+                    }
+                    receipt.account_id = AccountId.init(@intCast(shard), @intCast(realm), @intCast(account));
+                },
+                3 => {
+                    // File ID
+                    const file_bytes = try reader.readBytes();
+                    var file_reader = ProtoReader.init(file_bytes);
+                    var shard: i64 = 0;
+                    var realm: i64 = 0;
+                    var file: i64 = 0;
+                    
+                    while (file_reader.hasMore()) {
+                        const file_tag = try file_reader.readTag();
+                        switch (file_tag.field_number) {
+                            1 => shard = try file_reader.readInt64(),
+                            2 => realm = try file_reader.readInt64(),
+                            3 => file = try file_reader.readInt64(),
+                            else => try file_reader.skipField(file_tag.wire_type),
+                        }
+                    }
+                    receipt.file_id = FileId.init(@intCast(shard), @intCast(realm), @intCast(file));
+                },
+                4 => {
+                    // Contract ID
+                    const contract_bytes = try reader.readBytes();
+                    var contract_reader = ProtoReader.init(contract_bytes);
+                    var shard: i64 = 0;
+                    var realm: i64 = 0;
+                    var contract: i64 = 0;
+                    
+                    while (contract_reader.hasMore()) {
+                        const contract_tag = try contract_reader.readTag();
+                        switch (contract_tag.field_number) {
+                            1 => shard = try contract_reader.readInt64(),
+                            2 => realm = try contract_reader.readInt64(),
+                            3 => contract = try contract_reader.readInt64(),
+                            else => try contract_reader.skipField(contract_tag.wire_type),
+                        }
+                    }
+                    receipt.contract_id = ContractId.init(@intCast(shard), @intCast(realm), @intCast(contract));
+                },
+                7 => {
+                    // Token ID
+                    const token_bytes = try reader.readBytes();
+                    var token_reader = ProtoReader.init(token_bytes);
+                    var shard: i64 = 0;
+                    var realm: i64 = 0;
+                    var token: i64 = 0;
+                    
+                    while (token_reader.hasMore()) {
+                        const token_tag = try token_reader.readTag();
+                        switch (token_tag.field_number) {
+                            1 => shard = try token_reader.readInt64(),
+                            2 => realm = try token_reader.readInt64(),
+                            3 => token = try token_reader.readInt64(),
+                            else => try token_reader.skipField(token_tag.wire_type),
+                        }
+                    }
+                    receipt.token_id = TokenId.init(@intCast(shard), @intCast(realm), @intCast(token));
+                },
+                11 => {
+                    // Total supply
+                    receipt.total_supply = @intCast(try reader.readUint64());
+                },
+                14 => {
+                    // Serials
+                    const serial = try reader.readInt64();
+                    if (receipt.serial_numbers.len == 0) {
+                        receipt.serial_numbers = try allocator.alloc(i64, 1);
+                        receipt.serial_numbers[0] = serial;
+                    } else {
+                        var new_serials = try allocator.alloc(i64, receipt.serial_numbers.len + 1);
+                        std.mem.copyForwards(i64, new_serials, receipt.serial_numbers);
+                        new_serials[receipt.serial_numbers.len] = serial;
+                        allocator.free(@constCast(receipt.serial_numbers));
+                        receipt.serial_numbers = new_serials;
+                    }
+                },
+                else => try reader.skipField(tag.wire_type),
+            }
+        }
+        
+        return receipt;
+    }
+    
     // Helper functions for protobuf encoding
     fn writeProtobufField(buffer: *std.ArrayList(u8), field_num: u32, data: []const u8) !void {
         const header = (field_num << 3) | 2;
@@ -628,13 +742,10 @@ pub const TransactionReceipt = struct {
     }
 };
 
-// Import complete protobuf implementation
-const protobuf = @import("../protobuf/protobuf.zig");
-const ProtobufReader = protobuf.ProtobufReader;
-const ProtobufField = ProtobufReader.Field;
+// Protobuf implementation for receipt parsing
 
-// Legacy struct for compatibility - remove after migration
-const LegacyProtobufReader = struct {
+
+const ProtobufReader = struct {
     data: []const u8,
     pos: usize,
     
@@ -689,8 +800,8 @@ const LegacyProtobufReader = struct {
     }
 };
 
-const LegacyProtobufField = struct {
-    reader: *LegacyProtobufReader,
+const ProtobufField = struct {
+    reader: *ProtobufReader,
     tag: u32,
     wire_type: u3,
     

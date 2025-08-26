@@ -67,13 +67,13 @@ pub const TokenBalanceQuery = struct {
     }
     
     // Set the account ID to query
-    pub fn setAccountId(self: *TokenBalanceQuery, account_id: AccountId) *TokenBalanceQuery {
+    pub fn setAccountId(self: *TokenBalanceQuery, account_id: AccountId) !*TokenBalanceQuery {
         self.account_id = account_id;
         return self;
     }
     
     // Set the token ID to query
-    pub fn setTokenId(self: *TokenBalanceQuery, token_id: TokenId) *TokenBalanceQuery {
+    pub fn setTokenId(self: *TokenBalanceQuery, token_id: TokenId) !*TokenBalanceQuery {
         self.token_id = token_id;
         return self;
     }
@@ -140,7 +140,7 @@ pub const TokenBalanceQuery = struct {
     fn parseResponse(self: *TokenBalanceQuery, response: QueryResponse) !TokenBalance {
         _ = response;
         
-        // Return a default balance for now
+        // Return a default balance now
         return TokenBalance.init(
             self.token_id orelse TokenId.init(0, 0, 0),
             0,
@@ -148,3 +148,5 @@ pub const TokenBalanceQuery = struct {
         );
     }
 };
+
+// Factory function for creating a new TokenBalanceQuery

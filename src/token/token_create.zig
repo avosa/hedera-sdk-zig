@@ -9,7 +9,8 @@ const Transaction = @import("../transaction/transaction.zig").Transaction;
 const TransactionResponse = @import("../transaction/transaction.zig").TransactionResponse;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
-const errors = @import("../core/errors.zig");
+const HederaError = @import("../core/errors.zig").HederaError;
+const requireStringNotTooLong = @import("../core/errors.zig").requireStringNotTooLong;
 
 // Token types
 pub const TokenType = enum(i32) {
@@ -213,11 +214,6 @@ pub const CustomFee = struct {
 };
 
 // Factory function for creating a new TokenCreateTransaction
-pub fn newTokenCreateTransaction(allocator: std.mem.Allocator) *TokenCreateTransaction {
-    const tx = allocator.create(TokenCreateTransaction) catch @panic("Out of memory");
-    tx.* = TokenCreateTransaction.init(allocator);
-    return tx;
-}
 
 // TokenCreateTransaction creates a new token on Hedera
 pub const TokenCreateTransaction = struct {
@@ -227,7 +223,7 @@ pub const TokenCreateTransaction = struct {
     decimals: u32,
     initial_supply: u64,
     treasury_account_id: ?AccountId,
-    treasury: ?AccountId,  // Alias for Go SDK compatibility
+    treasury: ?AccountId,  
     admin_key: ?Key,
     kyc_key: ?Key,
     freeze_key: ?Key,
@@ -285,11 +281,11 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set token name
-    pub fn setTokenName(self: *TokenCreateTransaction, name: []const u8) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setTokenName(self: *TokenCreateTransaction, name: []const u8) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
-        if (name.len == 0) return errors.HederaError.InvalidParameter;
-        if (name.len > 100) return errors.HederaError.InvalidParameter;
+        if (name.len == 0) return error.MissingTokenName;
+        if (name.len > 100) return error.TokenNameTooLong;
         
         self.name = name;
         return self;
@@ -301,11 +297,11 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set token symbol
-    pub fn setTokenSymbol(self: *TokenCreateTransaction, symbol: []const u8) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setTokenSymbol(self: *TokenCreateTransaction, symbol: []const u8) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
-        if (symbol.len == 0) return errors.HederaError.InvalidParameter;
-        if (symbol.len > 100) return errors.HederaError.InvalidParameter;
+        if (symbol.len == 0) return error.MissingTokenSymbol;
+        if (symbol.len > 100) return error.TokenSymbolTooLong;
         
         self.symbol = symbol;
         return self;
@@ -317,15 +313,15 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set decimals
-    pub fn setDecimals(self: *TokenCreateTransaction, decimals: u32) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setDecimals(self: *TokenCreateTransaction, decimals: u32) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (self.token_type == .non_fungible_unique and decimals != 0) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidTokenDecimals;
         }
         
         if (decimals > 2147483647) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidTokenDecimals;
         }
         
         self.decimals = decimals;
@@ -338,15 +334,15 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set initial supply
-    pub fn setInitialSupply(self: *TokenCreateTransaction, supply: u64) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setInitialSupply(self: *TokenCreateTransaction, supply: u64) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (self.token_type == .non_fungible_unique and supply != 0) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidTokenInitialSupply;
         }
         
         if (supply > 9223372036854775807) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidTokenInitialSupply;
         }
         
         self.initial_supply = supply;
@@ -359,8 +355,8 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set treasury account
-    pub fn setTreasuryAccountId(self: *TokenCreateTransaction, account_id: AccountId) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setTreasuryAccountId(self: *TokenCreateTransaction, account_id: AccountId) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.treasury_account_id = account_id;
         self.treasury = account_id;
         return self;
@@ -372,8 +368,8 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set admin key
-    pub fn setAdminKey(self: *TokenCreateTransaction, key: Key) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setAdminKey(self: *TokenCreateTransaction, key: Key) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.admin_key = key;
         return self;
     }
@@ -384,8 +380,8 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set KYC key
-    pub fn setKycKey(self: *TokenCreateTransaction, key: Key) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setKycKey(self: *TokenCreateTransaction, key: Key) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.kyc_key = key;
         return self;
     }
@@ -396,8 +392,8 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set freeze key
-    pub fn setFreezeKey(self: *TokenCreateTransaction, key: Key) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setFreezeKey(self: *TokenCreateTransaction, key: Key) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.freeze_key = key;
         return self;
     }
@@ -408,8 +404,8 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set wipe key
-    pub fn setWipeKey(self: *TokenCreateTransaction, key: Key) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setWipeKey(self: *TokenCreateTransaction, key: Key) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.wipe_key = key;
         return self;
     }
@@ -420,8 +416,8 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set supply key
-    pub fn setSupplyKey(self: *TokenCreateTransaction, key: Key) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setSupplyKey(self: *TokenCreateTransaction, key: Key) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.supply_key = key;
         return self;
     }
@@ -432,11 +428,11 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set freeze default
-    pub fn setFreezeDefault(self: *TokenCreateTransaction, freeze: bool) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setFreezeDefault(self: *TokenCreateTransaction, freeze: bool) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (freeze and self.freeze_key == null) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidParameter;
         }
         
         self.freeze_default = freeze;
@@ -449,8 +445,8 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set expiration time
-    pub fn setExpirationTime(self: *TokenCreateTransaction, time: Timestamp) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setExpirationTime(self: *TokenCreateTransaction, time: Timestamp) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.auto_renew_period = null;
         self.expiration_time = time;
         return self;
@@ -462,8 +458,8 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set auto renew account
-    pub fn setAutoRenewAccount(self: *TokenCreateTransaction, account_id: AccountId) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setAutoRenewAccount(self: *TokenCreateTransaction, account_id: AccountId) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.auto_renew_account = account_id;
         return self;
     }
@@ -474,14 +470,14 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set auto renew period
-    pub fn setAutoRenewPeriod(self: *TokenCreateTransaction, period: Duration) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setAutoRenewPeriod(self: *TokenCreateTransaction, period: Duration) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         const min_period = Duration.fromDays(1);
         const max_period = Duration.fromDays(3653);
         
         if (period.seconds < min_period.seconds or period.seconds > max_period.seconds) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidParameter;
         }
         
         self.auto_renew_period = period;
@@ -494,10 +490,10 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set token memo
-    pub fn setTokenMemo(self: *TokenCreateTransaction, memo: []const u8) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setTokenMemo(self: *TokenCreateTransaction, memo: []const u8) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
-        if (memo.len > 100) return errors.HederaError.InvalidParameter;
+        try requireStringNotTooLong(memo, 100);
         
         self.memo = memo;
         return self;
@@ -509,12 +505,12 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set token type
-    pub fn setTokenType(self: *TokenCreateTransaction, token_type: TokenType) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setTokenType(self: *TokenCreateTransaction, token_type: TokenType) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (token_type == .non_fungible_unique) {
-            if (self.decimals != 0) return errors.HederaError.InvalidParameter;
-            if (self.initial_supply != 0) return errors.HederaError.InvalidParameter;
+            if (self.decimals != 0) return error.InvalidTokenDecimals;
+            if (self.initial_supply != 0) return error.InvalidTokenInitialSupply;
         }
         
         self.token_type = token_type;
@@ -527,8 +523,8 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set supply type
-    pub fn setSupplyType(self: *TokenCreateTransaction, supply_type: TokenSupplyType) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setSupplyType(self: *TokenCreateTransaction, supply_type: TokenSupplyType) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.supply_type = supply_type;
         return self;
     }
@@ -539,15 +535,15 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set max supply
-    pub fn setMaxSupply(self: *TokenCreateTransaction, max_supply: i64) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setMaxSupply(self: *TokenCreateTransaction, max_supply: i64) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (self.supply_type == .finite and max_supply <= 0) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidParameter;
         }
         
         if (self.supply_type == .infinite and max_supply > 0) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidParameter;
         }
         
         self.max_supply = max_supply;
@@ -560,8 +556,8 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set fee schedule key
-    pub fn setFeeScheduleKey(self: *TokenCreateTransaction, key: Key) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setFeeScheduleKey(self: *TokenCreateTransaction, key: Key) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.fee_schedule_key = key;
         return self;
     }
@@ -572,12 +568,12 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set custom fees
-    pub fn setCustomFees(self: *TokenCreateTransaction, custom_fees: []const CustomFee) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setCustomFees(self: *TokenCreateTransaction, custom_fees: []const CustomFee) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         self.custom_fees.clearRetainingCapacity();
         for (custom_fees) |fee| {
-            self.custom_fees.append(fee) catch return errors.HederaError.OutOfMemory;
+            self.custom_fees.append(fee) catch return error.InvalidParameter;
         }
         return self;
     }
@@ -588,20 +584,20 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Add a custom fee for the token
-    pub fn addCustomFee(self: *TokenCreateTransaction, fee: CustomFee) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn addCustomFee(self: *TokenCreateTransaction, fee: CustomFee) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (self.custom_fees.items.len >= 10) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidParameter;
         }
         
-        self.custom_fees.append(fee) catch return errors.HederaError.OutOfMemory;
+        self.custom_fees.append(fee) catch return error.InvalidParameter;
         return self;
     }
     
     // Set pause key
-    pub fn setPauseKey(self: *TokenCreateTransaction, key: Key) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setPauseKey(self: *TokenCreateTransaction, key: Key) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.pause_key = key;
         return self;
     }
@@ -612,10 +608,10 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set token metadata
-    pub fn setTokenMetadata(self: *TokenCreateTransaction, metadata: []const u8) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setMetadata(self: *TokenCreateTransaction, metadata: []const u8) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
-        if (metadata.len > 100) return errors.HederaError.InvalidParameter;
+        if (metadata.len > 100) return error.InvalidParameter;
         
         self.metadata = metadata;
         return self;
@@ -627,8 +623,8 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Set metadata key
-    pub fn setMetadataKey(self: *TokenCreateTransaction, key: Key) errors.HederaError!*TokenCreateTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setMetadataKey(self: *TokenCreateTransaction, key: Key) !*TokenCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.metadata_key = key;
         return self;
     }
@@ -643,20 +639,32 @@ pub const TokenCreateTransaction = struct {
         try self.base.freezeWith(client);
     }
     
+    // Sign the transaction
+    pub fn sign(self: *TokenCreateTransaction, private_key: anytype) HederaError!*TokenCreateTransaction {
+        try self.base.sign(private_key);
+        return self;
+    }
+    
+    // Sign with operator
+    pub fn signWithOperator(self: *TokenCreateTransaction, client: *Client) HederaError!*TokenCreateTransaction {
+        try self.base.signWithOperator(client);
+        return self;
+    }
+    
     // Execute the transaction
     pub fn execute(self: *TokenCreateTransaction, client: *Client) !TransactionResponse {
         // Validate required fields
-        if (self.name.len == 0) return errors.HederaError.InvalidParameter;
-        if (self.symbol.len == 0) return errors.HederaError.InvalidParameter;
-        if (self.treasury_account_id == null) return errors.HederaError.InvalidParameter;
+        if (self.name.len == 0) return error.InvalidParameter;
+        if (self.symbol.len == 0) return error.InvalidParameter;
+        if (self.treasury_account_id == null) return error.InvalidParameter;
         
         // Validate supply configuration
         if (self.supply_type == .finite and self.max_supply <= 0) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidParameter;
         }
         
         if (self.initial_supply > 0 and self.supply_key == null) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidParameter;
         }
         
         return try self.base.execute(client);

@@ -317,7 +317,7 @@ test "Token fee schedule update transaction" {
     
     // Add custom fees
     var fixed_fee = hedera.CustomFee.initFixed();
-    _ = fixed_fee.setFeeCollectorAccountId(hedera.AccountId.init(0, 0, 1200));
+    _ = try fixed_fee.setFeeCollectorAccountId(hedera.AccountId.init(0, 0, 1200));
     switch (fixed_fee) {
         .fixed => |*fee| {
             fee.amount = 50;

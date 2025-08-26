@@ -12,15 +12,24 @@ pub fn createAccount(allocator: std.mem.Allocator, client: ?*hedera.Client, para
     const p = params orelse return error.MissingParams;
     
     // Create transaction
-    var tx = hedera.newAccountCreateTransaction(allocator);
+    var tx = hedera.accountCreateTransaction(allocator);
     defer tx.deinit();
     
     // Set key if provided
     if (utils.getString(p, "key")) |key_str| {
-        var private_key = try utils.parsePrivateKey(allocator, key_str);
-        defer private_key.deinit();
-        const key = hedera.Key.fromPublicKey(private_key.getPublicKey());
-        _ = try tx.setKey(key);
+        // Try to parse as public key first, if that fails try private key
+        if (utils.parsePublicKey(allocator, key_str)) |_public_key| {
+            var public_key = _public_key;
+            defer public_key.deinit(allocator);
+            const key = hedera.Key.fromPublicKey(public_key);
+            _ = try tx.setKey(key);
+        } else |_| {
+            // If public key parsing fails, try private key
+            var private_key = try utils.parsePrivateKey(allocator, key_str);
+            defer private_key.deinit();
+            const key = hedera.Key.fromPublicKey(private_key.getPublicKey());
+            _ = try tx.setKey(key);
+        }
     }
     
     // Set initial balance if provided
@@ -100,7 +109,7 @@ pub fn updateAccount(allocator: std.mem.Allocator, client: ?*hedera.Client, para
     const account_id = try utils.parseAccountId(allocator, account_id_str);
     
     // Create transaction
-    var tx = hedera.newAccountUpdateTransaction(allocator);
+    var tx = hedera.accountUpdateTransaction(allocator);
     defer tx.deinit();
     
     _ = try tx.setAccountId(account_id);
@@ -178,7 +187,7 @@ pub fn deleteAccount(allocator: std.mem.Allocator, client: ?*hedera.Client, para
     const transfer_id = try utils.parseAccountId(allocator, transfer_id_str);
     
     // Create transaction
-    var tx = hedera.newAccountDeleteTransaction(allocator);
+    var tx = hedera.accountDeleteTransaction(allocator);
     defer tx.deinit();
     
     _ = try tx.setAccountId(account_id);
@@ -198,7 +207,7 @@ pub fn approveAllowance(allocator: std.mem.Allocator, client: ?*hedera.Client, p
     const p = params orelse return error.MissingParams;
     
     // Create transaction
-    var tx = hedera.newAccountAllowanceApproveTransaction(allocator);
+    var tx = hedera.accountAllowanceApproveTransaction(allocator);
     defer tx.deinit();
     
     // Handle HBAR allowances
@@ -268,7 +277,7 @@ pub fn deleteAllowance(allocator: std.mem.Allocator, client: ?*hedera.Client, pa
     const p = params orelse return error.MissingParams;
     
     // Create transaction
-    var tx = hedera.newAccountAllowanceDeleteTransaction(allocator);
+    var tx = hedera.accountAllowanceDeleteTransaction(allocator);
     defer tx.deinit();
     
     // Handle NFT allowance deletions
@@ -303,7 +312,7 @@ pub fn transferCrypto(allocator: std.mem.Allocator, client: ?*hedera.Client, par
     const p = params orelse return error.MissingParams;
     
     // Create transaction
-    var tx = hedera.newTransferTransaction(allocator);
+    var tx = hedera.transferTransaction(allocator);
     defer tx.deinit();
     
     // Handle HBAR transfers

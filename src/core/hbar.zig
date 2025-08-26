@@ -1,4 +1,6 @@
 const std = @import("std");
+const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
+const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 
 // Hbar unit constants - Zig's compile-time constants for optimal performance
 pub const TINYBAR_PER_HBAR: i64 = 100_000_000;
@@ -244,5 +246,28 @@ pub const Hbar = struct {
     
     pub fn isZero(self: Hbar) bool {
         return self.tinybars == 0;
+    }
+    
+    // Parse Hbar from protobuf bytes (expects a signed int64)
+    pub fn fromProtobuf(allocator: std.mem.Allocator, bytes: []const u8) !Hbar {
+        _ = allocator; // Not used for Hbar
+        if (bytes.len == 0) {
+            return Hbar.zero();
+        }
+        
+        var reader = ProtoReader.init(bytes);
+        const tinybars = try reader.readInt64();
+        
+        return Hbar.fromTinybars(tinybars);
+    }
+    
+    // Serialize Hbar to protobuf bytes (as signed int64)
+    pub fn toProtobuf(self: Hbar, allocator: std.mem.Allocator) ![]u8 {
+        var writer = ProtoWriter.init(allocator);
+        defer writer.deinit();
+        
+        try writer.writeInt64(1, self.tinybars);
+        
+        return writer.toOwnedSlice();
     }
 };

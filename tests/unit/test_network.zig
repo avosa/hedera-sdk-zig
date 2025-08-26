@@ -135,7 +135,8 @@ test "Client initialization and configuration" {
     var operator_key = try hedera.PrivateKey.generateEd25519(allocator);
     defer operator_key.deinit();
     
-    _ = try client.setOperator(operator_id, operator_key);
+    _ = const operator_union_key = try operator_key.toOperatorKey();
+    _ = client.setOperator(operator_id, operator_union_key);
     
     try testing.expect(client.operator != null);
     try testing.expect(client.operator.?.account_id.equals(operator_id));
@@ -342,7 +343,7 @@ test "Client configuration validation" {
     try testing.expectError(error.InvalidConfiguration, client.setMaxQueryPayment(hedera.Hbar.ZERO));
     
     // Test negative values
-    try testing.expectError(error.InvalidConfiguration, client.setMaxTransactionFee(hedera.Hbar.fromTinybars(-1000)));
+    try testing.expectError(error.InvalidConfiguration, client.setMaxTransactionFee(try hedera.Hbar.fromTinybars(-1000)));
     
     // Test very large values (should be allowed but might warn)
     _ = try client.setMaxTransactionFee(hedera.Hbar.from(1000000)); // Very large fee

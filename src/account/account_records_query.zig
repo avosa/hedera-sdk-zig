@@ -26,13 +26,13 @@ pub const AccountRecordsQuery = struct {
     }
     
     // Set the account ID to query records for
-    pub fn setAccountId(self: *AccountRecordsQuery, account_id: AccountId) *AccountRecordsQuery {
+    pub fn setAccountId(self: *AccountRecordsQuery, account_id: AccountId) !*AccountRecordsQuery {
         self.account_id = account_id;
         return self;
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *AccountRecordsQuery, payment: Hbar) *AccountRecordsQuery {
+    pub fn setQueryPayment(self: *AccountRecordsQuery, payment: Hbar) !*AccountRecordsQuery {
         self.base.payment_amount = payment;
         return self;
     }
@@ -218,3 +218,5 @@ pub const AccountRecordsQuery = struct {
         return records.toOwnedSlice();
     }
 };
+
+

@@ -8,66 +8,61 @@ const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const errors = @import("../core/errors.zig");
 
 // Factory function for TokenPauseTransaction
-pub fn newTokenPauseTransaction(allocator: std.mem.Allocator) *TokenPauseTransaction {
-    const tx = allocator.create(TokenPauseTransaction) catch @panic("Out of memory");
-    tx.* = TokenPauseTransaction.init(allocator);
-    return tx;
-}
 
 // TokenPauseTransaction pauses token operations
 pub const TokenPauseTransaction = struct {
     base: Transaction,
     token_id: ?TokenId,
-    
+
     pub fn init(allocator: std.mem.Allocator) TokenPauseTransaction {
         return TokenPauseTransaction{
             .base = Transaction.init(allocator),
             .token_id = null,
         };
     }
-    
+
     pub fn deinit(self: *TokenPauseTransaction) void {
         self.base.deinit();
     }
-    
+
     // Set the token to pause
-    pub fn setTokenId(self: *TokenPauseTransaction, token_id: TokenId) errors.HederaError!*TokenPauseTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setTokenId(self: *TokenPauseTransaction, token_id: TokenId) !*TokenPauseTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.token_id = token_id;
         return self;
     }
-    
-    // Getter method for uniformity with Go SDK
+
+    // Getter method
     pub fn getTokenId(self: *const TokenPauseTransaction) ?TokenId {
         return self.token_id;
     }
-    
+
     // Freeze the transaction with client for execution
     pub fn freezeWith(self: *TokenPauseTransaction, client: *Client) !void {
         try self.base.freezeWith(client);
     }
-    
+
     // Execute the transaction
     pub fn execute(self: *TokenPauseTransaction, client: *Client) !TransactionResponse {
         if (self.token_id == null) {
             return error.TokenIdRequired;
         }
-        
+
         return try self.base.execute(client);
     }
-    
+
     // Build transaction body
     pub fn buildTransactionBody(self: *TokenPauseTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
         defer writer.deinit();
-        
+
         // Common transaction fields
         try self.writeCommonFields(&writer);
-        
+
         // tokenPause = 55 (oneof data)
         var pause_writer = ProtoWriter.init(self.base.allocator);
         defer pause_writer.deinit();
-        
+
         // token = 1
         if (self.token_id) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
@@ -79,20 +74,20 @@ pub const TokenPauseTransaction = struct {
             defer self.base.allocator.free(token_bytes);
             try pause_writer.writeMessage(1, token_bytes);
         }
-        
+
         const pause_bytes = try pause_writer.toOwnedSlice();
         defer self.base.allocator.free(pause_bytes);
         try writer.writeMessage(55, pause_bytes);
-        
+
         return writer.toOwnedSlice();
     }
-    
+
     fn writeCommonFields(self: *TokenPauseTransaction, writer: *ProtoWriter) !void {
         // transactionID = 1
         if (self.base.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
             defer tx_id_writer.deinit();
-            
+
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
             defer timestamp_writer.deinit();
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
@@ -100,7 +95,7 @@ pub const TokenPauseTransaction = struct {
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
             defer self.base.allocator.free(timestamp_bytes);
             try tx_id_writer.writeMessage(1, timestamp_bytes);
-            
+
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
@@ -109,16 +104,16 @@ pub const TokenPauseTransaction = struct {
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
-            
+
             if (tx_id.nonce) |n| {
                 try tx_id_writer.writeInt32(4, @intCast(n));
             }
-            
+
             const tx_id_bytes = try tx_id_writer.toOwnedSlice();
             defer self.base.allocator.free(tx_id_bytes);
             try writer.writeMessage(1, tx_id_bytes);
         }
-        
+
         // nodeAccountID = 2
         if (self.base.node_account_ids.items.len > 0) {
             var node_writer = ProtoWriter.init(self.base.allocator);
@@ -131,12 +126,12 @@ pub const TokenPauseTransaction = struct {
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);
         }
-        
+
         // transactionFee = 3
         if (self.base.max_transaction_fee) |fee| {
             try writer.writeUint64(3, @intCast(fee.toTinybars()));
         }
-        
+
         // transactionValidDuration = 4
         var duration_writer = ProtoWriter.init(self.base.allocator);
         defer duration_writer.deinit();
@@ -144,7 +139,7 @@ pub const TokenPauseTransaction = struct {
         const duration_bytes = try duration_writer.toOwnedSlice();
         defer self.base.allocator.free(duration_bytes);
         try writer.writeMessage(4, duration_bytes);
-        
+
         // memo = 5
         if (self.base.transaction_memo.len > 0) {
             try writer.writeString(5, self.base.transaction_memo);

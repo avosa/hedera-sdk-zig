@@ -10,7 +10,7 @@ pub fn createContract(allocator: std.mem.Allocator, client: ?*hedera.Client, par
     const p = params orelse return error.MissingParams;
     
     // Create transaction
-    var tx = hedera.newContractCreateTransaction(allocator);
+    var tx = hedera.contractCreateTransaction(allocator);
     defer tx.deinit();
     
     // Set bytecode (from file or direct)

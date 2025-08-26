@@ -22,7 +22,7 @@ pub const MirrorNodeContractEstimateGasQuery = struct {
     }
 
     /// Set the contract instance to call
-    pub fn setContractId(self: *Self, contract_id: ContractId) *Self {
+    pub fn setContractId(self: *Self, contract_id: ContractId) !*Self {
         self.query.contract_id = contract_id;
         return self;
     }
@@ -38,7 +38,7 @@ pub const MirrorNodeContractEstimateGasQuery = struct {
     }
 
     /// Set the sender of the transaction simulation
-    pub fn setSender(self: *Self, sender: AccountId) *Self {
+    pub fn setSender(self: *Self, sender: AccountId) !*Self {
         self.query.sender = sender;
         return self;
     }
@@ -69,19 +69,19 @@ pub const MirrorNodeContractEstimateGasQuery = struct {
     }
 
     /// Set the amount of value to send to the contract
-    pub fn setValue(self: *Self, value: i64) *Self {
+    pub fn setValue(self: *Self, value: i64) !*Self {
         self.query.value = value;
         return self;
     }
 
     /// Set the gas limit for the contract call
-    pub fn setGasLimit(self: *Self, gas_limit: i64) *Self {
+    pub fn setGasLimit(self: *Self, gas_limit: i64) !*Self {
         self.query.gas_limit = gas_limit;
         return self;
     }
 
     /// Set the gas price for the contract call
-    pub fn setGasPrice(self: *Self, gas_price: i64) *Self {
+    pub fn setGasPrice(self: *Self, gas_price: i64) !*Self {
         self.query.gas_price = gas_price;
         return self;
     }

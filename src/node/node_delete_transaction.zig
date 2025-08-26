@@ -21,8 +21,8 @@ pub const NodeDeleteTransaction = struct {
     }
     
     // Set the node ID to delete
-    pub fn setNodeId(self: *NodeDeleteTransaction, node_id: u64) errors.HederaError!*NodeDeleteTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setNodeId(self: *NodeDeleteTransaction, node_id: u64) !*NodeDeleteTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.node_id = node_id;
         return self;
     }
@@ -60,4 +60,12 @@ pub const NodeDeleteTransaction = struct {
         // Write standard transaction fields
         try self.base.writeCommonFields(writer);
     }
+    
+    // Freeze the transaction with client
+    pub fn freezeWith(self: *NodeDeleteTransaction, client: *Client) !*NodeDeleteTransaction {
+        try self.base.freezeWith(client);
+        return self;
+    }
 };
+
+

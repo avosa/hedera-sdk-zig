@@ -9,18 +9,13 @@ const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const errors = @import("../core/errors.zig");
 
 // Factory function for TokenFreezeTransaction
-pub fn newTokenFreezeTransaction(allocator: std.mem.Allocator) *TokenFreezeTransaction {
-    const tx = allocator.create(TokenFreezeTransaction) catch @panic("Out of memory");
-    tx.* = TokenFreezeTransaction.init(allocator);
-    return tx;
-}
 
 // TokenFreezeTransaction freezes an account's ability to transfer a token
 pub const TokenFreezeTransaction = struct {
     base: Transaction,
     token_id: ?TokenId,
     account_id: ?AccountId,
-    
+
     pub fn init(allocator: std.mem.Allocator) TokenFreezeTransaction {
         return TokenFreezeTransaction{
             .base = Transaction.init(allocator),
@@ -28,64 +23,64 @@ pub const TokenFreezeTransaction = struct {
             .account_id = null,
         };
     }
-    
+
     pub fn deinit(self: *TokenFreezeTransaction) void {
         self.base.deinit();
     }
-    
+
     // Set the token to freeze
-    pub fn setTokenId(self: *TokenFreezeTransaction, token_id: TokenId) errors.HederaError!*TokenFreezeTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setTokenId(self: *TokenFreezeTransaction, token_id: TokenId) !*TokenFreezeTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.token_id = token_id;
         return self;
     }
-    
+
     // Set the account to freeze
-    pub fn setAccountId(self: *TokenFreezeTransaction, account_id: AccountId) errors.HederaError!*TokenFreezeTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setAccountId(self: *TokenFreezeTransaction, account_id: AccountId) !*TokenFreezeTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.account_id = account_id;
         return self;
     }
-    
-    // Getter methods for uniformity with Go SDK
+
+    // Getter methods
     pub fn getTokenId(self: *const TokenFreezeTransaction) ?TokenId {
         return self.token_id;
     }
-    
+
     pub fn getAccountId(self: *const TokenFreezeTransaction) ?AccountId {
         return self.account_id;
     }
-    
+
     // Freeze the transaction with client for execution
     pub fn freezeWith(self: *TokenFreezeTransaction, client: *Client) !void {
         try self.base.freezeWith(client);
     }
-    
+
     // Execute the transaction
     pub fn execute(self: *TokenFreezeTransaction, client: *Client) !TransactionResponse {
         if (self.token_id == null) {
             return error.TokenIdRequired;
         }
-        
+
         if (self.account_id == null) {
             return error.AccountIdRequired;
         }
-        
+
         return try self.base.execute(client);
     }
-    
+
     // Build transaction body
     pub fn buildTransactionBody(self: *TokenFreezeTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
         defer writer.deinit();
-        
+
         // Common transaction fields
         try self.writeCommonFields(&writer);
-        
+
         // tokenFreeze = 31 (oneof data)
         var freeze_writer = ProtoWriter.init(self.base.allocator);
         defer freeze_writer.deinit();
-        
+
         // token = 1
         if (self.token_id) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
@@ -97,7 +92,7 @@ pub const TokenFreezeTransaction = struct {
             defer self.base.allocator.free(token_bytes);
             try freeze_writer.writeMessage(1, token_bytes);
         }
-        
+
         // account = 2
         if (self.account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
@@ -109,20 +104,20 @@ pub const TokenFreezeTransaction = struct {
             defer self.base.allocator.free(account_bytes);
             try freeze_writer.writeMessage(2, account_bytes);
         }
-        
+
         const freeze_bytes = try freeze_writer.toOwnedSlice();
         defer self.base.allocator.free(freeze_bytes);
         try writer.writeMessage(31, freeze_bytes);
-        
+
         return writer.toOwnedSlice();
     }
-    
+
     fn writeCommonFields(self: *TokenFreezeTransaction, writer: *ProtoWriter) !void {
         // transactionID = 1
         if (self.base.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
             defer tx_id_writer.deinit();
-            
+
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
             defer timestamp_writer.deinit();
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
@@ -130,7 +125,7 @@ pub const TokenFreezeTransaction = struct {
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
             defer self.base.allocator.free(timestamp_bytes);
             try tx_id_writer.writeMessage(1, timestamp_bytes);
-            
+
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
@@ -139,16 +134,16 @@ pub const TokenFreezeTransaction = struct {
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
-            
+
             if (tx_id.nonce) |n| {
                 try tx_id_writer.writeInt32(4, @intCast(n));
             }
-            
+
             const tx_id_bytes = try tx_id_writer.toOwnedSlice();
             defer self.base.allocator.free(tx_id_bytes);
             try writer.writeMessage(1, tx_id_bytes);
         }
-        
+
         // nodeAccountID = 2
         if (self.base.node_account_ids.items.len > 0) {
             var node_writer = ProtoWriter.init(self.base.allocator);
@@ -161,12 +156,12 @@ pub const TokenFreezeTransaction = struct {
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);
         }
-        
+
         // transactionFee = 3
         if (self.base.max_transaction_fee) |fee| {
             try writer.writeUint64(3, @intCast(fee.toTinybars()));
         }
-        
+
         // transactionValidDuration = 4
         var duration_writer = ProtoWriter.init(self.base.allocator);
         defer duration_writer.deinit();
@@ -174,7 +169,7 @@ pub const TokenFreezeTransaction = struct {
         const duration_bytes = try duration_writer.toOwnedSlice();
         defer self.base.allocator.free(duration_bytes);
         try writer.writeMessage(4, duration_bytes);
-        
+
         // memo = 5
         if (self.base.transaction_memo.len > 0) {
             try writer.writeString(5, self.base.transaction_memo);

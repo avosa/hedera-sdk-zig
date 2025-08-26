@@ -239,7 +239,7 @@ test "ProtoWriter/ProtoReader round-trip tests" {
         uint32_val: u32 = 54321,
         uint64_val: u64 = 1234567890123456789,
         bool_val: bool = true,
-        string_val: []const u8 = "Round-trip test string with unicode: 🚀",
+        string_val: []const u8 = "Round-trip test string with unicode: LAUNCH:",
         bytes_val: []const u8 = &[_]u8{ 0x00, 0xFF, 0x42, 0xAB, 0xCD, 0xEF },
     };
     

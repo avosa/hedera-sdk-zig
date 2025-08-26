@@ -1,6 +1,6 @@
 const std = @import("std");
 const errors = @import("../core/errors.zig");
-const AccountId = @import("../core/id.zig").AccountId;
+const HederaError = errors.HederaError;const AccountId = @import("../core/id.zig").AccountId;
 const Key = @import("../crypto/key.zig").Key;
 const PublicKey = @import("../crypto/key.zig").PublicKey;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
@@ -43,7 +43,7 @@ pub const AccountUpdateTransaction = struct {
             .staked_node_id = null,
             .proxy_account_id = null,
         };
-        // Set default auto renew period to 7890000 seconds (like Go SDK)
+        // Set default auto renew period to 7890000 seconds
         tx.auto_renew_period = Duration{ .seconds = 7890000, .nanos = 0 };
         return tx;
     }
@@ -53,8 +53,8 @@ pub const AccountUpdateTransaction = struct {
     }
     
     // Set the account ID to update
-    pub fn setAccountId(self: *AccountUpdateTransaction, account_id: AccountId) errors.HederaError!*AccountUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setAccountId(self: *AccountUpdateTransaction, account_id: AccountId) !*AccountUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.account_id = account_id;
         return self;
     }
@@ -64,8 +64,8 @@ pub const AccountUpdateTransaction = struct {
     }
     
     // Set the new key for the account
-    pub fn setKey(self: *AccountUpdateTransaction, key: Key) errors.HederaError!*AccountUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setKey(self: *AccountUpdateTransaction, key: Key) !*AccountUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.key = key;
         return self;
     }
@@ -75,8 +75,8 @@ pub const AccountUpdateTransaction = struct {
     }
     
     // Set alias key (deprecated but maintained for uniformity)
-    pub fn setAliasKey(self: *AccountUpdateTransaction, alias: PublicKey) errors.HederaError!*AccountUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setAliasKey(self: *AccountUpdateTransaction, alias: PublicKey) !*AccountUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.alias_key = alias;
         return self;
     }
@@ -86,8 +86,8 @@ pub const AccountUpdateTransaction = struct {
     }
     
     // Set whether receiver signature is required
-    pub fn setReceiverSignatureRequired(self: *AccountUpdateTransaction, required: bool) errors.HederaError!*AccountUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setReceiverSignatureRequired(self: *AccountUpdateTransaction, required: bool) !*AccountUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.receiver_sig_required = required;
         return self;
     }
@@ -97,8 +97,8 @@ pub const AccountUpdateTransaction = struct {
     }
     
     // Set the auto renew period
-    pub fn setAutoRenewPeriod(self: *AccountUpdateTransaction, period: Duration) errors.HederaError!*AccountUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setAutoRenewPeriod(self: *AccountUpdateTransaction, period: Duration) !*AccountUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.auto_renew_period = period;
         return self;
     }
@@ -108,8 +108,8 @@ pub const AccountUpdateTransaction = struct {
     }
     
     // Set the expiration time
-    pub fn setExpirationTime(self: *AccountUpdateTransaction, time: Timestamp) errors.HederaError!*AccountUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setExpirationTime(self: *AccountUpdateTransaction, time: Timestamp) !*AccountUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.expiration_time = time;
         return self;
     }
@@ -119,8 +119,8 @@ pub const AccountUpdateTransaction = struct {
     }
     
     // Set the account memo
-    pub fn setAccountMemo(self: *AccountUpdateTransaction, memo: []const u8) errors.HederaError!*AccountUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setAccountMemo(self: *AccountUpdateTransaction, memo: []const u8) !*AccountUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         try errors.requireMaxLength(memo, 100);
         self.memo = memo;
         return self;
@@ -131,13 +131,13 @@ pub const AccountUpdateTransaction = struct {
     }
     
     // Alias for setAccountMemo for uniformity
-    pub fn setMemo(self: *AccountUpdateTransaction, memo: []const u8) errors.HederaError!*AccountUpdateTransaction {
+    pub fn setMemo(self: *AccountUpdateTransaction, memo: []const u8) !*AccountUpdateTransaction {
         return try self.setAccountMemo(memo);
     }
     
     // Set max automatic token associations
-    pub fn setMaxAutomaticTokenAssociations(self: *AccountUpdateTransaction, max: i32) errors.HederaError!*AccountUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setMaxAutomaticTokenAssociations(self: *AccountUpdateTransaction, max: i32) !*AccountUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         try errors.requireValidRange(max, 0, 1000);
         self.max_automatic_token_associations = max;
         return self;
@@ -148,8 +148,8 @@ pub const AccountUpdateTransaction = struct {
     }
     
     // Set decline staking reward
-    pub fn setDeclineStakingReward(self: *AccountUpdateTransaction, decline: bool) errors.HederaError!*AccountUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setDeclineStakingReward(self: *AccountUpdateTransaction, decline: bool) !*AccountUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.decline_staking_reward = decline;
         return self;
     }
@@ -159,10 +159,10 @@ pub const AccountUpdateTransaction = struct {
     }
     
     // Set staked account ID
-    pub fn setStakedAccountId(self: *AccountUpdateTransaction, account_id: AccountId) errors.HederaError!*AccountUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setStakedAccountId(self: *AccountUpdateTransaction, account_id: AccountId) !*AccountUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         if (self.staked_node_id != null) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidParameter;
         }
         self.staked_account_id = account_id;
         return self;
@@ -173,10 +173,10 @@ pub const AccountUpdateTransaction = struct {
     }
     
     // Set staked node ID
-    pub fn setStakedNodeId(self: *AccountUpdateTransaction, node_id: i64) errors.HederaError!*AccountUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setStakedNodeId(self: *AccountUpdateTransaction, node_id: i64) !*AccountUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         if (self.staked_account_id != null) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidParameter;
         }
         self.staked_node_id = node_id;
         return self;
@@ -187,22 +187,22 @@ pub const AccountUpdateTransaction = struct {
     }
     
     // Clear staked account ID
-    pub fn clearStakedAccountID(self: *AccountUpdateTransaction) errors.HederaError!*AccountUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn clearStakedAccountID(self: *AccountUpdateTransaction) HederaError!*AccountUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.staked_account_id = AccountId{ .shard = 0, .realm = 0, .account = 0 };
         return self;
     }
     
     // Clear staked node ID
-    pub fn clearStakedNodeID(self: *AccountUpdateTransaction) errors.HederaError!*AccountUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn clearStakedNodeID(self: *AccountUpdateTransaction) HederaError!*AccountUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.staked_node_id = -1;
         return self;
     }
     
     // Set proxy account ID (deprecated but still supported)
-    pub fn setProxyAccountId(self: *AccountUpdateTransaction, proxy_id: AccountId) errors.HederaError!*AccountUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setProxyAccountId(self: *AccountUpdateTransaction, proxy_id: AccountId) !*AccountUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.proxy_account_id = proxy_id;
         return self;
     }
@@ -213,7 +213,7 @@ pub const AccountUpdateTransaction = struct {
     
     // Execute the transaction
     pub fn freezeWith(self: *AccountUpdateTransaction, client: ?*Client) !void {
-        try self.base.freezeWith(client);
+        _ = try self.base.freezeWith(client);
     }
     
     pub fn execute(self: *AccountUpdateTransaction, client: *Client) !TransactionResponse {
@@ -410,7 +410,4 @@ pub const AccountUpdateTransaction = struct {
     }
 };
 
-// Factory function matching Hedera SDK patterns
-pub fn newAccountUpdateTransaction(allocator: std.mem.Allocator) AccountUpdateTransaction {
-    return AccountUpdateTransaction.init(allocator);
-}
+

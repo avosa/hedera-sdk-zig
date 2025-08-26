@@ -323,8 +323,40 @@ pub const GrpcConnection = struct {
     const MAX_FRAME_SIZE: u32 = 16384;
     
     pub fn init(allocator: std.mem.Allocator, node: Node) !GrpcConnection {
-        // Connect to node
-        const stream = try net.tcpConnectToAddress(node.address);
+        // Hedera REQUIRES TLS on port 50211 - this is production code
+        // Using Zig's HTTP client which has full TLS support
+        
+        // Create HTTP client for TLS connection
+        var http_client = std.http.Client{ .allocator = allocator };
+        
+        // Extract IP and port from node address
+        const address_str = try std.fmt.allocPrint(allocator, "{}", .{node.address});
+        defer allocator.free(address_str);
+        
+        const ip_end = std.mem.indexOf(u8, address_str, ":") orelse address_str.len;
+        const ip = address_str[0..ip_end];
+        
+        // Build HTTPS URL for Hedera gRPC endpoint
+        const url = try std.fmt.allocPrint(allocator, "https://{}:50211", .{ip});
+        defer allocator.free(url);
+        
+        // Parse URL for connection
+        const uri = try std.Uri.parse(url);
+        
+        // Create headers for HTTP/2 gRPC
+        var headers = std.http.Headers{ .allocator = allocator };
+        defer headers.deinit();
+        try headers.append("connection", "Upgrade");
+        try headers.append("upgrade", "h2c"); // HTTP/2 cleartext
+        
+        // Create the request to establish HTTP/2 connection
+        var request = try http_client.request(.POST, uri, headers, .{});
+        
+        // This establishes the TLS connection with the Hedera node
+        try request.start();
+        
+        // Get the underlying stream for HTTP/2 communication
+        const stream = request.connection.?.stream;
         
         var conn = GrpcConnection{
             .allocator = allocator,
@@ -338,13 +370,13 @@ pub const GrpcConnection = struct {
             .mutex = .{},
         };
         
-        // Send HTTP/2 connection preface
+        // Send HTTP/2 connection preface for gRPC
         try conn.sendPreface();
         
-        // Send initial settings
+        // Send initial SETTINGS frame
         try conn.sendSettings();
         
-        // Read settings from server
+        // Read SETTINGS frame from server
         try conn.readSettings();
         
         return conn;

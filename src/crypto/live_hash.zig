@@ -8,7 +8,7 @@ const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const errors = @import("../core/errors.zig");
-
+const HederaError = errors.HederaError;
 // LiveHash represents a hash that can be used to verify data integrity
 pub const LiveHash = struct {
     account_id: AccountId,
@@ -71,16 +71,16 @@ pub const LiveHashAddTransaction = struct {
     }
     
     // Set the account ID for the live hash
-    pub fn setAccountId(self: *LiveHashAddTransaction, account_id: AccountId) errors.HederaError!*LiveHashAddTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setAccountId(self: *LiveHashAddTransaction, account_id: AccountId) !*LiveHashAddTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.account_id = account_id;
         return self;
     }
     
     // Set the hash value (must be SHA-384)
-    pub fn setHash(self: *LiveHashAddTransaction, hash: []const u8) errors.HederaError!*LiveHashAddTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        if (hash.len != 48) return errors.HederaError.InvalidParameter;
+    pub fn setHash(self: *LiveHashAddTransaction, hash: []const u8) !*LiveHashAddTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
+        if (hash.len != 48) return error.InvalidParameter;
         
         if (self.hash.len > 0) {
             self.base.allocator.free(self.hash);
@@ -90,15 +90,15 @@ pub const LiveHashAddTransaction = struct {
     }
     
     // Includes a key that can query the live hash
-    pub fn addKey(self: *LiveHashAddTransaction, key: Key) errors.HederaError!void {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn addKey(self: *LiveHashAddTransaction, key: Key) HederaError!void {
+        if (self.base.frozen) return error.TransactionFrozen;
         try errors.handleAppendError(&self.keys, key);
     }
     
     // Set the duration the live hash will remain valid
-    pub fn setDuration(self: *LiveHashAddTransaction, duration: Duration) errors.HederaError!*LiveHashAddTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        if (duration.seconds > 120 * 24 * 60 * 60) return errors.HederaError.InvalidParameter;
+    pub fn setDuration(self: *LiveHashAddTransaction, duration: Duration) !*LiveHashAddTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
+        if (duration.seconds > 120 * 24 * 60 * 60) return error.InvalidParameter;
         self.duration = duration;
         return self;
     }
@@ -278,16 +278,16 @@ pub const LiveHashDeleteTransaction = struct {
     }
     
     // Set the account ID for the live hash
-    pub fn setAccountId(self: *LiveHashDeleteTransaction, account_id: AccountId) errors.HederaError!*LiveHashDeleteTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setAccountId(self: *LiveHashDeleteTransaction, account_id: AccountId) !*LiveHashDeleteTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.account_id = account_id;
         return self;
     }
     
     // Set the hash value to delete
-    pub fn setHash(self: *LiveHashDeleteTransaction, hash: []const u8) errors.HederaError!*LiveHashDeleteTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        if (hash.len != 48) return errors.HederaError.InvalidParameter;
+    pub fn setHash(self: *LiveHashDeleteTransaction, hash: []const u8) !*LiveHashDeleteTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
+        if (hash.len != 48) return error.InvalidParameter;
         
         if (self.hash.len > 0) {
             self.base.allocator.free(self.hash);

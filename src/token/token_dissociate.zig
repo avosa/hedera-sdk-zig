@@ -12,11 +12,6 @@ const errors = @import("../core/errors.zig");
 pub const MAX_TOKEN_DISSOCIATIONS: usize = 100;
 
 // Factory function for TokenDissociateTransaction
-pub fn newTokenDissociateTransaction(allocator: std.mem.Allocator) *TokenDissociateTransaction {
-    const tx = allocator.create(TokenDissociateTransaction) catch @panic("Out of memory");
-    tx.* = TokenDissociateTransaction.init(allocator);
-    return tx;
-}
 
 // TokenDissociateTransaction dissociates tokens from an account
 pub const TokenDissociateTransaction = struct {
@@ -38,24 +33,24 @@ pub const TokenDissociateTransaction = struct {
     }
     
     // Set the account to dissociate tokens from
-    pub fn setAccountId(self: *TokenDissociateTransaction, account_id: AccountId) errors.HederaError!*TokenDissociateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setAccountId(self: *TokenDissociateTransaction, account_id: AccountId) !*TokenDissociateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.account_id = account_id;
         return self;
     }
     
     // Includes a token for dissociation
-    pub fn addTokenId(self: *TokenDissociateTransaction, token_id: TokenId) errors.HederaError!*TokenDissociateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn addTokenId(self: *TokenDissociateTransaction, token_id: TokenId) !*TokenDissociateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (self.token_ids.items.len >= MAX_TOKEN_DISSOCIATIONS) {
-            return errors.HederaError.TokenTransferListSizeLimitExceeded;
+            return error.InvalidParameter;
         }
         
         // Check for duplicates
         for (self.token_ids.items) |existing| {
             if (existing.equals(token_id)) {
-                return errors.HederaError.TokenIdRepeatedInTokenList;
+                return error.InvalidParameter;
             }
         }
         
@@ -64,11 +59,11 @@ pub const TokenDissociateTransaction = struct {
     }
     
     // Set the list of tokens to dissociate
-    pub fn setTokenIds(self: *TokenDissociateTransaction, token_ids: []const TokenId) errors.HederaError!*TokenDissociateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setTokenIds(self: *TokenDissociateTransaction, token_ids: []const TokenId) !*TokenDissociateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (token_ids.len > MAX_TOKEN_DISSOCIATIONS) {
-            return errors.HederaError.TokenTransferListSizeLimitExceeded;
+            return error.InvalidParameter;
         }
         
         // Clear existing tokens
@@ -78,7 +73,7 @@ pub const TokenDissociateTransaction = struct {
         for (token_ids) |token_id| {
             for (self.token_ids.items) |existing| {
                 if (existing.equals(token_id)) {
-                    return errors.HederaError.TokenIdRepeatedInTokenList;
+                    return error.InvalidParameter;
                 }
             }
             try errors.handleAppendError(&self.token_ids, token_id);
@@ -86,7 +81,7 @@ pub const TokenDissociateTransaction = struct {
         return self;
     }
     
-    // Getter methods for uniformity with Go SDK
+    
     pub fn getAccountId(self: *const TokenDissociateTransaction) ?AccountId {
         return self.account_id;
     }

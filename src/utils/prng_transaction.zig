@@ -23,9 +23,9 @@ pub const PrngTransaction = struct {
     }
     
     // Set the range for the random number (0 to range-1)
-    pub fn setRange(self: *PrngTransaction, range: i32) errors.HederaError!*PrngTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
-        if (range <= 0) return errors.HederaError.InvalidParameter;
+    pub fn setRange(self: *PrngTransaction, range: i32) !*PrngTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
+        if (range <= 0) return error.InvalidParameter;
         self.range = range;
         return self;
     }
@@ -123,4 +123,12 @@ pub const PrngTransaction = struct {
             try writer.writeString(5, self.base.transaction_memo);
         }
     }
+    
+    // Freeze the transaction with client
+    pub fn freezeWith(self: *PrngTransaction, client: *Client) !*PrngTransaction {
+        try self.base.freezeWith(client);
+        return self;
+    }
 };
+
+

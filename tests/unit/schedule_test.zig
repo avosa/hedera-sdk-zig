@@ -162,8 +162,8 @@ test "Schedule with token operations" {
     const account1 = hedera.AccountId.init(0, 0, 500);
     const account2 = hedera.AccountId.init(0, 0, 600);
     
-    try token_transfer.addTokenTransfer(token_id, account1, -1000);
-    try token_transfer.addTokenTransfer(token_id, account2, 1000);
+    _ = try token_transfer.addTokenTransfer(token_id, account1, -1000);
+    _ = try token_transfer.addTokenTransfer(token_id, account2, 1000);
     
     // Create schedule
     var schedule = hedera.ScheduleCreateTransaction.init(allocator);

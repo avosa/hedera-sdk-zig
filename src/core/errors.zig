@@ -1,6 +1,6 @@
 const std = @import("std");
 
-// Core Hedera error set matching all status codes from the Go SDK
+// Core Hedera error set matching all official status codes
 pub const HederaError = error{
     // Success and neutral responses
     Ok,
@@ -52,6 +52,7 @@ pub const HederaError = error{
     NullSolidityAddress,
     ContractUpdateFailed,
     InvalidQueryHeader,
+    QueryRequestFailed,
     InvalidFeeSubmitted,
     InvalidPayerSignature,
     KeyNotProvided,
@@ -260,6 +261,8 @@ pub const HederaError = error{
     ProxyAccountIdFieldIsDeprecated,
     SelfStakingIsNotAllowed,
     InvalidStakingId,
+    InvalidStakedId,
+    InvalidAlias,
     StakingNotEnabled,
     InvalidRandomGenerateRange,
     MaxEntitiesInPriceRegimeHaveBeenCreated,
@@ -284,6 +287,12 @@ pub const HederaError = error{
     InvalidConfiguration,
     MissingPrivateKey,
     MissingOperatorAccountId,
+    NoOperatorSet,
+    InvalidNetworkName,
+    NodeNotFound,
+    RequestFailed,
+    ClientClosed,
+    AllocationFailed,
     
     // Parsing errors
     InvalidProtobuf,

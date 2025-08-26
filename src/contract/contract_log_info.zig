@@ -28,7 +28,7 @@ pub const ContractLogInfo = struct {
         }
     }
 
-    pub fn setBloom(self: *ContractLogInfo, bloom: [256]u8) *ContractLogInfo {
+    pub fn setBloom(self: *ContractLogInfo, bloom: [256]u8) !*ContractLogInfo {
         self.bloom = bloom;
     }
 
@@ -36,7 +36,7 @@ pub const ContractLogInfo = struct {
         try self.topics.append(topic);
     }
 
-    pub fn setData(self: *ContractLogInfo, data: []const u8) *ContractLogInfo {
+    pub fn setData(self: *ContractLogInfo, data: []const u8) !*ContractLogInfo {
         if (self.data.len > 0) {
             self.allocator.free(self.data);
             return self;

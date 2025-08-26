@@ -69,145 +69,145 @@ pub const TokenUpdateTransaction = struct {
     }
     
     // Set token to update
-    pub fn setTokenId(self: *TokenUpdateTransaction, token_id: TokenId) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setTokenId(self: *TokenUpdateTransaction, token_id: TokenId) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.token_id = token_id;
         return self;
     }
     
     // Set new token name
-    pub fn setTokenName(self: *TokenUpdateTransaction, name: []const u8) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setTokenName(self: *TokenUpdateTransaction, name: []const u8) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         try errors.requireMaxLength(name, 100);
         self.name = name;
         return self;
     }
     
     // Set new token symbol
-    pub fn setTokenSymbol(self: *TokenUpdateTransaction, symbol: []const u8) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setTokenSymbol(self: *TokenUpdateTransaction, symbol: []const u8) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         try errors.requireMaxLength(symbol, 100);
         self.symbol = symbol;
         return self;
     }
     
     // Set new treasury account
-    pub fn setTreasuryAccountId(self: *TokenUpdateTransaction, account_id: AccountId) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setTreasuryAccountId(self: *TokenUpdateTransaction, account_id: AccountId) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.treasury_account_id = account_id;
         self.treasury = account_id;  // Keep both fields in sync for uniformity
         return self;
     }
     
     // Set admin key
-    pub fn setAdminKey(self: *TokenUpdateTransaction, key: Key) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setAdminKey(self: *TokenUpdateTransaction, key: Key) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.admin_key = key;
         return self;
     }
     
     // Set KYC key
-    pub fn setKycKey(self: *TokenUpdateTransaction, key: Key) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setKycKey(self: *TokenUpdateTransaction, key: Key) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.kyc_key = key;
         return self;
     }
     
     // Set freeze key
-    pub fn setFreezeKey(self: *TokenUpdateTransaction, key: Key) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setFreezeKey(self: *TokenUpdateTransaction, key: Key) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.freeze_key = key;
         return self;
     }
     
     // Set wipe key
-    pub fn setWipeKey(self: *TokenUpdateTransaction, key: Key) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setWipeKey(self: *TokenUpdateTransaction, key: Key) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.wipe_key = key;
         return self;
     }
     
     // Set supply key
-    pub fn setSupplyKey(self: *TokenUpdateTransaction, key: Key) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setSupplyKey(self: *TokenUpdateTransaction, key: Key) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.supply_key = key;
         return self;
     }
     
     // Set auto renew account
-    pub fn setAutoRenewAccount(self: *TokenUpdateTransaction, account_id: AccountId) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setAutoRenewAccount(self: *TokenUpdateTransaction, account_id: AccountId) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.auto_renew_account = account_id;
         return self;
     }
     
     // Set auto renew period
-    pub fn setAutoRenewPeriod(self: *TokenUpdateTransaction, period: Duration) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setAutoRenewPeriod(self: *TokenUpdateTransaction, period: Duration) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.auto_renew_period = period;
         return self;
     }
     
     // Set expiration time
-    pub fn setExpirationTime(self: *TokenUpdateTransaction, time: Timestamp) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setExpirationTime(self: *TokenUpdateTransaction, time: Timestamp) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.expiration_time = time;
         return self;
     }
     
     // Set token memo
-    pub fn setTokenMemo(self: *TokenUpdateTransaction, memo: []const u8) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setTokenMemo(self: *TokenUpdateTransaction, memo: []const u8) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         try errors.requireMaxLength(memo, 100);
         self.memo = memo;
         return self;
     }
     
     // Set fee schedule key
-    pub fn setFeeScheduleKey(self: *TokenUpdateTransaction, key: Key) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setFeeScheduleKey(self: *TokenUpdateTransaction, key: Key) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.fee_schedule_key = key;
         return self;
     }
     
     // Set pause key
-    pub fn setPauseKey(self: *TokenUpdateTransaction, key: Key) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setPauseKey(self: *TokenUpdateTransaction, key: Key) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.pause_key = key;
         return self;
     }
     
     // Set metadata
-    pub fn setMetadata(self: *TokenUpdateTransaction, metadata: []const u8) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setMetadata(self: *TokenUpdateTransaction, metadata: []const u8) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         try errors.requireMaxLength(metadata, 100);
         self.metadata = metadata;
         return self;
     }
     
     // Set metadata key
-    pub fn setMetadataKey(self: *TokenUpdateTransaction, key: Key) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setMetadataKey(self: *TokenUpdateTransaction, key: Key) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.metadata_key = key;
         return self;
     }
     
     // Set key verification mode
-    pub fn setKeyVerificationMode(self: *TokenUpdateTransaction, mode: KeyVerificationMode) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setKeyVerificationMode(self: *TokenUpdateTransaction, mode: KeyVerificationMode) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.key_verification_mode = mode;
         return self;
     }
     
     // Set treasury account
-    pub fn setTreasury(self: *TokenUpdateTransaction, treasury: AccountId) errors.HederaError!*TokenUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setTreasury(self: *TokenUpdateTransaction, treasury: AccountId) !*TokenUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.treasury_account_id = treasury;
         self.treasury = treasury;  // Keep both fields in sync for uniformity
         return self;
     }
     
-    // Getter methods for uniformity with Go SDK
+    
     pub fn getTokenId(self: *const TokenUpdateTransaction) ?TokenId {
         return self.token_id;
     }

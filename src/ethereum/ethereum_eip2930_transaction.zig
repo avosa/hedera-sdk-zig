@@ -4,7 +4,7 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const errors = @import("../core/errors.zig");
-
+const HederaError = errors.HederaError;
 // EIP-2930 Ethereum transaction with access list
 pub const EthereumEip2930Transaction = struct {
     base: Transaction,
@@ -61,79 +61,79 @@ pub const EthereumEip2930Transaction = struct {
     }
     
     // Set chain ID
-    pub fn setChainId(self: *EthereumEip2930Transaction, chain_id: []const u8) errors.HederaError!*EthereumEip2930Transaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setChainId(self: *EthereumEip2930Transaction, chain_id: []const u8) !*EthereumEip2930Transaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         if (self.chain_id.len > 0) self.base.allocator.free(self.chain_id);
-        self.chain_id = errors.handleDupeError(self.base.allocator, chain_id) catch return errors.HederaError.OutOfMemory;
+        self.chain_id = errors.handleDupeError(self.base.allocator, chain_id) catch return error.InvalidParameter;
         return self;
     }
     
     // Set nonce
-    pub fn setNonce(self: *EthereumEip2930Transaction, nonce: u64) errors.HederaError!*EthereumEip2930Transaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setNonce(self: *EthereumEip2930Transaction, nonce: u64) !*EthereumEip2930Transaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.nonce = nonce;
         return self;
     }
     
     // Set gas price
-    pub fn setGasPrice(self: *EthereumEip2930Transaction, gas_price: []const u8) errors.HederaError!*EthereumEip2930Transaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setGasPrice(self: *EthereumEip2930Transaction, gas_price: []const u8) !*EthereumEip2930Transaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         if (self.gas_price.len > 0) self.base.allocator.free(self.gas_price);
-        self.gas_price = errors.handleDupeError(self.base.allocator, gas_price) catch return errors.HederaError.OutOfMemory;
+        self.gas_price = errors.handleDupeError(self.base.allocator, gas_price) catch return error.InvalidParameter;
         return self;
     }
     
     // Set gas limit
-    pub fn setGasLimit(self: *EthereumEip2930Transaction, gas_limit: u64) errors.HederaError!*EthereumEip2930Transaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setGasLimit(self: *EthereumEip2930Transaction, gas_limit: u64) !*EthereumEip2930Transaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.gas_limit = gas_limit;
         return self;
     }
     
     // Set to address
-    pub fn setTo(self: *EthereumEip2930Transaction, to: []const u8) errors.HederaError!*EthereumEip2930Transaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setTo(self: *EthereumEip2930Transaction, to: []const u8) !*EthereumEip2930Transaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         if (self.to) |old_to| self.base.allocator.free(old_to);
-        self.to = errors.handleDupeError(self.base.allocator, to) catch return errors.HederaError.OutOfMemory;
+        self.to = errors.handleDupeError(self.base.allocator, to) catch return error.InvalidParameter;
         return self;
     }
     
     // Set value
-    pub fn setValue(self: *EthereumEip2930Transaction, value: []const u8) errors.HederaError!*EthereumEip2930Transaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setValue(self: *EthereumEip2930Transaction, value: []const u8) !*EthereumEip2930Transaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         if (self.value.len > 0) self.base.allocator.free(self.value);
-        self.value = errors.handleDupeError(self.base.allocator, value) catch return errors.HederaError.OutOfMemory;
+        self.value = errors.handleDupeError(self.base.allocator, value) catch return error.InvalidParameter;
         return self;
     }
     
     // Set data
-    pub fn setData(self: *EthereumEip2930Transaction, data: []const u8) errors.HederaError!*EthereumEip2930Transaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setData(self: *EthereumEip2930Transaction, data: []const u8) !*EthereumEip2930Transaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         if (self.data.len > 0) self.base.allocator.free(self.data);
-        self.data = errors.handleDupeError(self.base.allocator, data) catch return errors.HederaError.OutOfMemory;
+        self.data = errors.handleDupeError(self.base.allocator, data) catch return error.InvalidParameter;
         return self;
     }
     
     // Add access list entry
-    pub fn addAccessListEntry(self: *EthereumEip2930Transaction, address: []const u8, storage_keys: []const []const u8) errors.HederaError!void {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn addAccessListEntry(self: *EthereumEip2930Transaction, address: []const u8, storage_keys: []const []const u8) HederaError!void {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         var keys = std.ArrayList([]const u8).init(self.base.allocator);
         for (storage_keys) |key| {
-            const duped_key = errors.handleDupeError(self.base.allocator, key) catch return errors.HederaError.OutOfMemory;
-            errors.handleAppendError(&keys, duped_key) catch return errors.HederaError.OutOfMemory;
+            const duped_key = errors.handleDupeError(self.base.allocator, key) catch return error.InvalidParameter;
+            errors.handleAppendError(&keys, duped_key) catch return error.InvalidParameter;
         }
         
-        const duped_address = errors.handleDupeError(self.base.allocator, address) catch return errors.HederaError.OutOfMemory;
+        const duped_address = errors.handleDupeError(self.base.allocator, address) catch return error.InvalidParameter;
         errors.handleAppendError(&self.access_list, AccessListEntry{
             .address = duped_address,
             .storage_keys = keys,
-        }) catch return errors.HederaError.OutOfMemory;
+        }) catch return error.InvalidParameter;
     }
     
     // Clear access list
-    pub fn clearAccessList(self: *EthereumEip2930Transaction) errors.HederaError!void {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn clearAccessList(self: *EthereumEip2930Transaction) HederaError!void {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         for (self.access_list.items) |*entry| {
             self.base.allocator.free(entry.address);
@@ -146,14 +146,14 @@ pub const EthereumEip2930Transaction = struct {
     }
     
     // Set signature
-    pub fn setSignature(self: *EthereumEip2930Transaction, r: []const u8, s: []const u8, recovery_id: u8) errors.HederaError!*EthereumEip2930Transaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setSignature(self: *EthereumEip2930Transaction, r: []const u8, s: []const u8, recovery_id: u8) !*EthereumEip2930Transaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (self.signature_r.len > 0) self.base.allocator.free(self.signature_r);
         if (self.signature_s.len > 0) self.base.allocator.free(self.signature_s);
         
-        self.signature_r = errors.handleDupeError(self.base.allocator, r) catch return errors.HederaError.OutOfMemory;
-        self.signature_s = errors.handleDupeError(self.base.allocator, s) catch return errors.HederaError.OutOfMemory;
+        self.signature_r = errors.handleDupeError(self.base.allocator, r) catch return error.InvalidParameter;
+        self.signature_s = errors.handleDupeError(self.base.allocator, s) catch return error.InvalidParameter;
         self.recovery_id = recovery_id;
         return self;
     }

@@ -2,7 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 // Protobuf writer implementation
-pub const ProtobufWriter = struct {
+pub const ProtoWriter = struct {
     buffer: std.ArrayList(u8),
     allocator: Allocator,
 
@@ -117,6 +117,27 @@ pub const ProtobufWriter = struct {
         try self.writeTag(field_number, .LengthDelimited);
         try self.writeBytes(message);
     }
+    
+    // Convenience methods for cleaner API
+    pub fn writeInt32(self: *Self, field_number: u32, value: i32) !void {
+        try self.writeInt32Field(field_number, value);
+    }
+    
+    pub fn writeInt64(self: *Self, field_number: u32, value: i64) !void {
+        try self.writeInt64Field(field_number, value);
+    }
+    
+    pub fn writeUint64(self: *Self, field_number: u32, value: u64) !void {
+        try self.writeUint64Field(field_number, value);
+    }
+    
+    pub fn writeBool(self: *Self, field_number: u32, value: bool) !void {
+        try self.writeBoolField(field_number, value);
+    }
+    
+    pub fn writeMessage(self: *Self, field_number: u32, message: []const u8) !void {
+        try self.writeMessageField(field_number, message);
+    }
 
     pub fn writeEnumField(self: *Self, field_number: u32, comptime E: type, value: E) !void {
         try self.writeTag(field_number, .Varint);
@@ -221,7 +242,7 @@ pub const ProtobufWriter = struct {
     pub fn writeMap(self: *Self, field_number: u32, comptime K: type, comptime V: type, map: anytype) !void {
         var iterator = map.iterator();
         while (iterator.next()) |entry| {
-            var map_entry = ProtobufWriter.init(self.allocator);
+            var map_entry = ProtoWriter.init(self.allocator);
             defer map_entry.deinit();
 
             // Write key (field 1)
@@ -371,13 +392,13 @@ pub fn isValidFieldNumber(field_number: u32) bool {
 
 // Message builder helper
 pub const MessageBuilder = struct {
-    writer: ProtobufWriter,
+    writer: ProtoWriter,
 
     const Self = @This();
 
     pub fn init(allocator: Allocator) Self {
         return Self{
-            .writer = ProtobufWriter.init(allocator),
+            .writer = ProtoWriter.init(allocator),
         };
     }
 

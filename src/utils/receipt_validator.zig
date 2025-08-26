@@ -31,31 +31,31 @@ pub const ReceiptValidator = struct {
     }
     
     // Configure validation strictness
-    pub fn setStrictValidation(self: *ReceiptValidator, strict: bool) *ReceiptValidator {
+    pub fn setStrictValidation(self: *ReceiptValidator, strict: bool) !*ReceiptValidator {
         self.strict_validation = strict;
         return self;
     }
     
     // Configure whether success status is required
-    pub fn setRequireSuccess(self: *ReceiptValidator, require: bool) *ReceiptValidator {
+    pub fn setRequireSuccess(self: *ReceiptValidator, require: bool) !*ReceiptValidator {
         self.require_success_status = require;
         return self;
     }
     
     // Configure timestamp validation
-    pub fn setValidateTimestamps(self: *ReceiptValidator, validate: bool) *ReceiptValidator {
+    pub fn setValidateTimestamps(self: *ReceiptValidator, validate: bool) !*ReceiptValidator {
         self.validate_timestamps = validate;
         return self;
     }
     
     // Configure ID validation
-    pub fn setValidateIds(self: *ReceiptValidator, validate: bool) *ReceiptValidator {
+    pub fn setValidateIds(self: *ReceiptValidator, validate: bool) !*ReceiptValidator {
         self.validate_ids = validate;
         return self;
     }
     
     // Configure fee validation
-    pub fn setValidateFees(self: *ReceiptValidator, validate: bool) *ReceiptValidator {
+    pub fn setValidateFees(self: *ReceiptValidator, validate: bool) !*ReceiptValidator {
         self.validate_fees = validate;
         return self;
     }
