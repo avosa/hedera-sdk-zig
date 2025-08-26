@@ -1,6 +1,7 @@
 const std = @import("std");
 const hedera = @import("hedera");
 const json_rpc = @import("json_rpc.zig");
+const utils = @import("utils/utils.zig");
 const sdk_service = @import("methods/sdk_service.zig");
 const account_service = @import("methods/account_service.zig");
 const token_service = @import("methods/token_service.zig");
@@ -8,14 +9,14 @@ const file_service = @import("methods/file_service.zig");
 const topic_service = @import("methods/topic_service.zig");
 const contract_service = @import("methods/contract_service.zig");
 const key_service = @import("methods/key_service.zig");
-
+const schedule_service = @import("methods/schedule_service.zig");
+const node_service = @import("methods/node_service.zig");
+const query_service = @import("methods/query_service.zig");
 const log = std.log.scoped(.tck_server);
-
 pub const TCKServer = struct {
     allocator: std.mem.Allocator,
     client: ?*hedera.Client,
     port: u16,
-    
     pub fn init(allocator: std.mem.Allocator, port: u16) TCKServer {
         return .{
             .allocator = allocator,
@@ -23,16 +24,13 @@ pub const TCKServer = struct {
             .port = port,
         };
     }
-    
     pub fn deinit(self: *TCKServer) void {
         if (self.client) |client| {
             client.deinit();
         }
     }
-    
     pub fn start(self: *TCKServer) !void {
         const address = try std.net.Address.parseIp("0.0.0.0", self.port);
-        
         var listener = address.listen(.{}) catch |err| switch (err) {
             error.AddressInUse => {
                 log.err("ERROR: Port {d} is already in use!", .{self.port});
@@ -59,37 +57,26 @@ pub const TCKServer = struct {
             },
         };
         defer listener.deinit();
-        
         log.info("SUCCESS: TCK Server listening on port {d}", .{self.port});
         log.info("LAUNCH: Ready to receive JSON-RPC requests", .{});
         log.info("INFO: Send JSON-RPC requests to http://localhost:{d}", .{self.port});
-        
         while (true) {
             const connection = try listener.accept();
             defer connection.stream.close();
-            
             try self.handleConnection(connection);
         }
     }
-    
     fn handleConnection(self: *TCKServer, connection: std.net.Server.Connection) !void {
-        // Read the HTTP request properly
-        var buffer: [10 * 1024 * 1024]u8 = undefined; // 10MB buffer
+        var buffer: [10 * 1024 * 1024]u8 = undefined; 
         var total_read: usize = 0;
         var headers_end: ?usize = null;
         var content_length: ?usize = null;
-        
-        // Read until we find the headers end
         while (headers_end == null and total_read < buffer.len) {
             const bytes_read = try connection.stream.read(buffer[total_read..]);
             if (bytes_read == 0) break;
             total_read += bytes_read;
-            
-            // Look for the end of headers
             if (std.mem.indexOf(u8, buffer[0..total_read], "\r\n\r\n")) |end_pos| {
                 headers_end = end_pos;
-                
-                // Parse Content-Length from headers
                 const headers = buffer[0..end_pos];
                 var lines = std.mem.splitSequence(u8, headers, "\r\n");
                 while (lines.next()) |line| {
@@ -102,21 +89,15 @@ pub const TCKServer = struct {
                 break;
             }
         }
-        
         if (headers_end == null) {
             try self.sendError(connection, "Invalid HTTP request - no headers end found");
             return;
         }
-        
         const headers_len = headers_end.? + 4;
         var body_len: usize = 0;
-        
-        // Calculate how much body we already have
         if (total_read > headers_len) {
             body_len = total_read - headers_len;
         }
-        
-        // Read remaining body if needed
         if (content_length) |expected_len| {
             while (body_len < expected_len and (headers_len + body_len) < buffer.len) {
                 const bytes_read = try connection.stream.read(buffer[headers_len + body_len..]);
@@ -124,17 +105,13 @@ pub const TCKServer = struct {
                 body_len += bytes_read;
             }
         }
-        
         if (body_len == 0) {
             try self.sendError(connection, "No request body found");
             return;
         }
-        
         const body = buffer[headers_len..headers_len + body_len];
         log.debug("Received raw request ({d} bytes total, {d} body bytes)", .{total_read, body_len});
         log.debug("Request body: {s}", .{body});
-        
-        // Parse JSON-RPC request
         var rpc_request = json_rpc.Request.parse(self.allocator, body) catch |err| {
             log.err("Failed to parse JSON-RPC request: {}", .{err});
             try self.sendJsonResponse(connection, json_rpc.Response.err(
@@ -146,18 +123,13 @@ pub const TCKServer = struct {
             return;
         };
         defer rpc_request.deinit(self.allocator);
-        
-        // Process the request
         const rpc_response = try self.processRequest(&rpc_request);
         defer {
             var resp = rpc_response;
             resp.deinit(self.allocator);
         }
-        
-        // Send response
         try self.sendJsonResponse(connection, rpc_response);
     }
-    
     fn processRequest(self: *TCKServer, request: *json_rpc.Request) !json_rpc.Response {
         const method = json_rpc.Method.fromString(request.method) orelse {
             log.warn("Method not found: {s}", .{request.method});
@@ -168,24 +140,16 @@ pub const TCKServer = struct {
                 request.id,
             );
         };
-        
         log.info("Processing method: {s}", .{request.method});
-        
-        // Route to appropriate service
         const result = switch (method) {
-            // SDK Service methods
             .setup => try sdk_service.setup(self.allocator, &self.client, request.params),
             .reset => try sdk_service.reset(self.allocator, &self.client, request.params),
-            
-            // Account Service methods
             .createAccount => try account_service.createAccount(self.allocator, self.client, request.params),
             .updateAccount => try account_service.updateAccount(self.allocator, self.client, request.params),
             .deleteAccount => try account_service.deleteAccount(self.allocator, self.client, request.params),
             .approveAllowance => try account_service.approveAllowance(self.allocator, self.client, request.params),
             .deleteAllowance => try account_service.deleteAllowance(self.allocator, self.client, request.params),
             .transferCrypto => try account_service.transferCrypto(self.allocator, self.client, request.params),
-            
-            // Token Service methods
             .createToken => try token_service.createToken(self.allocator, self.client, request.params),
             .updateToken => try token_service.updateToken(self.allocator, self.client, request.params),
             .deleteToken => try token_service.deleteToken(self.allocator, self.client, request.params),
@@ -205,37 +169,42 @@ pub const TCKServer = struct {
             .airdropToken => try token_service.airdropToken(self.allocator, self.client, request.params),
             .cancelAirdrop => try token_service.cancelAirdrop(self.allocator, self.client, request.params),
             .rejectToken => try token_service.rejectToken(self.allocator, self.client, request.params),
-            
-            // File Service methods
             .createFile => try file_service.createFile(self.allocator, self.client, request.params),
             .updateFile => try file_service.updateFile(self.allocator, self.client, request.params),
             .deleteFile => try file_service.deleteFile(self.allocator, self.client, request.params),
             .appendFile => try file_service.appendFile(self.allocator, self.client, request.params),
-            
-            // Topic Service methods
             .createTopic => try topic_service.createTopic(self.allocator, self.client, request.params),
             .updateTopic => try topic_service.updateTopic(self.allocator, self.client, request.params),
             .deleteTopic => try topic_service.deleteTopic(self.allocator, self.client, request.params),
             .submitTopicMessage => try topic_service.submitTopicMessage(self.allocator, self.client, request.params),
-            
-            // Contract Service methods
             .createContract => try contract_service.createContract(self.allocator, self.client, request.params),
             .updateContract => try contract_service.updateContract(self.allocator, self.client, request.params),
             .deleteContract => try contract_service.deleteContract(self.allocator, self.client, request.params),
             .executeContract => try contract_service.executeContract(self.allocator, self.client, request.params),
-            
-            // Key Service methods
             .generateKey => try key_service.generateKey(self.allocator, request.params),
+            .createSchedule => try schedule_service.createSchedule(self.allocator, self.client, request.params),
+            .signSchedule => try schedule_service.signSchedule(self.allocator, self.client, request.params),
+            .deleteSchedule => try schedule_service.deleteSchedule(self.allocator, self.client, request.params),
+            .getScheduleInfo => try schedule_service.getScheduleInfo(self.allocator, self.client, request.params),
+            .createNode => try node_service.createNode(self.allocator, self.client, request.params),
+            .updateNode => try node_service.updateNode(self.allocator, self.client, request.params),
+            .deleteNode => try node_service.deleteNode(self.allocator, self.client, request.params),
+            .getAccountInfo => try query_service.getAccountInfo(self.allocator, self.client, request.params),
+            .getAccountBalance => try query_service.getAccountBalance(self.allocator, self.client, request.params),
+            .getTokenInfo => std.json.Value{ .object = try utils.createErrorMap(self.allocator, "Not implemented") },
+            .getTokenBalance => try query_service.getTokenBalance(self.allocator, self.client, request.params),
+            .getFileInfo => try query_service.getFileInfo(self.allocator, self.client, request.params),
+            .getFileContents => try query_service.getFileContents(self.allocator, self.client, request.params),
+            .getTopicInfo => try query_service.getTopicInfo(self.allocator, self.client, request.params),
+            .getContractInfo => try query_service.getContractInfo(self.allocator, self.client, request.params),
+            .getTransactionRecord => std.json.Value{ .object = try utils.createErrorMap(self.allocator, "Not implemented") },
+            .getTransactionReceipt => std.json.Value{ .object = try utils.createErrorMap(self.allocator, "Not implemented") },
         };
-        
         return json_rpc.Response.success(self.allocator, result, request.id);
     }
-    
     fn sendJsonResponse(self: *TCKServer, connection: std.net.Server.Connection, rpc_response: json_rpc.Response) !void {
         const json_str = try rpc_response.stringify(self.allocator);
         defer self.allocator.free(json_str);
-        
-        // Create HTTP response
         const http_response = try std.fmt.allocPrint(self.allocator,
             "HTTP/1.1 200 OK\r\n" ++
             "Content-Type: application/json\r\n" ++
@@ -249,12 +218,9 @@ pub const TCKServer = struct {
             .{ json_str.len, json_str }
         );
         defer self.allocator.free(http_response);
-        
         _ = try connection.stream.writeAll(http_response);
-        
         log.debug("Sent response: {s}", .{json_str});
     }
-    
     fn sendError(self: *TCKServer, connection: std.net.Server.Connection, message: []const u8) !void {
         const http_response = try std.fmt.allocPrint(self.allocator,
             "HTTP/1.1 400 Bad Request\r\n" ++
@@ -266,29 +232,21 @@ pub const TCKServer = struct {
             .{ message.len, message }
         );
         defer self.allocator.free(http_response);
-        
         _ = try connection.stream.writeAll(http_response);
-        
         log.debug("Sent error: {s}", .{message});
     }
 };
-
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
-    
-    // Get port from environment or use default
     const port_str = std.process.getEnvVarOwned(allocator, "TCK_PORT") catch "8544";
     defer if (!std.mem.eql(u8, port_str, "8544")) allocator.free(port_str);
     const port = try std.fmt.parseInt(u16, port_str, 10);
-    
     log.info("Starting TCK Server", .{});
     log.info("Version: 1.0.0", .{});
-    
     var server = TCKServer.init(allocator, port);
     defer server.deinit();
-    
     server.start() catch |err| switch (err) {
         error.PortAlreadyInUse => {
             log.err(" Cannot start TCK server - port {d} is already in use.", .{port});

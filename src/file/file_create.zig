@@ -28,13 +28,22 @@ pub const FileCreateTransaction = struct {
     memo: ?[]const u8,
     
     pub fn init(allocator: std.mem.Allocator) FileCreateTransaction {
-        return FileCreateTransaction{
+        var tx = FileCreateTransaction{
             .base = Transaction.init(allocator),
             .expiration_time = null,
             .keys = std.ArrayList(Key).init(allocator),
             .contents = "",
             .memo = null,
         };
+        tx.base.buildTransactionBodyForNode = buildTransactionBodyForNode;
+        return tx;
+    }
+    
+    // Build transaction body for a specific node
+    fn buildTransactionBodyForNode(base_tx: *Transaction, node: @import("../core/id.zig").AccountId) anyerror![]u8 {
+        const self: *FileCreateTransaction = @fieldParentPtr("base", base_tx);
+        _ = node; // Node parameter not used in this implementation
+        return self.buildTransactionBody();
     }
     
     pub fn deinit(self: *FileCreateTransaction) void {
@@ -107,8 +116,8 @@ pub const FileCreateTransaction = struct {
     }
     
     // Freeze the transaction with a client
-    pub fn freezeWith(self: *FileCreateTransaction, client: *Client) !void {
-        try self.base.freezeWith(client);
+    pub fn freezeWith(self: *FileCreateTransaction, client: *Client) !*Transaction {
+        return try self.base.freezeWith(client);
     }
     
     // Sign the transaction
@@ -194,7 +203,7 @@ pub const FileCreateTransaction = struct {
         
         // contents = 4
         if (self.contents.len > 0) {
-            try create_writer.writeBytes(4, self.contents);
+            try create_writer.writeMessage(4, self.contents);
         }
         
         // memo = 5

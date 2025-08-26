@@ -60,8 +60,8 @@ pub const AccountDeleteTransaction = struct {
     }
 
     // Execute the transaction
-    pub fn freezeWith(self: *AccountDeleteTransaction, client: ?*Client) !void {
-        _ = try self.base.freezeWith(client);
+    pub fn freezeWith(self: *AccountDeleteTransaction, client: ?*Client) !*Transaction {
+        return try self.base.freezeWith(client);
     }
 
     // Sign the transaction with a private key

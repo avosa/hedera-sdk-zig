@@ -35,7 +35,7 @@ pub const ContractCreateFlow = struct {
             .bytecode = &[_]u8{},
             .gas = 100000,
             .initial_balance = Hbar.init(0),
-            .auto_renew_period = Duration.init(131500 * 60), // 131500 minutes default
+            .auto_renew_period = Duration.init(7776000), // 90 days
             .parameters = &[_]u8{},
             .node_account_ids = std.ArrayList(AccountId).init(allocator),
             .create_bytecode = &[_]u8{},
@@ -114,13 +114,6 @@ pub const ContractCreateFlow = struct {
         self.auto_renew_period = period;
         return self;
     }
-    
-    // Set proxy account ID (deprecated)
-    pub fn setProxyAccountId(self: *ContractCreateFlow, proxy_account_id: AccountId) !*ContractCreateFlow {
-        self.proxy_account_id = proxy_account_id;
-        return self;
-    }
-    
     // Set constructor parameters
     pub fn setConstructorParameters(self: *ContractCreateFlow, params: *ContractFunctionParameters) !*ContractCreateFlow {
         if (self.parameters.len > 0) self.allocator.free(self.parameters);

@@ -73,7 +73,7 @@ pub const BatchTransaction = @import("transaction/batch_transaction.zig").BatchT
 
 // Node Management operations
 pub const NodeCreateTransaction = @import("node/node_create_transaction.zig").NodeCreateTransaction;
-// ServiceEndpoint is defined below in managed_node.zig
+pub const NodeServiceEndpoint = @import("node/node_create_transaction.zig").ServiceEndpoint;
 
 // LiveHash operations for cryptographic proofs
 pub const LiveHashAddTransaction = @import("crypto/live_hash.zig").LiveHashAddTransaction;
@@ -83,6 +83,7 @@ pub const LiveHash = @import("crypto/live_hash.zig").LiveHash;
 // Query base
 pub const Query = @import("query/query.zig").Query;
 pub const QueryResponse = @import("query/query.zig").QueryResponse;
+pub const CostQuery = @import("query/cost_query.zig").CostQuery;
 
 // Account operations
 pub const AccountCreateTransaction = @import("account/account_create.zig").AccountCreateTransaction;
@@ -166,7 +167,10 @@ pub const TokenCancelAirdropTransaction = @import("token/token_cancel_airdrop_tr
 pub const TokenClaimAirdropTransaction = @import("token/token_claim_airdrop_transaction.zig").TokenClaimAirdropTransaction;
 pub const TokenRejectTransaction = @import("token/token_reject_transaction.zig").TokenRejectTransaction;
 pub const TokenUpdateNftsTransaction = @import("token/token_update_nfts_transaction.zig").TokenUpdateNftsTransaction;
-pub const PendingAirdropId = @import("token/token_cancel_airdrop_transaction.zig").PendingAirdropId;
+pub const PendingAirdropId = @import("token/pending_airdrop_id.zig").PendingAirdropId;
+pub const AirdropPendingTransaction = @import("token/airdrop_pending_transaction.zig").AirdropPendingTransaction;
+pub const AbstractTokenTransferTransaction = @import("token/abstract_token_transfer_transaction.zig").AbstractTokenTransferTransaction;
+pub const TokenTransferList = @import("token/abstract_token_transfer_transaction.zig").TokenTransferList;
 pub const TokenReference = @import("token/token_reject_transaction.zig").TokenReference;
 
 // Smart contract operations
@@ -596,6 +600,10 @@ pub fn tokenRejectTransaction(allocator: std.mem.Allocator) TokenRejectTransacti
     return TokenRejectTransaction.init(allocator);
 }
 
+pub fn airdropPendingTransaction(allocator: std.mem.Allocator) AirdropPendingTransaction {
+    return AirdropPendingTransaction.init(allocator);
+}
+
 // File operations constructors
 pub fn fileCreateTransaction(allocator: std.mem.Allocator) FileCreateTransaction {
     return FileCreateTransaction.init(allocator);
@@ -822,6 +830,10 @@ pub fn mirrorNodeContractCallQuery(allocator: std.mem.Allocator) MirrorNodeContr
 
 pub fn mirrorNodeContractEstimateGasQuery(allocator: std.mem.Allocator) MirrorNodeContractEstimateGasQuery {
     return MirrorNodeContractEstimateGasQuery.init(allocator);
+}
+
+pub fn costQuery(allocator: std.mem.Allocator) CostQuery {
+    return CostQuery.init(allocator);
 }
 
 test "basic initialization" {

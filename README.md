@@ -1,6 +1,6 @@
 # Hedera SDK for Zig
 
-The **first** Hedera SDK implementation in Zig. This project is under active development and continues to evolve. It is being built with reference to the [Hedera Technology Compatibility Kit (TCK)](https://github.com/hiero-ledger/hiero-sdk-tck) to help ensure consistency with other official SDKs. Use with care in real-world applications.
+This is Hedera SDK implementation in Zig. This project is under active development and continues to evolve. It is being built with reference to the [Hedera Technology Compatibility Kit (TCK)](https://github.com/hiero-ledger/hiero-sdk-tck) to help ensure consistency with other official SDKs. Use with care in real-world applications.
 
 ## Current Features
 
@@ -56,7 +56,7 @@ zig build test --summary all
 
 ## Breaking Changes
 
-This project is moving quickly, and the API surface may change as new features are introduced or improved. Expect **breaking changes between releases** until the API stabilizes. Please check release notes and update your code accordingly when upgrading.
+This project is moving quickly, and the SDK surface may change as new features are introduced or improved. Expect **breaking changes between releases** until the SDK stabilizes. Please check release notes and update your code accordingly when upgrading.
 
 ## License
 
@@ -75,4 +75,4 @@ For issues, feature requests, or questions:
 
 ---
 
-**Note**: This is the first Hedera SDK for Zig. It is under active development and evolving quickly. While compatibility with the [Hedera Technology Compatibility Kit (TCK)](https://github.com/hiero-ledger/hiero-sdk-tck) is a core goal, please use it thoughtfully and validate thoroughly in your environment before relying on it for critical workloads.
+**Note**: This SDK brings Hedera to Zig for the first time. It is under active development and evolving quickly. While compatibility with the [Hedera Technology Compatibility Kit](https://github.com/hiero-ledger/hiero-sdk-tck) is a core goal, please use it thoughtfully and validate thoroughly in your environment before relying on it for critical workloads.

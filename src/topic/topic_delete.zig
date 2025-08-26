@@ -55,13 +55,13 @@ pub const TopicDeleteTransaction = struct {
     
     // FreezeWith prepares the transaction for execution with a client
     pub fn freezeWith(self: *TopicDeleteTransaction, client: ?*Client) !*TopicDeleteTransaction {
-        try self.transaction.freezeWith(client);
+        _ = try self.transaction.freezeWith(client);
         return self;
     }
     
     // Sign signs the transaction
-    pub fn sign(self: *TopicDeleteTransaction, private_key: anytype) *TopicDeleteTransaction {
-        self.transaction.sign(private_key);
+    pub fn sign(self: *TopicDeleteTransaction, private_key: anytype) !*TopicDeleteTransaction {
+        _ = try self.transaction.sign(private_key);
         return self;
     }
     

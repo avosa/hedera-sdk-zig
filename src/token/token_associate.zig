@@ -20,11 +20,20 @@ pub const TokenAssociateTransaction = struct {
     token_ids: std.ArrayList(TokenId),
     
     pub fn init(allocator: std.mem.Allocator) TokenAssociateTransaction {
-        return TokenAssociateTransaction{
+        var transaction = TokenAssociateTransaction{
             .base = Transaction.init(allocator),
             .account_id = null,
             .token_ids = std.ArrayList(TokenId).init(allocator),
         };
+        transaction.base.buildTransactionBodyForNode = buildTransactionBodyForNode;
+        transaction.base.grpc_service_name = "proto.TokenService";
+        transaction.base.grpc_method_name = "associateTokens";
+        return transaction;
+    }
+    
+    fn buildTransactionBodyForNode(base_tx: *Transaction, _: AccountId) anyerror![]u8 {
+        const self: *TokenAssociateTransaction = @fieldParentPtr("base", base_tx);
+        return self.buildTransactionBody();
     }
     
     pub fn deinit(self: *TokenAssociateTransaction) void {
@@ -91,13 +100,13 @@ pub const TokenAssociateTransaction = struct {
     }
     
     // Freeze the transaction with client for execution
-    pub fn freezeWith(self: *TokenAssociateTransaction, client: *Client) !void {
-        try self.base.freezeWith(client);
+    pub fn freezeWith(self: *TokenAssociateTransaction, client: *Client) !*Transaction {
+        return try self.base.freezeWith(client);
     }
     
     // Sign the transaction with a private key
     pub fn sign(self: *TokenAssociateTransaction, private_key: anytype) !void {
-        try self.base.sign(private_key);
+        _ = try self.base.sign(private_key);
     }
     
     // Execute the transaction
@@ -141,9 +150,9 @@ pub const TokenAssociateTransaction = struct {
         for (self.token_ids.items) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(token.shard));
-            try token_writer.writeInt64(2, @intCast(token.realm));
-            try token_writer.writeInt64(3, @intCast(token.num));
+            try token_writer.writeInt64(1, @intCast(token.entity.shard));
+            try token_writer.writeInt64(2, @intCast(token.entity.realm));
+            try token_writer.writeInt64(3, @intCast(token.entity.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try associate_writer.writeMessage(2, token_bytes);

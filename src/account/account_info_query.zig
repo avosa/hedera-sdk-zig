@@ -496,7 +496,7 @@ pub const AccountInfoQuery = struct {
     node_account_ids: std.ArrayList(AccountId),
     
     pub fn init(allocator: std.mem.Allocator) AccountInfoQuery {
-        return AccountInfoQuery{
+        var query = AccountInfoQuery{
             .base = Query.init(allocator),
             .account_id = null,
             .max_retry = 3,
@@ -504,6 +504,10 @@ pub const AccountInfoQuery = struct {
             .min_backoff = Duration.fromMillis(250),
             .node_account_ids = std.ArrayList(AccountId).init(allocator),
         };
+        query.base.grpc_service_name = "proto.CryptoService";
+        query.base.grpc_method_name = "getAccountInfo";
+        query.base.is_payment_required = true;
+        return query;
     }
     
     pub fn deinit(self: *AccountInfoQuery) void {
@@ -559,7 +563,12 @@ pub const AccountInfoQuery = struct {
             return error.AccountIdRequired;
         }
         
-        const response = try self.base.execute(client);
+        // Build the query bytes directly
+        const query_bytes = try self.buildQuery();
+        defer self.base.allocator.free(query_bytes);
+        
+        // Execute with the built bytes
+        const response = try self.base.executeWithBytes(client, query_bytes);
         return try self.parseResponse(response);
     }
     
@@ -592,28 +601,26 @@ pub const AccountInfoQuery = struct {
         var writer = ProtoWriter.init(self.base.allocator);
         defer writer.deinit();
         
-        // Query message structure
-        // header = 1
-        var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
-        
-        // payment = 1
-        if (self.base.payment_transaction) |payment| {
-            try header_writer.writeMessage(1, payment);
-        }
-        
-        // responseType = 2
-        try header_writer.writeInt32(2, @intFromEnum(self.base.response_type));
-        
-        const header_bytes = try header_writer.toOwnedSlice();
-        defer self.base.allocator.free(header_bytes);
-        try writer.writeMessage(1, header_bytes);
-        
-        // cryptoGetInfo = 9 (oneof query)
+        // cryptoGetInfo = 11 (oneof query)
         var info_query_writer = ProtoWriter.init(self.base.allocator);
         defer info_query_writer.deinit();
         
-        // accountID = 1
+        // header = 1 (inside the specific query)
+        var header_writer = ProtoWriter.init(self.base.allocator);
+        defer header_writer.deinit();
+        
+        // payment = 1 (optional)
+        // Payment handling will be added when needed
+        
+        // responseType = 2 (must be present even if 0)
+        try header_writer.writeTag(2, .Varint);
+        try header_writer.writeVarint(@as(u64, @intCast(@intFromEnum(self.base.response_type))));
+        
+        const header_bytes = try header_writer.toOwnedSlice();
+        defer self.base.allocator.free(header_bytes);
+        try info_query_writer.writeMessage(1, header_bytes);
+        
+        // accountID = 2
         if (self.account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
@@ -622,19 +629,21 @@ pub const AccountInfoQuery = struct {
             try account_writer.writeInt64(3, @intCast(account.account));
             
             if (account.alias_key) |alias| {
-                try account_writer.writeString(4, alias);
-            } else if (account.evm_address) |evm| {
+                const alias_bytes = try alias.toBytes(self.base.allocator);
+                defer self.base.allocator.free(alias_bytes);
+                try account_writer.writeString(4, alias_bytes);
+            } else if (account.alias_evm_address) |evm| {
                 try account_writer.writeString(4, evm);
             }
             
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
-            try info_query_writer.writeMessage(1, account_bytes);
+            try info_query_writer.writeMessage(2, account_bytes);
         }
         
         const info_query_bytes = try info_query_writer.toOwnedSlice();
         defer self.base.allocator.free(info_query_bytes);
-        try writer.writeMessage(9, info_query_bytes);
+        try writer.writeMessage(11, info_query_bytes);
         
         return writer.toOwnedSlice();
     }

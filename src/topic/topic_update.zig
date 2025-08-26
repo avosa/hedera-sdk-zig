@@ -46,7 +46,7 @@ pub const TopicUpdateTransaction = struct {
         };
         
         // Set default auto renew period
-        _ = self.setAutoRenewPeriod(Duration{ .seconds = 7890000, .nanos = 0 }) catch return error.InvalidParameter;
+        _ = self.setAutoRenewPeriod(Duration{ .seconds = 7776000, .nanos = 0 }) catch return error.InvalidParameter; // 90 days
         
         return self;
     }
@@ -259,13 +259,13 @@ pub const TopicUpdateTransaction = struct {
     
     // FreezeWith prepares the transaction for execution with a client
     pub fn freezeWith(self: *TopicUpdateTransaction, client: ?*Client) !*TopicUpdateTransaction {
-        try self.transaction.freezeWith(client);
+        _ = try self.transaction.freezeWith(client);
         return self;
     }
     
     // Sign signs the transaction
-    pub fn sign(self: *TopicUpdateTransaction, private_key: anytype) *TopicUpdateTransaction {
-        self.transaction.sign(private_key);
+    pub fn sign(self: *TopicUpdateTransaction, private_key: anytype) !*TopicUpdateTransaction {
+        _ = try self.transaction.sign(private_key);
         return self;
     }
     

@@ -15,11 +15,20 @@ pub const TokenGrantKycTransaction = struct {
     account_id: ?AccountId,
 
     pub fn init(allocator: std.mem.Allocator) TokenGrantKycTransaction {
-        return TokenGrantKycTransaction{
+        var transaction = TokenGrantKycTransaction{
             .base = Transaction.init(allocator),
             .token_id = null,
             .account_id = null,
         };
+        transaction.base.buildTransactionBodyForNode = buildTransactionBodyForNode;
+        transaction.base.grpc_service_name = "proto.TokenService";
+        transaction.base.grpc_method_name = "grantKycToTokenAccount";
+        return transaction;
+    }
+    
+    fn buildTransactionBodyForNode(base_tx: *Transaction, _: AccountId) anyerror![]u8 {
+        const self: *TokenGrantKycTransaction = @fieldParentPtr("base", base_tx);
+        return self.buildTransactionBody();
     }
 
     pub fn deinit(self: *TokenGrantKycTransaction) void {
@@ -47,6 +56,16 @@ pub const TokenGrantKycTransaction = struct {
 
     pub fn getAccountId(self: *const TokenGrantKycTransaction) ?AccountId {
         return self.account_id;
+    }
+
+    // Freeze the transaction with client for execution
+    pub fn freezeWith(self: *TokenGrantKycTransaction, client: *Client) !*Transaction {
+        return try self.base.freezeWith(client);
+    }
+    
+    // Sign the transaction with a private key
+    pub fn sign(self: *TokenGrantKycTransaction, private_key: anytype) !void {
+        _ = try self.base.sign(private_key);
     }
 
     // Execute the transaction
@@ -78,9 +97,9 @@ pub const TokenGrantKycTransaction = struct {
         if (self.token_id) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
-            try token_writer.writeInt64(1, @intCast(token.shard));
-            try token_writer.writeInt64(2, @intCast(token.realm));
-            try token_writer.writeInt64(3, @intCast(token.num));
+            try token_writer.writeInt64(1, @intCast(token.entity.shard));
+            try token_writer.writeInt64(2, @intCast(token.entity.realm));
+            try token_writer.writeInt64(3, @intCast(token.entity.num));
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try kyc_writer.writeMessage(1, token_bytes);

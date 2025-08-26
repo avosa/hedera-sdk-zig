@@ -457,7 +457,7 @@ test "Query builder pattern" {
     // Verify all settings
     try testing.expectEqual(@as(u64, 1234), query.account_id.?.account);
     try testing.expectEqual(@as(i64, 100_000_000), query.payment().?.toTinybars());
-    try testing.expectEqual(@as(u32, 3), query.max_retry());
+    try testing.expectEqual(@as(u32, 3), query.maxRetry());
     try testing.expectEqual(@as(i64, 8), query.max_backoff.seconds);
 }
 

@@ -151,8 +151,8 @@ pub const AccountAllowanceApproveTransaction = struct {
     }
 
     // Execute the transaction
-    pub fn freezeWith(self: *AccountAllowanceApproveTransaction, client: ?*Client) !void {
-        try self.base.freezeWith(client);
+    pub fn freezeWith(self: *AccountAllowanceApproveTransaction, client: ?*Client) !*Transaction {
+        return try self.base.freezeWith(client);
     }
 
     pub fn execute(self: *AccountAllowanceApproveTransaction, client: *Client) !TransactionResponse {

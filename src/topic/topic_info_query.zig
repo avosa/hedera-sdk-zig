@@ -9,6 +9,7 @@ const QueryResponse = @import("../query/query.zig").QueryResponse;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
+const WireType = @import("../protobuf/encoding.zig").WireType;
 const Hbar = @import("../core/hbar.zig").Hbar;
 
 // TopicInfo contains information about a consensus topic
@@ -35,7 +36,7 @@ pub const TopicInfo = struct {
     
     pub fn init(allocator: std.mem.Allocator) TopicInfo {
         return TopicInfo{
-            .topic_id = TopicId.init(0, 0, 0),
+            .topic_id = TopicId{ .entity = .{ .shard = 0, .realm = 0, .num = 0 } },
             .memo = "",
             .topic_memo = "",
             .running_hash = "",
@@ -76,10 +77,14 @@ pub const TopicInfoQuery = struct {
     topic_id: ?TopicId,
     
     pub fn init(allocator: std.mem.Allocator) TopicInfoQuery {
-        return TopicInfoQuery{
+        var query = TopicInfoQuery{
             .base = Query.init(allocator),
             .topic_id = null,
         };
+        query.base.grpc_service_name = "proto.ConsensusService";
+        query.base.grpc_method_name = "getTopicInfo";
+        query.base.is_payment_required = true;
+        return query;
     }
     
     pub fn deinit(self: *TopicInfoQuery) void {
@@ -104,7 +109,12 @@ pub const TopicInfoQuery = struct {
             return error.TopicIdRequired;
         }
         
-        const response = try self.base.execute(client);
+        // Build the query bytes directly
+        const query_bytes = try self.buildQuery();
+        defer self.base.allocator.free(query_bytes);
+        
+        // Execute with the built bytes
+        const response = try self.base.executeWithBytes(client, query_bytes);
         return try self.parseResponse(response);
     }
     
@@ -135,42 +145,38 @@ pub const TopicInfoQuery = struct {
         var writer = ProtoWriter.init(self.base.allocator);
         defer writer.deinit();
         
-        // Query message structure
-        // header = 1
-        var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
-        
-        // payment = 1
-        if (self.base.payment_transaction) |payment| {
-            try header_writer.writeMessage(1, payment);
-        }
-        
-        // responseType = 2
-        try header_writer.writeInt32(2, @intFromEnum(self.base.response_type));
-        
-        const header_bytes = try header_writer.toOwnedSlice();
-        defer self.base.allocator.free(header_bytes);
-        try writer.writeMessage(1, header_bytes);
-        
-        // consensusGetTopicInfo = 18 (oneof query)
+        // consensusGetTopicInfo = 150 (oneof query)
         var info_query_writer = ProtoWriter.init(self.base.allocator);
         defer info_query_writer.deinit();
         
-        // topicID = 1
+        // header = 1 (inside the specific query)
+        var header_writer = ProtoWriter.init(self.base.allocator);
+        defer header_writer.deinit();
+        
+        // payment = 1 (optional)
+        // responseType = 2 (must be present even if 0)
+        try header_writer.writeTag(2, .Varint);
+        try header_writer.writeVarint(@as(u64, @intCast(@intFromEnum(self.base.response_type))));
+        
+        const header_bytes = try header_writer.toOwnedSlice();
+        defer self.base.allocator.free(header_bytes);
+        try info_query_writer.writeMessage(1, header_bytes);
+        
+        // topicID = 2
         if (self.topic_id) |topic| {
             var topic_writer = ProtoWriter.init(self.base.allocator);
             defer topic_writer.deinit();
-            try topic_writer.writeInt64(1, @intCast(topic.shard));
-            try topic_writer.writeInt64(2, @intCast(topic.realm));
-            try topic_writer.writeInt64(3, @intCast(topic.num));
+            try topic_writer.writeInt64(1, @intCast(topic.entity.shard));
+            try topic_writer.writeInt64(2, @intCast(topic.entity.realm));
+            try topic_writer.writeInt64(3, @intCast(topic.entity.num));
             const topic_bytes = try topic_writer.toOwnedSlice();
             defer self.base.allocator.free(topic_bytes);
-            try info_query_writer.writeMessage(1, topic_bytes);
+            try info_query_writer.writeMessage(2, topic_bytes);
         }
         
         const info_query_bytes = try info_query_writer.toOwnedSlice();
         defer self.base.allocator.free(info_query_bytes);
-        try writer.writeMessage(18, info_query_bytes);
+        try writer.writeMessage(150, info_query_bytes);
         
         return writer.toOwnedSlice();
     }
@@ -182,7 +188,7 @@ pub const TopicInfoQuery = struct {
         var reader = ProtoReader.init(response.response_bytes);
         
         var info = TopicInfo{
-            .topic_id = TopicId.init(0, 0, 0),
+            .topic_id = TopicId{ .entity = .{ .shard = 0, .realm = 0, .num = 0 } },
             .memo = "",
             .topic_memo = "",
             .running_hash = "",
@@ -190,7 +196,7 @@ pub const TopicInfoQuery = struct {
             .expiration_time = Timestamp{ .seconds = 0, .nanos = 0 },
             .admin_key = null,
             .submit_key = null,
-            .auto_renew_period = Duration{ .seconds = 0 },
+            .auto_renew_period = Duration{ .seconds = 0, .nanos = 0 },
             .auto_renew_account = null,
             .ledger_id = "",
             .owns_memo = false,
@@ -228,7 +234,7 @@ pub const TopicInfoQuery = struct {
                         }
                     }
                     
-                    info.topic_id = TopicId.init(@intCast(shard), @intCast(realm), @intCast(num));
+                    info.topic_id = TopicId{ .entity = .{ .shard = @intCast(shard), .realm = @intCast(realm), .num = @intCast(num) } };
                 },
                 3 => {
                     info.topic_memo = try self.base.allocator.dupe(u8, try reader.readString());
@@ -258,12 +264,12 @@ pub const TopicInfoQuery = struct {
                 7 => {
                     // adminKey
                     const key_bytes = try reader.readMessage();
-                    info.admin_key = try Key.fromProtobuf(key_bytes, self.base.allocator);
+                    info.admin_key = try Key.fromProtobuf(self.base.allocator, key_bytes);
                 },
                 8 => {
                     // submitKey
                     const key_bytes = try reader.readMessage();
-                    info.submit_key = try Key.fromProtobuf(key_bytes, self.base.allocator);
+                    info.submit_key = try Key.fromProtobuf(self.base.allocator, key_bytes);
                 },
                 9 => {
                     // autoRenewPeriod

@@ -627,7 +627,7 @@ pub const ContractInfoQuery = struct {
                             4 => {
                                 // adminKey
                                 const key_bytes = try contract_reader.readMessage();
-                                info.admin_key = try Key.fromProtobuf(key_bytes, self.base.allocator);
+                                info.admin_key = try Key.fromProtobuf(self.base.allocator, key_bytes);
                             },
                             5 => {
                                 // expirationTime

@@ -7,7 +7,7 @@ const Transaction = @import("../transaction/transaction.zig").Transaction;
 const TransactionResponse = @import("../transaction/transaction_response.zig").TransactionResponse;
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
-const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
+const ProtoWriter = @import("../protobuf/writer.zig").ProtoWriter;
 const errors = @import("../core/errors.zig");
 const HederaError = errors.HederaError;
   
@@ -122,6 +122,26 @@ pub const TokenTransfer = struct {
             .transfers = std.ArrayList(AccountAmount).init(allocator),
         };
     }
+    
+    pub fn toProtobuf(self: *const TokenTransfer, allocator: std.mem.Allocator) ![]u8 {
+        var writer = ProtoWriter.init(allocator);
+        defer writer.deinit();
+        
+        // accountID = 1
+        const account_bytes = try self.account_id.toProtobuf(allocator);
+        defer allocator.free(account_bytes);
+        try writer.writeMessage(1, account_bytes);
+        
+        // amount = 2
+        try writer.writeInt64(2, self.amount);
+        
+        // isApproval = 3
+        if (self.is_approved) {
+            try writer.writeBool(3, self.is_approved);
+        }
+        
+        return writer.toOwnedSlice();
+    }
 };
 
 // NftTransfer represents an NFT transfer
@@ -147,6 +167,31 @@ pub const NftTransfer = struct {
             .receiver_account_id = receiver,
             .is_approved = true,
         };
+    }
+    
+    pub fn toProtobuf(self: *const NftTransfer, allocator: std.mem.Allocator) ![]u8 {
+        var writer = ProtoWriter.init(allocator);
+        defer writer.deinit();
+        
+        // senderAccountID = 1
+        const sender_bytes = try self.sender_account_id.toProtobuf(allocator);
+        defer allocator.free(sender_bytes);
+        try writer.writeMessage(1, sender_bytes);
+        
+        // receiverAccountID = 2
+        const receiver_bytes = try self.receiver_account_id.toProtobuf(allocator);
+        defer allocator.free(receiver_bytes);
+        try writer.writeMessage(2, receiver_bytes);
+        
+        // serialNumber = 3
+        try writer.writeInt64(3, @intCast(self.nft_id.serial_number));
+        
+        // isApproval = 4
+        if (self.is_approved) {
+            try writer.writeBool(4, self.is_approved);
+        }
+        
+        return writer.toOwnedSlice();
     }
 };
 
@@ -525,7 +570,7 @@ pub const TransferTransaction = struct {
                 
                 // expected_decimals = 3
                 if (self.token_decimals.get(entry.key_ptr.*)) |decimals| {
-                    try token_list_writer.writeUint32(3, decimals);
+                    try token_list_writer.writeUint32Field(3, decimals);
                 }
                 
                 const token_list_bytes = try token_list_writer.toOwnedSlice();
@@ -678,7 +723,7 @@ pub const TransferTransaction = struct {
         
         // memo = 5
         if (self.base.transaction_memo.len > 0) {
-            try writer.writeString(5, self.base.transaction_memo);
+            try writer.writeStringField(5, self.base.transaction_memo);
         }
     }
     

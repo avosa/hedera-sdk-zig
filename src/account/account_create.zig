@@ -175,6 +175,56 @@ pub const AccountCreateTransaction = struct {
         return error.InvalidAlias;
     }
     
+    // Get key
+    pub fn getKey(self: *const Self) ?Key {
+        return self.key;
+    }
+    
+    // Get initial balance
+    pub fn getInitialBalance(self: *const Self) Hbar {
+        return self.initial_balance;
+    }
+    
+    // Get receiver signature required
+    pub fn getReceiverSignatureRequired(self: *const Self) bool {
+        return self.receiver_signature_required;
+    }
+    
+    // Get auto renew period
+    pub fn getAutoRenewPeriod(self: *const Self) Duration {
+        return self.auto_renew_period;
+    }
+    
+    // Get account memo
+    pub fn getAccountMemo(self: *const Self) []const u8 {
+        return self.memo;
+    }
+    
+    // Get max automatic token associations
+    pub fn getMaxAutomaticTokenAssociations(self: *const Self) i32 {
+        return self.max_automatic_token_associations;
+    }
+    
+    // Get staked account ID
+    pub fn getStakedAccountId(self: *const Self) ?AccountId {
+        return self.staked_account_id;
+    }
+    
+    // Get staked node ID
+    pub fn getStakedNodeId(self: *const Self) ?i64 {
+        return self.staked_node_id;
+    }
+    
+    // Get decline staking rewards
+    pub fn getDeclineStakingRewards(self: *const Self) bool {
+        return self.decline_staking_reward;
+    }
+    
+    // Get alias
+    pub fn getAlias(self: *const Self) ?[]const u8 {
+        return self.alias;
+    }
+    
     // Build transaction body for a specific node
     pub fn buildTransactionBodyForNode(self: *Self, node: AccountId) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
@@ -263,8 +313,6 @@ pub const AccountCreateTransaction = struct {
         
         // initialBalance = 2
         try writer.writeUint64(2, @intCast(self.initial_balance.toTinybars()));
-        
-        // proxyAccountID = 3 (field 3 reserved)
         
         // sendRecordThreshold = 6
         try writer.writeUint64(6, @intCast(self.send_record_threshold.toTinybars()));

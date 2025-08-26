@@ -72,8 +72,8 @@ pub const AccountAllowanceDeleteTransaction = struct {
     }
     
     // Execute the transaction
-    pub fn freezeWith(self: *AccountAllowanceDeleteTransaction, client: ?*Client) !void {
-        try self.base.freezeWith(client);
+    pub fn freezeWith(self: *AccountAllowanceDeleteTransaction, client: ?*Client) !*Transaction {
+        return try self.base.freezeWith(client);
     }
     
     pub fn execute(self: *AccountAllowanceDeleteTransaction, client: *Client) !TransactionResponse {

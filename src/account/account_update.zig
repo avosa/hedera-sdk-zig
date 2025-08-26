@@ -25,7 +25,6 @@ pub const AccountUpdateTransaction = struct {
     decline_staking_reward: ?bool,
     staked_account_id: ?AccountId,
     staked_node_id: ?i64,
-    proxy_account_id: ?AccountId,
     
     pub fn init(allocator: std.mem.Allocator) AccountUpdateTransaction {
         var tx = AccountUpdateTransaction{
@@ -41,10 +40,9 @@ pub const AccountUpdateTransaction = struct {
             .decline_staking_reward = null,
             .staked_account_id = null,
             .staked_node_id = null,
-            .proxy_account_id = null,
         };
-        // Set default auto renew period to 7890000 seconds
-        tx.auto_renew_period = Duration{ .seconds = 7890000, .nanos = 0 };
+        // Set default auto renew period to 90 days
+        tx.auto_renew_period = Duration{ .seconds = 7776000, .nanos = 0 };
         return tx;
     }
     
@@ -74,7 +72,7 @@ pub const AccountUpdateTransaction = struct {
         return self.key;
     }
     
-    // Set alias key (deprecated but maintained for uniformity)
+    // Set alias key
     pub fn setAliasKey(self: *AccountUpdateTransaction, alias: PublicKey) !*AccountUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.alias_key = alias;
@@ -200,20 +198,9 @@ pub const AccountUpdateTransaction = struct {
         return self;
     }
     
-    // Set proxy account ID (deprecated but still supported)
-    pub fn setProxyAccountId(self: *AccountUpdateTransaction, proxy_id: AccountId) !*AccountUpdateTransaction {
-        if (self.base.frozen) return error.TransactionFrozen;
-        self.proxy_account_id = proxy_id;
-        return self;
-    }
-    
-    pub fn getProxyAccountID(self: *const AccountUpdateTransaction) AccountId {
-        return self.proxy_account_id orelse AccountId{};
-    }
-    
     // Execute the transaction
-    pub fn freezeWith(self: *AccountUpdateTransaction, client: ?*Client) !void {
-        _ = try self.base.freezeWith(client);
+    pub fn freezeWith(self: *AccountUpdateTransaction, client: ?*Client) !*Transaction {
+        return try self.base.freezeWith(client);
     }
     
     pub fn execute(self: *AccountUpdateTransaction, client: *Client) !TransactionResponse {
@@ -249,18 +236,6 @@ pub const AccountUpdateTransaction = struct {
             const key_bytes = try key.toProtobuf(self.base.allocator);
             defer self.base.allocator.free(key_bytes);
             try update_writer.writeMessage(3, key_bytes);
-        }
-        
-        // proxyAccountID = 4 (deprecated)
-        if (self.proxy_account_id) |proxy| {
-            var proxy_writer = ProtoWriter.init(self.base.allocator);
-            defer proxy_writer.deinit();
-            try proxy_writer.writeInt64(1, @intCast(proxy.shard));
-            try proxy_writer.writeInt64(2, @intCast(proxy.realm));
-            try proxy_writer.writeInt64(3, @intCast(proxy.account));
-            const proxy_bytes = try proxy_writer.toOwnedSlice();
-            defer self.base.allocator.free(proxy_bytes);
-            try update_writer.writeMessage(4, proxy_bytes);
         }
         
         // autoRenewPeriod = 6

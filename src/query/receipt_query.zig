@@ -70,7 +70,9 @@ pub const TransactionReceiptQuery = struct {
             .include_children = false,
             .include_duplicates = false,
         };
-        query.base.is_payment_required = false; // Receipts are free
+        query.base.grpc_service_name = "proto.CryptoService";
+        query.base.grpc_method_name = "getTransactionReceipts";
+        query.base.is_payment_required = false;
         return query;
     }
     

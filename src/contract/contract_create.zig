@@ -22,7 +22,6 @@ pub const ContractCreateTransaction = struct {
     admin_key: ?Key,
     gas: i64,
     initial_balance: Hbar,
-    proxy_account_id: ?AccountId,
     auto_renew_period: Duration,
     constructor_parameters: []const u8,
     memo: []const u8,
@@ -40,8 +39,7 @@ pub const ContractCreateTransaction = struct {
             .admin_key = null,
             .gas = 100000,
             .initial_balance = Hbar.zero(),
-            .proxy_account_id = null,
-            .auto_renew_period = Duration{ .seconds = 7890000, .nanos = 0 }, // 131500 minutes
+            .auto_renew_period = Duration{ .seconds = 7776000, .nanos = 0 }, // 90 days
             .constructor_parameters = "",
             .memo = "",
             .max_automatic_token_associations = 0,
@@ -51,12 +49,22 @@ pub const ContractCreateTransaction = struct {
             .decline_staking_reward = false,
         };
         
-        // Set default auto-renew period to 131500 minutes
-        tx.auto_renew_period = Duration{ .seconds = 131500 * 60, .nanos = 0 };
+        // Set default auto-renew period to 90 days
+        tx.auto_renew_period = Duration{ .seconds = 7776000, .nanos = 0 };
         // Set default max transaction fee to 20 Hbar
         tx.base.max_transaction_fee = Hbar.from(20) catch Hbar.zero();
         
+        // Set up transaction routing
+        tx.base.buildTransactionBodyForNode = buildTransactionBodyForNode;
+        tx.base.grpc_service_name = "proto.SmartContractService";
+        tx.base.grpc_method_name = "createContract";
+        
         return tx;
+    }
+    
+    fn buildTransactionBodyForNode(base_tx: *Transaction, _: AccountId) anyerror![]u8 {
+        const self: *ContractCreateTransaction = @fieldParentPtr("base", base_tx);
+        return self.buildTransactionBody();
     }
     
     pub fn deinit(self: *ContractCreateTransaction) void {
@@ -125,18 +133,6 @@ pub const ContractCreateTransaction = struct {
         return self.initial_balance;
     }
     
-    // SetProxyAccountID sets the proxy account ID (deprecated)
-    pub fn setProxyAccountId(self: *ContractCreateTransaction, proxy_id: AccountId) !*ContractCreateTransaction {
-        if (self.base.frozen) return error.TransactionFrozen;
-        self.proxy_account_id = proxy_id;
-        return self;
-    }
-    
-    // GetProxyAccountID returns the proxy account ID (deprecated)
-    pub fn getProxyAccountID(self: *const ContractCreateTransaction) AccountId {
-        return self.proxy_account_id orelse AccountId{};
-    }
-    
     // SetAutoRenewPeriod sets the auto renew period for the contract
     pub fn setAutoRenewPeriod(self: *ContractCreateTransaction, period: Duration) !*ContractCreateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
@@ -161,8 +157,8 @@ pub const ContractCreateTransaction = struct {
         return self.constructor_parameters;
     }
     
-    // SetMemo sets the memo for the contract
-    pub fn setMemo(self: *ContractCreateTransaction, memo: []const u8) !*ContractCreateTransaction {
+    // Set the contract memo
+    pub fn setContractMemo(self: *ContractCreateTransaction, memo: []const u8) !*ContractCreateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.memo = memo;
         return self;
@@ -236,8 +232,8 @@ pub const ContractCreateTransaction = struct {
     }
     
     // Freeze the transaction with a client
-    pub fn freezeWith(self: *ContractCreateTransaction, client: *Client) !void {
-        try self.base.freezeWith(client);
+    pub fn freezeWith(self: *ContractCreateTransaction, client: *Client) !*Transaction {
+        return try self.base.freezeWith(client);
     }
     
     // Execute the transaction
@@ -265,9 +261,9 @@ pub const ContractCreateTransaction = struct {
         if (self.bytecode_file_id) |file_id| {
             var file_writer = ProtoWriter.init(self.base.allocator);
             defer file_writer.deinit();
-            try file_writer.writeInt64(1, @intCast(file_id.shard));
-            try file_writer.writeInt64(2, @intCast(file_id.realm));
-            try file_writer.writeInt64(3, @intCast(file_id.num));
+            try file_writer.writeInt64(1, @intCast(file_id.entity.shard));
+            try file_writer.writeInt64(2, @intCast(file_id.entity.realm));
+            try file_writer.writeInt64(3, @intCast(file_id.entity.num));
             const file_bytes = try file_writer.toOwnedSlice();
             defer self.base.allocator.free(file_bytes);
             try create_writer.writeMessage(1, file_bytes);
@@ -286,18 +282,6 @@ pub const ContractCreateTransaction = struct {
         // initialBalance = 5
         try create_writer.writeInt64(5, self.initial_balance.toTinybars());
         
-        // proxyAccountID = 6 (deprecated)
-        if (self.proxy_account_id) |proxy| {
-            var proxy_writer = ProtoWriter.init(self.base.allocator);
-            defer proxy_writer.deinit();
-            try proxy_writer.writeInt64(1, @intCast(proxy.shard));
-            try proxy_writer.writeInt64(2, @intCast(proxy.realm));
-            try proxy_writer.writeInt64(3, @intCast(proxy.account));
-            const proxy_bytes = try proxy_writer.toOwnedSlice();
-            defer self.base.allocator.free(proxy_bytes);
-            try create_writer.writeMessage(6, proxy_bytes);
-        }
-        
         // autoRenewPeriod = 8
         var duration_writer = ProtoWriter.init(self.base.allocator);
         defer duration_writer.deinit();
@@ -308,7 +292,7 @@ pub const ContractCreateTransaction = struct {
         
         // constructorParameters = 9
         if (self.constructor_parameters.len > 0) {
-            try create_writer.writeBytes(9, self.constructor_parameters);
+            try create_writer.writeString(9, self.constructor_parameters);
         }
         
         // memo = 13
@@ -335,7 +319,7 @@ pub const ContractCreateTransaction = struct {
         
         // initcode = 16 (bytecode)
         if (self.bytecode.len > 0) {
-            try create_writer.writeBytes(16, self.bytecode);
+            try create_writer.writeString(16, self.bytecode);
         }
         
         // staked_account_id = 17 or staked_node_id = 18

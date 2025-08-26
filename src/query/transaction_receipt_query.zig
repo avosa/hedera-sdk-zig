@@ -9,7 +9,7 @@ const TransactionReceipt = @import("../transaction/transaction_receipt.zig").Tra
 const Client = @import("../network/client.zig").Client;
 const Status = @import("../core/status.zig").Status;
 const Hbar = @import("../core/hbar.zig").Hbar;
-const protobuf = @import("../protobuf/protobuf.zig");
+const protobuf = @import("../protobuf/encoding.zig");
 
 
 pub fn newTransactionReceiptQuery(allocator: Allocator) TransactionReceiptQuery {
@@ -27,9 +27,9 @@ pub const TransactionReceiptQuery = struct {
     
     pub fn init(allocator: Allocator) Self {
         var query = Query.init(allocator);
-        query.service_name = "proto.CryptoService";
-        query.method_name = "getTransactionReceipts";
-        query.is_payment_required = false; // Receipt queries are free
+        query.grpc_service_name = "proto.CryptoService";
+        query.grpc_method_name = "getTransactionReceipts";
+        query.is_payment_required = false;
         
         return Self{
             .query = query,
@@ -129,8 +129,8 @@ pub const TransactionReceiptQuery = struct {
     
     fn executeWithRetry(self: *Self, client: *Client) !TransactionReceipt {
         const max_attempts = 10;
-        const initial_backoff_ms = 250;
-        var backoff_ms = initial_backoff_ms;
+        const initial_backoff_ms: u64 = 250;
+        var backoff_ms: u64 = initial_backoff_ms;
         
         var attempt: usize = 0;
         while (attempt < max_attempts) : (attempt += 1) {
@@ -155,33 +155,43 @@ pub const TransactionReceiptQuery = struct {
     }
     
     fn buildQuery(self: *const Self) ![]u8 {
-        var buffer = std.ArrayList(u8).init(self.query.allocator);
-        defer buffer.deinit();
+        var writer = protobuf.ProtoWriter.init(self.query.allocator);
+        defer writer.deinit();
         
-        // Build TransactionGetReceiptQuery protobuf message
+        // Build inner TransactionGetReceiptQuery message
+        var inner_writer = protobuf.ProtoWriter.init(self.query.allocator);
+        defer inner_writer.deinit();
+        
         const transaction_id = self.transaction_id.?;
         
         // transactionID = 1
         const tx_id_bytes = try transaction_id.toBytes(self.query.allocator);
         defer self.query.allocator.free(tx_id_bytes);
-        try self.writeProtobufField(&buffer, 1, tx_id_bytes);
+        try inner_writer.writeMessage(1, tx_id_bytes);
         
         // includeDuplicates = 2
         if (self.include_duplicates) {
-            try self.writeProtobufBool(&buffer, 2, true);
+            try inner_writer.writeBool(2, true);
         }
         
         // includeChildReceipts = 3
         if (self.include_children) {
-            try self.writeProtobufBool(&buffer, 3, true);
+            try inner_writer.writeBool(3, true);
         }
         
-        return try self.query.allocator.dupe(u8, buffer.items);
+        const inner_bytes = try inner_writer.toOwnedSlice();
+        defer self.query.allocator.free(inner_bytes);
+        
+        // Wrap in Query message
+        // transactionGetReceipt = 2 in Query protobuf
+        try writer.writeMessage(2, inner_bytes);
+        
+        return writer.toOwnedSlice();
     }
     
     fn parseResponse(self: *const Self, response_bytes: []const u8) !TransactionReceipt {
         // Parse TransactionGetReceiptResponse protobuf message
-        var reader = protobuf.ProtobufReader.init(self.query.allocator, response_bytes);
+        var reader = protobuf.ProtoReader.init(response_bytes);
         
         var receipt: ?TransactionReceipt = null;
         var child_receipts = std.ArrayList(TransactionReceipt).init(self.query.allocator);
@@ -189,37 +199,34 @@ pub const TransactionReceiptQuery = struct {
         var duplicate_receipts = std.ArrayList(TransactionReceipt).init(self.query.allocator);
         defer duplicate_receipts.deinit();
         
-        while (try reader.nextField()) |field_const| {
-            var field = field_const;
-            switch (field.tag) {
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            switch (tag.field_number) {
                 1 => {
                     // header = 1 (ResponseHeader)
-                    try field.skip();
+                    try reader.skipField(tag.wire_type);
                 },
                 2 => {
                     // receipt = 2 (TransactionReceipt)
-                    const receipt_bytes = try field.readBytes(self.query.allocator);
-                    defer self.query.allocator.free(receipt_bytes);
+                    const receipt_bytes = try reader.readBytes();
                     
                     receipt = try TransactionReceipt.fromProtobufBytes(self.query.allocator, receipt_bytes);
                 },
                 3 => {
                     // duplicateTransactionReceipts = 3 (repeated TransactionReceipt)
-                    const duplicate_bytes = try field.readBytes(self.query.allocator);
-                    defer self.query.allocator.free(duplicate_bytes);
+                    const duplicate_bytes = try reader.readBytes();
                     
                     const duplicate_receipt = try TransactionReceipt.fromProtobufBytes(self.query.allocator, duplicate_bytes);
                     try duplicate_receipts.append(duplicate_receipt);
                 },
                 4 => {
                     // childTransactionReceipts = 4 (repeated TransactionReceipt)  
-                    const child_bytes = try field.readBytes(self.query.allocator);
-                    defer self.query.allocator.free(child_bytes);
+                    const child_bytes = try reader.readBytes();
                     
                     const child_receipt = try TransactionReceipt.fromProtobufBytes(self.query.allocator, child_bytes);
                     try child_receipts.append(child_receipt);
                 },
-                else => try field.skip(),
+                else => try reader.skipField(tag.wire_type),
             }
         }
         
@@ -247,30 +254,6 @@ pub const TransactionReceiptQuery = struct {
         _ = client;
         // Transaction receipt queries are free
         return Hbar.zero();
-    }
-    
-    fn writeProtobufField(self: *const Self, buffer: *std.ArrayList(u8), field_num: u32, data: []const u8) !void {
-        _ = self;
-        const header = (field_num << 3) | 2;
-        try writeProtobufVarint(buffer, header);
-        try writeProtobufVarint(buffer, data.len);
-        try buffer.appendSlice(data);
-    }
-    
-    fn writeProtobufBool(self: *const Self, buffer: *std.ArrayList(u8), field_num: u32, value: bool) !void {
-        _ = self;
-        const header = (field_num << 3) | 0;
-        try writeProtobufVarint(buffer, header);
-        try writeProtobufVarint(buffer, if (value) 1 else 0);
-    }
-    
-    fn writeProtobufVarint(buffer: *std.ArrayList(u8), value: u64) !void {
-        var val = value;
-        while (val >= 0x80) {
-            try buffer.append(@intCast(val & 0x7F | 0x80));
-            val >>= 7;
-        }
-        try buffer.append(@intCast(val & 0x7F));
     }
     
     pub fn getTransactionId(self: *const Self) ?TransactionId {

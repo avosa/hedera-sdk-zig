@@ -70,7 +70,11 @@ pub const TransactionResponse = struct {
             query.deinit();
             self.allocator.destroy(query);
         }
-        return try query.execute(client);
+        // Always include child receipts for proper hollow account support
+        _ = try query.setIncludeChildren(true);
+        _ = try query.setIncludeDuplicates(true);
+        // Use executeAsync to wait for receipt to be ready
+        return try query.executeAsync(client);
     }
     
     pub fn getReceiptAsync(self: *const Self, client: *Client) !TransactionReceipt {

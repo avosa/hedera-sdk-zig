@@ -140,8 +140,8 @@ pub const TokenBurnTransaction = struct {
     }
 
     // Freeze the transaction with client
-    pub fn freezeWith(self: *TokenBurnTransaction, client: *Client) !void {
-        try self.base.freezeWith(client);
+    pub fn freezeWith(self: *TokenBurnTransaction, client: *Client) !*Transaction {
+        return try self.base.freezeWith(client);
     }
     
     // Sign the transaction

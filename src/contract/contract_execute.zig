@@ -72,6 +72,7 @@ pub const ContractFunctionParameters = struct {
         
         // Take first 4 bytes as selector
         @memcpy(&self.function_selector, hash[0..4]);
+        return self;
     }
     
     // Appends a uint256 parameter to the contract call (as bytes)
@@ -284,13 +285,22 @@ pub const ContractExecuteTransaction = struct {
     function_parameters: []const u8,
     
     pub fn init(allocator: std.mem.Allocator) ContractExecuteTransaction {
-        return ContractExecuteTransaction{
+        var transaction = ContractExecuteTransaction{
             .base = Transaction.init(allocator),
             .contract_id = null,
             .gas = DEFAULT_GAS,
             .payable_amount = Hbar.zero(),
             .function_parameters = &[_]u8{},
         };
+        transaction.base.buildTransactionBodyForNode = buildTransactionBodyForNode;
+        transaction.base.grpc_service_name = "proto.SmartContractService";
+        transaction.base.grpc_method_name = "contractCallMethod";
+        return transaction;
+    }
+    
+    fn buildTransactionBodyForNode(base_tx: *Transaction, _: AccountId) anyerror![]u8 {
+        const self: *ContractExecuteTransaction = @fieldParentPtr("base", base_tx);
+        return self.buildTransactionBody();
     }
     
     pub fn deinit(self: *ContractExecuteTransaction) void {
@@ -355,7 +365,7 @@ pub const ContractExecuteTransaction = struct {
             params = &default_params;
         }
         
-        _ = params.?.setFunction(function_name);
+        _ = try params.?.setFunction(function_name);
         const data = params.?.build() catch return error.InvalidParameter;
         self.function_parameters = data;
         return self;
@@ -409,9 +419,9 @@ pub const ContractExecuteTransaction = struct {
         if (self.contract_id) |contract| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
             defer contract_writer.deinit();
-            try contract_writer.writeInt64(1, @intCast(contract.shard));
-            try contract_writer.writeInt64(2, @intCast(contract.realm));
-            try contract_writer.writeInt64(3, @intCast(contract.num));
+            try contract_writer.writeInt64(1, @intCast(contract.entity.shard));
+            try contract_writer.writeInt64(2, @intCast(contract.entity.realm));
+            try contract_writer.writeInt64(3, @intCast(contract.entity.num));
             
             if (contract.evm_address) |evm| {
                 try contract_writer.writeString(4, evm);
@@ -508,20 +518,59 @@ pub const ContractFunctionResult = struct {
     error_message: []const u8,
     bloom: []const u8,
     gas_used: u64,
-    logs: []ContractLogInfo,
-    created_contract_ids: []ContractId,
+    logs: std.ArrayList(ContractLogInfo),
+    created_contract_ids: std.ArrayList(ContractId),
     evm_address: ?[]const u8,
     gas: i64,
+    gas_consumed: i64,
     amount: i64,
     function_parameters: []const u8,
     sender_id: ?AccountId,
+    contract_nonces: std.ArrayList(ContractNonceInfo),
+    signer_nonce: ?[]const u8,
+    allocator: std.mem.Allocator,
     
     pub const ContractLogInfo = struct {
         contract_id: ContractId,
         bloom: []const u8,
-        topics: [][]const u8,
+        topics: std.ArrayList([]const u8),
         data: []const u8,
     };
+    
+    pub const ContractNonceInfo = struct {
+        contract_id: ContractId,
+        nonce: i64,
+    };
+    
+    pub fn init(allocator: std.mem.Allocator) ContractFunctionResult {
+        return ContractFunctionResult{
+            .contract_id = ContractId{ .entity = @import("../core/id.zig").EntityId{ .shard = 0, .realm = 0, .num = 0 } },
+            .contract_call_result = "",
+            .error_message = "",
+            .bloom = "",
+            .gas_used = 0,
+            .logs = std.ArrayList(ContractLogInfo).init(allocator),
+            .created_contract_ids = std.ArrayList(ContractId).init(allocator),
+            .evm_address = null,
+            .gas = 0,
+            .gas_consumed = 0,
+            .amount = 0,
+            .function_parameters = "",
+            .sender_id = null,
+            .contract_nonces = std.ArrayList(ContractNonceInfo).init(allocator),
+            .signer_nonce = null,
+            .allocator = allocator,
+        };
+    }
+    
+    pub fn deinit(self: *ContractFunctionResult) void {
+        for (self.logs.items) |*log| {
+            log.topics.deinit();
+        }
+        self.logs.deinit();
+        self.created_contract_ids.deinit();
+        self.contract_nonces.deinit();
+    }
     
     // Get uint256 result
     pub fn getUint256(self: ContractFunctionResult, index: usize) ![32]u8 {
@@ -597,13 +646,17 @@ pub const ContractFunctionResult = struct {
             .error_message = &[_]u8{},
             .bloom = &[_]u8{},
             .gas_used = 0,
-            .logs = &[_]ContractLogInfo{},
-            .created_contract_ids = &[_]ContractId{},
+            .logs = std.ArrayList(ContractLogInfo).init(allocator),
+            .created_contract_ids = std.ArrayList(ContractId).init(allocator),
             .evm_address = null,
             .gas = 0,
             .amount = 0,
             .function_parameters = &[_]u8{},
             .sender_id = null,
+            .gas_consumed = 0,
+            .contract_nonces = std.ArrayList(ContractNonceInfo).init(allocator),
+            .signer_nonce = null,
+            .allocator = allocator,
         };
         
         while (reader.hasMore()) {

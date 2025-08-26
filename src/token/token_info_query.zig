@@ -785,7 +785,7 @@ pub const TokenInfoQuery = struct {
                             21 => {
                                 // customFees (repeated)
                                 const fee_bytes = try token_reader.readMessage();
-                                const custom_fee = try CustomFee.decode(fee_bytes, self.base.allocator);
+                                const custom_fee = try CustomFee.fromProtobuf(fee_bytes, self.base.allocator);
                                 try info.custom_fees.append(custom_fee);
                             },
                             22 => {

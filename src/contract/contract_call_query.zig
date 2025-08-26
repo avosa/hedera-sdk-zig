@@ -22,7 +22,7 @@ pub const ContractCallQuery = struct {
     sender_id: ?AccountId,
     
     pub fn init(allocator: std.mem.Allocator) ContractCallQuery {
-        return ContractCallQuery{
+        var query = ContractCallQuery{
             .base = Query.init(allocator),
             .contract_id = null,
             .gas = 100000,
@@ -31,6 +31,9 @@ pub const ContractCallQuery = struct {
             .max_result_size = 1024,
             .sender_id = null,
         };
+        query.base.grpc_service_name = "proto.SmartContractService";
+        query.base.grpc_method_name = "contractCallLocalMethod";
+        return query;
     }
     
     pub fn deinit(self: *ContractCallQuery) void {

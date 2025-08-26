@@ -7,7 +7,7 @@ pub const Mnemonic = struct {
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator, words: [][]const u8) !Mnemonic {
-        // Validate word count - support 12, 22 (legacy), and 24 words
+        // Validate word count - support 12, 22, and 24 words
         if (words.len != 12 and words.len != 22 and words.len != 24) {
             return error.InvalidMnemonicLength;
         }

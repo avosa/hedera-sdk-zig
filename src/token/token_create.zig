@@ -50,6 +50,8 @@ pub const CustomFee = struct {
     pub const FixedFee = struct {
         amount: i64,
         denominating_token_id: ?TokenId,
+        fee_collector_account_id: AccountId,
+        all_collectors_are_exempt: bool,
         
         pub fn encode(self: FixedFee, writer: *ProtoWriter) !void {
             // fixedFee = 1
@@ -63,9 +65,9 @@ pub const CustomFee = struct {
             if (self.denominating_token_id) |token| {
                 var token_writer = ProtoWriter.init(writer.buffer.allocator);
                 defer token_writer.deinit();
-                try token_writer.writeInt64(1, @intCast(token.shard));
-                try token_writer.writeInt64(2, @intCast(token.realm));
-                try token_writer.writeInt64(3, @intCast(token.num));
+                try token_writer.writeInt64(1, @intCast(token.entity.shard));
+                try token_writer.writeInt64(2, @intCast(token.entity.realm));
+                try token_writer.writeInt64(3, @intCast(token.entity.num));
                 const token_bytes = try token_writer.toOwnedSlice();
                 defer writer.buffer.allocator.free(token_bytes);
                 try fee_writer.writeMessage(2, token_bytes);
@@ -97,6 +99,8 @@ pub const CustomFee = struct {
         minimum_amount: i64,
         maximum_amount: i64,
         net_of_transfers: bool,
+        fee_collector_account_id: AccountId,
+        all_collectors_are_exempt: bool,
         
         pub const Fraction = struct {
             numerator: i64,
@@ -153,6 +157,8 @@ pub const CustomFee = struct {
         numerator: i64,
         denominator: i64,
         fallback_fee: ?*FixedFee,
+        fee_collector_account_id: AccountId,
+        all_collectors_are_exempt: bool,
         
         pub fn encode(self: RoyaltyFee, writer: *ProtoWriter) !void {
             // royaltyFee = 4
@@ -260,7 +266,7 @@ pub const TokenCreateTransaction = struct {
             .freeze_default = false,
             .expiration_time = null,
             .auto_renew_account = null,
-            .auto_renew_period = Duration.fromSeconds(7890000),
+            .auto_renew_period = Duration.fromSeconds(7776000), // 90 days
             .memo = "",
             .token_type = .fungible_common,
             .supply_type = .infinite,
@@ -272,7 +278,15 @@ pub const TokenCreateTransaction = struct {
             .metadata_key = null,
         };
         transaction.base.max_transaction_fee = Hbar.from(40) catch Hbar.zero();
+        transaction.base.buildTransactionBodyForNode = buildTransactionBodyForNode;
+        transaction.base.grpc_service_name = "proto.TokenService";
+        transaction.base.grpc_method_name = "createToken";
         return transaction;
+    }
+    
+    fn buildTransactionBodyForNode(base_tx: *Transaction, _: AccountId) anyerror![]u8 {
+        const self: *TokenCreateTransaction = @fieldParentPtr("base", base_tx);
+        return self.buildTransactionBody();
     }
     
     pub fn deinit(self: *TokenCreateTransaction) void {
@@ -457,15 +471,15 @@ pub const TokenCreateTransaction = struct {
         return self.expiration_time;
     }
     
-    // Set auto renew account
-    pub fn setAutoRenewAccount(self: *TokenCreateTransaction, account_id: AccountId) !*TokenCreateTransaction {
+    // Set auto renew account ID
+    pub fn setAutoRenewAccountId(self: *TokenCreateTransaction, account_id: AccountId) !*TokenCreateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.auto_renew_account = account_id;
         return self;
     }
     
-    // Get auto renew account
-    pub fn getAutoRenewAccount(self: *TokenCreateTransaction) AccountId {
+    // Get auto renew account ID
+    pub fn getAutoRenewAccountId(self: *TokenCreateTransaction) AccountId {
         return self.auto_renew_account orelse AccountId{};
     }
     
@@ -617,8 +631,8 @@ pub const TokenCreateTransaction = struct {
         return self;
     }
     
-    // Get token metadata
-    pub fn getTokenMetadata(self: *TokenCreateTransaction) []const u8 {
+    // Get metadata
+    pub fn getMetadata(self: *TokenCreateTransaction) []const u8 {
         return self.metadata;
     }
     
@@ -635,8 +649,8 @@ pub const TokenCreateTransaction = struct {
     }
     
     // Freeze the transaction with a client
-    pub fn freezeWith(self: *TokenCreateTransaction, client: *Client) !void {
-        try self.base.freezeWith(client);
+    pub fn freezeWith(self: *TokenCreateTransaction, client: *Client) !*Transaction {
+        return try self.base.freezeWith(client);
     }
     
     // Sign the transaction

@@ -186,9 +186,13 @@ pub const ScheduleInfoQuery = struct {
             .creator_account_id = AccountId.init(0, 0, 0),
             .payer_account_id = AccountId.init(0, 0, 0),
             .scheduled_transaction_body = "",
+            .scheduled_transaction = null,
             .ledger_id = "",
             .wait_for_expiry = false,
             .memo = "",
+            .owns_transaction_body = false,
+            .owns_ledger_id = false,
+            .owns_memo = false,
             .executed_at = null,
             .deleted_at = null,
             .expiration_time = Timestamp{ .seconds = 0, .nanos = 0 },
@@ -339,13 +343,13 @@ pub const ScheduleInfoQuery = struct {
                             11 => {
                                 // signatories (repeated)
                                 const sig_bytes = try schedule_reader.readMessage();
-                                const signatory = try Key.fromProtobuf(sig_bytes, self.base.allocator);
+                                const signatory = try Key.fromProtobuf(self.base.allocator, sig_bytes);
                                 try info.signatories.append(signatory);
                             },
                             12 => {
                                 // adminKey
                                 const key_bytes = try schedule_reader.readMessage();
-                                info.admin_key = try Key.fromProtobuf(key_bytes, self.base.allocator);
+                                info.admin_key = try Key.fromProtobuf(self.base.allocator, key_bytes);
                             },
                             else => try schedule_reader.skipField(s_tag.wire_type),
                         }

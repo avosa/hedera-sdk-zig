@@ -132,21 +132,25 @@ pub const CustomFee = union(enum) {
     pub fn fromProtobuf(data: []const u8, allocator: std.mem.Allocator) !CustomFee {
         var reader = ProtoReader.init(data);
 
-        while (try reader.next()) |field| {
-            switch (field.number) {
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            switch (tag.field_number) {
                 1 => {
-                    const fixed_fee = try CustomFixedFee.fromProtobuf(field.data, allocator);
+                    const fixed_fee_data = try reader.readMessage();
+                    const fixed_fee = try CustomFixedFee.fromProtobuf(fixed_fee_data, allocator);
                     return CustomFee{ .fixed = fixed_fee };
                 },
                 2 => {
-                    const fractional_fee = try CustomFractionalFee.fromProtobuf(field.data, allocator);
+                    const fractional_fee_data = try reader.readMessage();
+                    const fractional_fee = try CustomFractionalFee.fromProtobuf(fractional_fee_data, allocator);
                     return CustomFee{ .fractional = fractional_fee };
                 },
                 3 => {
-                    const royalty_fee = try CustomRoyaltyFee.fromProtobuf(field.data, allocator);
+                    const royalty_fee_data = try reader.readMessage();
+                    const royalty_fee = try CustomRoyaltyFee.fromProtobuf(royalty_fee_data, allocator);
                     return CustomFee{ .royalty = royalty_fee };
                 },
-                else => {},
+                else => try reader.skipField(tag.wire_type),
             }
         }
 
