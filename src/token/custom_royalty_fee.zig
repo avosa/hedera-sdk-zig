@@ -151,40 +151,53 @@ pub const CustomRoyaltyFee = struct {
         var reader = ProtoReader.init(data);
         var fee = CustomRoyaltyFee.init();
 
-        while (try reader.next()) |field| {
-            switch (field.number) {
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            switch (tag.field_number) {
                 1 => {
-                    var exchange_reader = ProtoReader.init(field.data);
-                    while (try exchange_reader.next()) |exchange_field| {
-                        switch (exchange_field.number) {
-                            1 => fee.numerator = try exchange_reader.readUInt64(exchange_field.data),
-                            2 => fee.denominator = try exchange_reader.readUInt64(exchange_field.data),
-                            else => {},
+                    const exchange_data = try reader.readBytes();
+                    var exchange_reader = ProtoReader.init(exchange_data);
+                    while (exchange_reader.hasMore()) {
+                        const exchange_tag = try exchange_reader.readTag();
+                        switch (exchange_tag.field_number) {
+                            1 => fee.numerator = try exchange_reader.readUint64(),
+                            2 => fee.denominator = try exchange_reader.readUint64(),
+                            else => try exchange_reader.skipField(exchange_tag.wire_type),
                         }
                     }
                 },
                 2 => {
-                    fee.fallback_fee = try CustomFixedFee.fromProtobuf(field.data, allocator);
+                    const fallback_data = try reader.readBytes();
+                    fee.fallback_fee = try CustomFixedFee.fromProtobuf(fallback_data, allocator);
                 },
                 3 => {
-                    var collector_reader = ProtoReader.init(field.data);
+                    const collector_data = try reader.readBytes();
+                    var collector_reader = ProtoReader.init(collector_data);
                     var shard: i64 = 0;
                     var realm: i64 = 0;
                     var num: i64 = 0;
 
-                    while (try collector_reader.next()) |collector_field| {
-                        switch (collector_field.number) {
-                            1 => shard = try collector_reader.readInt64(collector_field.data),
-                            2 => realm = try collector_reader.readInt64(collector_field.data),
-                            3 => num = try collector_reader.readInt64(collector_field.data),
-                            else => {},
+                    while (collector_reader.hasMore()) {
+                        const collector_tag = try collector_reader.readTag();
+                        switch (collector_tag.field_number) {
+                            1 => shard = try collector_reader.readInt64(),
+                            2 => realm = try collector_reader.readInt64(),
+                            3 => num = try collector_reader.readInt64(),
+                            else => try collector_reader.skipField(collector_tag.wire_type),
                         }
                     }
 
-                    fee.fee_collector_account_id = AccountId.init(@intCast(shard), @intCast(realm), @intCast(num));
+                    fee.fee_collector_account_id = AccountId{
+                        .shard = @intCast(shard),
+                        .realm = @intCast(realm),
+                        .account = @intCast(num),
+                        .alias_key = null,
+                        .alias_evm_address = null,
+                        .checksum = null,
+                    };
                 },
-                4 => fee.all_collectors_are_exempt = try reader.readBool(field.data),
-                else => {},
+                4 => fee.all_collectors_are_exempt = try reader.readBool(),
+                else => try reader.skipField(tag.wire_type),
             }
         }
 

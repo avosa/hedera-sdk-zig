@@ -125,57 +125,63 @@ pub const CustomFixedFee = struct {
         var reader = ProtoReader.init(data);
         var fee = CustomFixedFee.init();
 
-        while (try reader.next()) |field| {
-            switch (field.number) {
-                1 => fee.amount = try reader.readUInt64(field.data),
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            switch (tag.field_number) {
+                1 => fee.amount = try reader.readUint64(),
                 2 => {
-                    var token_reader = ProtoReader.init(field.data);
+                    const token_data = try reader.readBytes();
+                    var token_reader = ProtoReader.init(token_data);
                     var shard: i64 = 0;
                     var realm: i64 = 0;
                     var num: i64 = 0;
 
-                    while (try token_reader.next()) |token_field| {
-                        switch (token_field.number) {
-                            1 => shard = try token_reader.readInt64(token_field.data),
-                            2 => realm = try token_reader.readInt64(token_field.data),
-                            3 => num = try token_reader.readInt64(token_field.data),
-                            else => {},
+                    while (token_reader.hasMore()) {
+                        const token_tag = try token_reader.readTag();
+                        switch (token_tag.field_number) {
+                            1 => shard = try token_reader.readInt64(),
+                            2 => realm = try token_reader.readInt64(),
+                            3 => num = try token_reader.readInt64(),
+                            else => try token_reader.skipField(token_tag.wire_type),
                         }
                     }
 
                     fee.denomination_token_id = TokenId{
                         .entity = .{
-                            .shard = shard,
-                            .realm = realm,
-                            .num = num,
+                            .shard = @intCast(shard),
+                            .realm = @intCast(realm),
+                            .num = @intCast(num),
                         },
                     };
                 },
                 3 => {
-                    var collector_reader = ProtoReader.init(field.data);
+                    const collector_data = try reader.readBytes();
+                    var collector_reader = ProtoReader.init(collector_data);
                     var shard: i64 = 0;
                     var realm: i64 = 0;
                     var num: i64 = 0;
 
-                    while (try collector_reader.next()) |collector_field| {
-                        switch (collector_field.number) {
-                            1 => shard = try collector_reader.readInt64(collector_field.data),
-                            2 => realm = try collector_reader.readInt64(collector_field.data),
-                            3 => num = try collector_reader.readInt64(collector_field.data),
-                            else => {},
+                    while (collector_reader.hasMore()) {
+                        const collector_tag = try collector_reader.readTag();
+                        switch (collector_tag.field_number) {
+                            1 => shard = try collector_reader.readInt64(),
+                            2 => realm = try collector_reader.readInt64(),
+                            3 => num = try collector_reader.readInt64(),
+                            else => try collector_reader.skipField(collector_tag.wire_type),
                         }
                     }
 
                     fee.fee_collector_account_id = AccountId{
-                        .entity = .{
-                            .shard = shard,
-                            .realm = realm,
-                            .num = num,
-                        },
+                        .shard = @intCast(shard),
+                        .realm = @intCast(realm),
+                        .account = @intCast(num),
+                        .alias_key = null,
+                        .alias_evm_address = null,
+                        .checksum = null,
                     };
                 },
-                4 => fee.all_collectors_are_exempt = try reader.readBool(field.data),
-                else => {},
+                4 => fee.all_collectors_are_exempt = try reader.readBool(),
+                else => try reader.skipField(tag.wire_type),
             }
         }
 
