@@ -32,12 +32,12 @@ pub const EthereumTransactionData = struct {
         }
     }
     
-    pub fn setCallData(self: *EthereumTransactionData, file_id: FileId) *EthereumTransactionData {
+    pub fn setCallData(self: *EthereumTransactionData, file_id: FileId) !*EthereumTransactionData {
         self.call_data = file_id;
         return self;
     }
     
-    pub fn setMaxGasAllowance(self: *EthereumTransactionData, gas: i64) *EthereumTransactionData {
+    pub fn setMaxGasAllowance(self: *EthereumTransactionData, gas: i64) !*EthereumTransactionData {
         self.max_gas_allowance = gas;
         return self;
     }
@@ -67,28 +67,28 @@ pub const EthereumTransaction = struct {
     }
     
     // Set the raw Ethereum transaction data
-    pub fn setEthereumData(self: *EthereumTransaction, data: []const u8) errors.HederaError!*EthereumTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
-        if (data.len == 0) return errors.HederaError.InvalidParameter;
+    pub fn setEthereumData(self: *EthereumTransaction, data: []const u8) !*EthereumTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
+        if (data.len == 0) return error.InvalidParameter;
         
         if (self.ethereum_data.len > 0) {
             self.base.allocator.free(self.ethereum_data);
         }
-        self.ethereum_data = errors.handleDupeError(self.base.allocator, data) catch return errors.HederaError.OutOfMemory;
+        self.ethereum_data = errors.handleDupeError(self.base.allocator, data) catch return error.InvalidParameter;
         return self;
     }
     
     // Set the file ID containing call data for large transactions
-    pub fn setCallData(self: *EthereumTransaction, file_id: FileId) errors.HederaError!*EthereumTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setCallData(self: *EthereumTransaction, file_id: FileId) !*EthereumTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.call_data = file_id;
         return self;
     }
     
     // Set the maximum gas allowance for the transaction
-    pub fn setMaxGasAllowance(self: *EthereumTransaction, gas: i64) errors.HederaError!*EthereumTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
-        if (gas < 0) return errors.HederaError.InvalidParameter;
+    pub fn setMaxGasAllowance(self: *EthereumTransaction, gas: i64) !*EthereumTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
+        if (gas < 0) return error.InvalidParameter;
         self.max_gas_allowance = gas;
         return self;
     }
@@ -219,4 +219,12 @@ pub const EthereumTransaction = struct {
             try writer.writeString(5, self.base.transaction_memo);
         }
     }
+    
+    // Freeze the transaction with client
+    pub fn freezeWith(self: *EthereumTransaction, client: *Client) !*EthereumTransaction {
+        try self.base.freezeWith(client);
+        return self;
+    }
 };
+
+

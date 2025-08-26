@@ -25,7 +25,7 @@ pub const GrpcChannel = struct {
         }
     }
     
-    pub fn setAddress(self: *GrpcChannel, address: []const u8) *GrpcChannel {
+    pub fn setAddress(self: *GrpcChannel, address: []const u8) !*GrpcChannel {
         if (self.owns_address and self.address.len > 0) {
             self.allocator.free(self.address);
             return self;

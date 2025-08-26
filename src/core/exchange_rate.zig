@@ -26,17 +26,17 @@ pub const ExchangeRate = struct {
         };
     }
 
-    pub fn setHbarEquivalent(self: *ExchangeRate, hbar_equivalent: i32) *ExchangeRate {
+    pub fn setHbarEquivalent(self: *ExchangeRate, hbar_equivalent: i32) !*ExchangeRate {
         self.hbar_equivalent = hbar_equivalent;
         return self;
     }
 
-    pub fn setCentEquivalent(self: *ExchangeRate, cent_equivalent: i32) *ExchangeRate {
+    pub fn setCentEquivalent(self: *ExchangeRate, cent_equivalent: i32) !*ExchangeRate {
         self.cent_equivalent = cent_equivalent;
         return self;
     }
 
-    pub fn setExpirationTime(self: *ExchangeRate, expiration: Timestamp) *ExchangeRate {
+    pub fn setExpirationTime(self: *ExchangeRate, expiration: Timestamp) !*ExchangeRate {
         self.expiration_time = expiration;
         return self;
     }
@@ -270,12 +270,12 @@ pub const ExchangeRates = struct {
         return self.next_rate;
     }
 
-    pub fn setCurrentRate(self: *ExchangeRates, rate: ExchangeRate) *ExchangeRates {
+    pub fn setCurrentRate(self: *ExchangeRates, rate: ExchangeRate) !*ExchangeRates {
         self.current_rate = rate;
         return self;
     }
 
-    pub fn setNextRate(self: *ExchangeRates, rate: ExchangeRate) *ExchangeRates {
+    pub fn setNextRate(self: *ExchangeRates, rate: ExchangeRate) !*ExchangeRates {
         self.next_rate = rate;
         return self;
     }

@@ -98,9 +98,13 @@ pub const TransactionId = struct {
     
     // Generate a new transaction ID for the given account
     pub fn generate(account_id: AccountId) TransactionId {
+        // Don't subtract time - use current timestamp
+        // The valid duration window will handle any clock skew
+        const timestamp = Timestamp.now(); 
+        
         return TransactionId{
             .account_id = account_id,
-            .valid_start = Timestamp.now(),
+            .valid_start = timestamp,
             .scheduled = false,
             .nonce = null,
         };
@@ -307,5 +311,10 @@ pub const TransactionId = struct {
             .scheduled = scheduled,
             .nonce = nonce,
         };
+    }
+    
+    // Alias for consistency with other types
+    pub fn fromProtobuf(allocator: std.mem.Allocator, bytes: []const u8) !TransactionId {
+        return fromProtobufBytes(allocator, bytes);
     }
 };

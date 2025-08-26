@@ -1,6 +1,6 @@
 const std = @import("std");
 const errors = @import("../core/errors.zig");
-const FileId = @import("../core/id.zig").FileId;
+const HederaError = errors.HederaError;const FileId = @import("../core/id.zig").FileId;
 const PublicKey = @import("../crypto/key.zig").PublicKey;
 const KeyList = @import("../crypto/key.zig").KeyList;
 const Key = @import("../crypto/key.zig").Key;
@@ -16,11 +16,8 @@ pub const MAX_FILE_SIZE: usize = 1024 * 1024; // 1MB
 pub const MAX_CHUNK_SIZE: usize = 4096; // 4KB per chunk
 
 // Factory function for creating a new FileCreateTransaction
-pub fn newFileCreateTransaction(allocator: std.mem.Allocator) *FileCreateTransaction {
-    const tx = allocator.create(FileCreateTransaction) catch @panic("Out of memory");
-    tx.* = FileCreateTransaction.init(allocator);
-    return tx;
-}
+
+// JavaScript naming convention (no "new" prefix)
 
 // FileCreateTransaction creates a new file in the Hedera network
 pub const FileCreateTransaction = struct {
@@ -46,21 +43,21 @@ pub const FileCreateTransaction = struct {
     }
     
     // Set the expiration time for the file
-    pub fn setExpirationTime(self: *FileCreateTransaction, time: Timestamp) errors.HederaError!*FileCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setExpirationTime(self: *FileCreateTransaction, time: Timestamp) !*FileCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.expiration_time = time;
         return self;
     }
     
     // Includes a key that must sign for modifications
-    pub fn addKey(self: *FileCreateTransaction, key: Key) errors.HederaError!void {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn addKey(self: *FileCreateTransaction, key: Key) HederaError!void {
+        if (self.base.frozen) return error.TransactionFrozen;
         try errors.handleAppendError(&self.keys, key);
     }
     
     // Set the keys that must sign for modifications (accepts Key)
-    pub fn setKeys(self: *FileCreateTransaction, key: Key) errors.HederaError!*FileCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setKeys(self: *FileCreateTransaction, key: Key) !*FileCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         self.keys.clearRetainingCapacity();
         
@@ -70,8 +67,8 @@ pub const FileCreateTransaction = struct {
     }
     
     // Set the keys that must sign for modifications (accepts Key array)
-    pub fn setKeysArray(self: *FileCreateTransaction, keys: []const Key) errors.HederaError!*FileCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setKeysArray(self: *FileCreateTransaction, keys: []const Key) !*FileCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         self.keys.clearRetainingCapacity();
         for (keys) |key| {
@@ -81,11 +78,11 @@ pub const FileCreateTransaction = struct {
     }
     
     // Set the file contents
-    pub fn setContents(self: *FileCreateTransaction, contents: []const u8) errors.HederaError!*FileCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setContents(self: *FileCreateTransaction, contents: []const u8) !*FileCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (contents.len > MAX_FILE_SIZE) {
-            return errors.HederaError.MaxFileSizeExceeded;
+            return error.InvalidParameter;
         }
         
         self.contents = contents;
@@ -93,11 +90,11 @@ pub const FileCreateTransaction = struct {
     }
     
     // Set the file memo
-    pub fn setMemo(self: *FileCreateTransaction, memo: []const u8) errors.HederaError!*FileCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setMemo(self: *FileCreateTransaction, memo: []const u8) !*FileCreateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (memo.len > 100) {
-            return errors.HederaError.MemoTooLong;
+            return error.InvalidParameter;
         }
         
         self.memo = memo;
@@ -105,13 +102,25 @@ pub const FileCreateTransaction = struct {
     }
     
     // Set file memo (alias)
-    pub fn setFileMemo(self: *FileCreateTransaction, memo: []const u8) errors.HederaError!*FileCreateTransaction {
+    pub fn setFileMemo(self: *FileCreateTransaction, memo: []const u8) !*FileCreateTransaction {
         return self.setMemo(memo);
     }
     
     // Freeze the transaction with a client
     pub fn freezeWith(self: *FileCreateTransaction, client: *Client) !void {
         try self.base.freezeWith(client);
+    }
+    
+    // Sign the transaction
+    pub fn sign(self: *FileCreateTransaction, private_key: anytype) HederaError!*FileCreateTransaction {
+        try self.base.sign(private_key);
+        return self;
+    }
+    
+    // Sign with operator
+    pub fn signWithOperator(self: *FileCreateTransaction, client: *Client) HederaError!*FileCreateTransaction {
+        try self.base.signWithOperator(client);
+        return self;
     }
     
     // Execute the transaction

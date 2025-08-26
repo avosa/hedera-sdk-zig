@@ -62,13 +62,13 @@ pub const TokenNftInfoQuery = struct {
     }
     
     // Set the NFT ID to query
-    pub fn setNftId(self: *TokenNftInfoQuery, nft_id: NftId) *TokenNftInfoQuery {
+    pub fn setNftId(self: *TokenNftInfoQuery, nft_id: NftId) !*TokenNftInfoQuery {
         self.nft_id = nft_id;
         return self;
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *TokenNftInfoQuery, payment: Hbar) *TokenNftInfoQuery {
+    pub fn setQueryPayment(self: *TokenNftInfoQuery, payment: Hbar) !*TokenNftInfoQuery {
         self.base.payment_amount = payment;
         return self;
     }
@@ -173,6 +173,7 @@ pub const TokenNftInfoQuery = struct {
             .creation_time = Timestamp{ .seconds = 0, .nanos = 0 },
             .metadata = "",
             .ledger_id = "",
+            .spender = null,
             .spender_id = null,
             .allocator = self.base.allocator,
         };
@@ -230,7 +231,7 @@ pub const TokenNftInfoQuery = struct {
                                 }
                                 
                                 const token_id = TokenId.init(@intCast(token_shard), @intCast(token_realm), @intCast(token_num));
-                                info.nft_id = NftId.init(token_id, serial_number);
+                                info.nft_id = NftId.init(token_id, @intCast(serial_number));
                             },
                             2 => {
                                 // accountID
@@ -311,3 +312,5 @@ pub const TokenNftInfoQuery = struct {
         return info;
     }
 };
+
+

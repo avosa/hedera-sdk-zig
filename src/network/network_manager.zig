@@ -37,13 +37,13 @@ pub const NetworkManager = struct {
     }
     
     // Set the network to manage
-    pub fn setNetwork(self: *NetworkManager, network: *Network) *NetworkManager {
+    pub fn setNetwork(self: *NetworkManager, network: *Network) !*NetworkManager {
         self.network = network;
         return self;
     }
     
     // Set mirror node client
-    pub fn setMirrorClient(self: *NetworkManager, mirror_client: *MirrorNodeClient) *NetworkManager {
+    pub fn setMirrorClient(self: *NetworkManager, mirror_client: *MirrorNodeClient) !*NetworkManager {
         self.mirror_client = mirror_client;
         return self;
     }

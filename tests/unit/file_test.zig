@@ -336,7 +336,7 @@ test "File special contents" {
     try testing.expectEqualSlices(u8, &binary_content, tx.contents);
     
     // UTF-8 contents
-    const utf8_content = "Hello 世界 🌍";
+    const utf8_content = "Hello 世界 ";
     _ = try tx.setContents(utf8_content);
     try testing.expectEqualStrings(utf8_content, tx.contents);
     

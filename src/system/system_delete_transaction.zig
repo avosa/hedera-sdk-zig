@@ -7,7 +7,7 @@ const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const Timestamp = @import("../core/timestamp.zig").Timestamp;
 const errors = @import("../core/errors.zig");
-
+const HederaError = errors.HederaError;
 // SystemDeleteTransaction deletes a file or smart contract (admin only)
 pub const SystemDeleteTransaction = struct {
     base: Transaction,
@@ -26,24 +26,24 @@ pub const SystemDeleteTransaction = struct {
     }
     
     // Set the contract ID to delete
-    pub fn setContractId(self: *SystemDeleteTransaction, contract_id: ContractId) errors.HederaError!*SystemDeleteTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setContractId(self: *SystemDeleteTransaction, contract_id: ContractId) !*SystemDeleteTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.contract_id = contract_id;
         self.file_id = null; // Clear file ID when setting contract ID
         return self;
     }
     
     // Set the file ID to delete
-    pub fn setFileId(self: *SystemDeleteTransaction, file_id: FileId) errors.HederaError!*SystemDeleteTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setFileId(self: *SystemDeleteTransaction, file_id: FileId) !*SystemDeleteTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.file_id = file_id;
         self.contract_id = null; // Clear contract ID when setting file ID
         return self;
     }
     
     // Set the expiration time
-    pub fn setExpirationTime(self: *SystemDeleteTransaction, expiration_time: Timestamp) errors.HederaError!*SystemDeleteTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setExpirationTime(self: *SystemDeleteTransaction, expiration_time: Timestamp) !*SystemDeleteTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.expiration_time = expiration_time;
         return self;
     }
@@ -105,13 +105,21 @@ pub const SystemDeleteTransaction = struct {
     }
     
     // Validate the transaction
-    pub fn validate(self: *SystemDeleteTransaction) errors.HederaError!void {
+    pub fn validate(self: *SystemDeleteTransaction) HederaError!void {
         if (self.contract_id == null and self.file_id == null) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidParameter;
         }
         
         if (self.contract_id != null and self.file_id != null) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidParameter;
         }
     }
+    
+    // Freeze the transaction with client
+    pub fn freezeWith(self: *SystemDeleteTransaction, client: *Client) !*SystemDeleteTransaction {
+        try self.base.freezeWith(client);
+        return self;
+    }
 };
+
+

@@ -67,7 +67,7 @@ pub const MirrorNodeContractQuery = struct {
     }
 
     /// Set function to call with parameters
-    pub fn setFunction(self: *Self, name: []const u8, params: ?*ContractFunctionParameters) *Self {
+    pub fn setFunction(self: *Self, name: []const u8, params: ?*ContractFunctionParameters) !*Self {
         const parameters = params orelse try ContractFunctionParameters.init(self.allocator);
         defer if (params == null) parameters.deinit();
 

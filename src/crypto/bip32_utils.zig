@@ -45,13 +45,13 @@ pub const Bip32Utils = struct {
             };
         }
         
-        pub fn setMainnet(self: *ExtendedKey, is_private: bool) *ExtendedKey {
+        pub fn setMainnet(self: *ExtendedKey, is_private: bool) !*ExtendedKey {
             self.version = if (is_private) VERSION_MAINNET_PRIVATE else VERSION_MAINNET_PUBLIC;
             self.is_private = is_private;
             return self;
         }
         
-        pub fn setTestnet(self: *ExtendedKey, is_private: bool) *ExtendedKey {
+        pub fn setTestnet(self: *ExtendedKey, is_private: bool) !*ExtendedKey {
             self.version = if (is_private) VERSION_TESTNET_PRIVATE else VERSION_TESTNET_PUBLIC;
             self.is_private = is_private;
             return self;

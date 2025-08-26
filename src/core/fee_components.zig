@@ -33,57 +33,57 @@ pub const FeeComponents = struct {
         };
     }
 
-    pub fn setMin(self: *FeeComponents, min: i64) *FeeComponents {
+    pub fn setMin(self: *FeeComponents, min: i64) !*FeeComponents {
         self.min = min;
         return self;
     }
 
-    pub fn setMax(self: *FeeComponents, max: i64) *FeeComponents {
+    pub fn setMax(self: *FeeComponents, max: i64) !*FeeComponents {
         self.max = max;
         return self;
     }
 
-    pub fn setConstant(self: *FeeComponents, constant: i64) *FeeComponents {
+    pub fn setConstant(self: *FeeComponents, constant: i64) !*FeeComponents {
         self.constant = constant;
         return self;
     }
 
-    pub fn setBpt(self: *FeeComponents, bpt: i64) *FeeComponents {
+    pub fn setBpt(self: *FeeComponents, bpt: i64) !*FeeComponents {
         self.bpt = bpt;
         return self;
     }
 
-    pub fn setVpt(self: *FeeComponents, vpt: i64) *FeeComponents {
+    pub fn setVpt(self: *FeeComponents, vpt: i64) !*FeeComponents {
         self.vpt = vpt;
         return self;
     }
 
-    pub fn setRbh(self: *FeeComponents, rbh: i64) *FeeComponents {
+    pub fn setRbh(self: *FeeComponents, rbh: i64) !*FeeComponents {
         self.rbh = rbh;
         return self;
     }
 
-    pub fn setSbh(self: *FeeComponents, sbh: i64) *FeeComponents {
+    pub fn setSbh(self: *FeeComponents, sbh: i64) !*FeeComponents {
         self.sbh = sbh;
         return self;
     }
 
-    pub fn setGas(self: *FeeComponents, gas: i64) *FeeComponents {
+    pub fn setGas(self: *FeeComponents, gas: i64) !*FeeComponents {
         self.gas = gas;
         return self;
     }
 
-    pub fn setTv(self: *FeeComponents, tv: i64) *FeeComponents {
+    pub fn setTv(self: *FeeComponents, tv: i64) !*FeeComponents {
         self.tv = tv;
         return self;
     }
 
-    pub fn setBpr(self: *FeeComponents, bpr: i64) *FeeComponents {
+    pub fn setBpr(self: *FeeComponents, bpr: i64) !*FeeComponents {
         self.bpr = bpr;
         return self;
     }
 
-    pub fn setSbpr(self: *FeeComponents, sbpr: i64) *FeeComponents {
+    pub fn setSbpr(self: *FeeComponents, sbpr: i64) !*FeeComponents {
         self.sbpr = sbpr;
         return self;
     }
@@ -213,42 +213,42 @@ pub const FeeData = struct {
         };
     }
 
-    pub fn setBytesUsed(self: *FeeData, bytes_used: i64) *FeeData {
+    pub fn setBytesUsed(self: *FeeData, bytes_used: i64) !*FeeData {
         self.bytes_used = bytes_used;
         return self;
     }
 
-    pub fn setVerificationsUsed(self: *FeeData, verifications: i64) *FeeData {
+    pub fn setVerificationsUsed(self: *FeeData, verifications: i64) !*FeeData {
         self.verifications_used = verifications;
         return self;
     }
 
-    pub fn setResourceBytesHour(self: *FeeData, rbh: i64) *FeeData {
+    pub fn setResourceBytesHour(self: *FeeData, rbh: i64) !*FeeData {
         self.resource_bytes_hour = rbh;
         return self;
     }
 
-    pub fn setStorageBytesHour(self: *FeeData, sbh: i64) *FeeData {
+    pub fn setStorageBytesHour(self: *FeeData, sbh: i64) !*FeeData {
         self.storage_bytes_hour = sbh;
         return self;
     }
 
-    pub fn setGasUsed(self: *FeeData, gas: i64) *FeeData {
+    pub fn setGasUsed(self: *FeeData, gas: i64) !*FeeData {
         self.gas_used = gas;
         return self;
     }
 
-    pub fn setTransactionValue(self: *FeeData, value: i64) *FeeData {
+    pub fn setTransactionValue(self: *FeeData, value: i64) !*FeeData {
         self.transaction_value = value;
         return self;
     }
 
-    pub fn setBytesPerResponse(self: *FeeData, bpr: i64) *FeeData {
+    pub fn setBytesPerResponse(self: *FeeData, bpr: i64) !*FeeData {
         self.bytes_per_response = bpr;
         return self;
     }
 
-    pub fn setStorageBytesPerResponse(self: *FeeData, sbpr: i64) *FeeData {
+    pub fn setStorageBytesPerResponse(self: *FeeData, sbpr: i64) !*FeeData {
         self.storage_bytes_per_response = sbpr;
         return self;
     }
@@ -325,17 +325,17 @@ pub const FeeSchedule = struct {
         };
     }
 
-    pub fn setNodeData(self: *FeeSchedule, node_data: FeeComponents) *FeeSchedule {
+    pub fn setNodeData(self: *FeeSchedule, node_data: FeeComponents) !*FeeSchedule {
         self.node_data = node_data;
         return self;
     }
 
-    pub fn setNetworkData(self: *FeeSchedule, network_data: FeeComponents) *FeeSchedule {
+    pub fn setNetworkData(self: *FeeSchedule, network_data: FeeComponents) !*FeeSchedule {
         self.network_data = network_data;
         return self;
     }
 
-    pub fn setServiceData(self: *FeeSchedule, service_data: FeeComponents) *FeeSchedule {
+    pub fn setServiceData(self: *FeeSchedule, service_data: FeeComponents) !*FeeSchedule {
         self.service_data = service_data;
         return self;
     }

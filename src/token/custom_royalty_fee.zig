@@ -24,12 +24,12 @@ pub const CustomRoyaltyFee = struct {
         };
     }
 
-    pub fn setNumerator(self: *CustomRoyaltyFee, numerator: u64) *CustomRoyaltyFee {
+    pub fn setNumerator(self: *CustomRoyaltyFee, numerator: u64) !*CustomRoyaltyFee {
         self.numerator = numerator;
         return self;
     }
 
-    pub fn setDenominator(self: *CustomRoyaltyFee, denominator: u64) *CustomRoyaltyFee {
+    pub fn setDenominator(self: *CustomRoyaltyFee, denominator: u64) !*CustomRoyaltyFee {
         if (denominator == 0) {
             self.denominator = 1;
         } else {
@@ -39,23 +39,23 @@ pub const CustomRoyaltyFee = struct {
         return self;
     }
 
-    pub fn setFraction(self: *CustomRoyaltyFee, numerator: u64, denominator: u64) *CustomRoyaltyFee {
+    pub fn setFraction(self: *CustomRoyaltyFee, numerator: u64, denominator: u64) !*CustomRoyaltyFee {
         self.numerator = numerator;
         self.denominator = if (denominator == 0) 1 else denominator;
         return self;
     }
 
-    pub fn setFallbackFee(self: *CustomRoyaltyFee, fallback_fee: CustomFixedFee) *CustomRoyaltyFee {
+    pub fn setFallbackFee(self: *CustomRoyaltyFee, fallback_fee: CustomFixedFee) !*CustomRoyaltyFee {
         self.fallback_fee = fallback_fee;
         return self;
     }
 
-    pub fn setFeeCollectorAccountId(self: *CustomRoyaltyFee, account_id: AccountId) *CustomRoyaltyFee {
+    pub fn setFeeCollectorAccountId(self: *CustomRoyaltyFee, account_id: AccountId) !*CustomRoyaltyFee {
         self.fee_collector_account_id = account_id;
         return self;
     }
 
-    pub fn setAllCollectorsAreExempt(self: *CustomRoyaltyFee, exempt: bool) *CustomRoyaltyFee {
+    pub fn setAllCollectorsAreExempt(self: *CustomRoyaltyFee, exempt: bool) !*CustomRoyaltyFee {
         self.all_collectors_are_exempt = exempt;
         return self;
     }

@@ -32,17 +32,17 @@ pub const ProxyStaker = struct {
         _ = self;
     }
 
-    pub fn setStakedAmount(self: *ProxyStaker, amount: Hbar) *ProxyStaker {
+    pub fn setStakedAmount(self: *ProxyStaker, amount: Hbar) !*ProxyStaker {
         self.staked_amount = amount;
         return self;
     }
 
-    pub fn setStakePeriodStart(self: *ProxyStaker, start: i64) *ProxyStaker {
+    pub fn setStakePeriodStart(self: *ProxyStaker, start: i64) !*ProxyStaker {
         self.stake_period_start = start;
         return self;
     }
 
-    pub fn setDeclineReward(self: *ProxyStaker, decline: bool) *ProxyStaker {
+    pub fn setDeclineReward(self: *ProxyStaker, decline: bool) !*ProxyStaker {
         self.decline_reward = decline;
         return self;
     }
@@ -254,34 +254,34 @@ pub const StakingInfo = struct {
         _ = self;
     }
 
-    pub fn setStakedToMe(self: *StakingInfo, amount: Hbar) *StakingInfo {
+    pub fn setStakedToMe(self: *StakingInfo, amount: Hbar) !*StakingInfo {
         self.staked_to_me = amount;
         return self;
     }
 
-    pub fn setStakedNodeId(self: *StakingInfo, node_id: i64) *StakingInfo {
+    pub fn setStakedNodeId(self: *StakingInfo, node_id: i64) !*StakingInfo {
         self.staked_node_id = node_id;
         self.staked_account_id = null;
         return self;
     }
 
-    pub fn setStakedAccountId(self: *StakingInfo, account_id: AccountId) *StakingInfo {
+    pub fn setStakedAccountId(self: *StakingInfo, account_id: AccountId) !*StakingInfo {
         self.staked_account_id = account_id;
         self.staked_node_id = null;
         return self;
     }
 
-    pub fn setDeclineReward(self: *StakingInfo, decline: bool) *StakingInfo {
+    pub fn setDeclineReward(self: *StakingInfo, decline: bool) !*StakingInfo {
         self.decline_reward = decline;
         return self;
     }
 
-    pub fn setStakePeriodStart(self: *StakingInfo, start: i64) *StakingInfo {
+    pub fn setStakePeriodStart(self: *StakingInfo, start: i64) !*StakingInfo {
         self.stake_period_start = start;
         return self;
     }
 
-    pub fn setPendingReward(self: *StakingInfo, reward: Hbar) *StakingInfo {
+    pub fn setPendingReward(self: *StakingInfo, reward: Hbar) !*StakingInfo {
         self.pending_reward = reward;
         return self;
     }

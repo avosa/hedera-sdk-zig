@@ -1,4 +1,6 @@
 const std = @import("std");
+const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
+const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 
 // Duration represents a time duration in seconds and nanoseconds
 pub const Duration = struct {
@@ -28,7 +30,7 @@ pub const Duration = struct {
         };
     }
     
-    // Alias for fromMilliseconds (Go SDK compatibility)
+    // Alias for fromMilliseconds
     pub fn fromMillis(millis: i64) Duration {
         return fromMilliseconds(millis);
     }
@@ -54,6 +56,14 @@ pub const Duration = struct {
         return Duration{
             .seconds = days * 86400,
             .nanos = 0,
+        };
+    }
+    
+    // Create duration from nanoseconds
+    pub fn fromNanoseconds(nanos: i64) Duration {
+        return Duration{
+            .seconds = @divFloor(nanos, 1_000_000_000),
+            .nanos = @intCast(@mod(nanos, 1_000_000_000)),
         };
     }
     
@@ -175,6 +185,44 @@ pub const Duration = struct {
         return self;
     }
     
+    // Parse Duration from protobuf bytes
+    pub fn fromProtobuf(allocator: std.mem.Allocator, bytes: []const u8) !Duration {
+        _ = allocator; // Not used for Duration
+        if (bytes.len == 0) {
+            return Duration.init(0, 0);
+        }
+        
+        var reader = ProtoReader.init(bytes);
+        var seconds: i64 = 0;
+        var nanos: i32 = 0;
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            switch (tag.field_number) {
+                1 => seconds = try reader.readInt64(),
+                2 => nanos = try reader.readInt32(),
+                else => try reader.skipField(tag.wire_type),
+            }
+        }
+        
+        return Duration.init(seconds, nanos);
+    }
+    
+    // Serialize Duration to protobuf bytes
+    pub fn toProtobuf(self: Duration, allocator: std.mem.Allocator) ![]u8 {
+        var writer = ProtoWriter.init(allocator);
+        defer writer.deinit();
+        
+        if (self.seconds != 0) {
+            try writer.writeInt64(1, self.seconds);
+        }
+        if (self.nanos != 0) {
+            try writer.writeInt32(2, self.nanos);
+        }
+        
+        return writer.toOwnedSlice();
+    }
+
     // Constants
     pub const ZERO = Duration{ .seconds = 0, .nanos = 0 };
     pub const SECOND = Duration{ .seconds = 1, .nanos = 0 };

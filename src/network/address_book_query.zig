@@ -23,12 +23,12 @@ pub const AddressBookQuery = struct {
     }
     
     // Set the file ID of the address book to query
-    pub fn setFileId(self: *AddressBookQuery, file_id: FileId) *AddressBookQuery {
+    pub fn setFileId(self: *AddressBookQuery, file_id: FileId) !*AddressBookQuery {
         self.file_id = file_id;
     }
     
     // Set the maximum number of node addresses to return
-    pub fn setLimit(self: *AddressBookQuery, limit: i32) *AddressBookQuery {
+    pub fn setLimit(self: *AddressBookQuery, limit: i32) !*AddressBookQuery {
         self.limit = limit;
     }
     
@@ -181,6 +181,8 @@ pub const AddressBookQuery = struct {
         return endpoint;
     }
 };
+
+// Factory function for creating a new AddressBookQuery
 
 // Node address book
 pub const NodeAddressBook = struct {

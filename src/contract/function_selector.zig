@@ -10,7 +10,7 @@ pub const FunctionSelector = struct {
     }
 
     pub fn fromSignature(signature: []const u8) !FunctionSelector {
-        // Use Keccak-256 (not SHA3-256) for Ethereum compatibility
+        // Use Keccak-256 hash algorithm
         var hash_result: [32]u8 = undefined;
         
         // Zig's Keccak is available in std.crypto.hash

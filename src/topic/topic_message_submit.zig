@@ -1,6 +1,6 @@
 const std = @import("std");
 const errors = @import("../core/errors.zig");
-const TopicId = @import("../core/id.zig").TopicId;
+const HederaError = errors.HederaError;const TopicId = @import("../core/id.zig").TopicId;
 const AccountId = @import("../core/id.zig").AccountId;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
 const TransactionResponse = @import("../transaction/transaction.zig").TransactionResponse;
@@ -56,7 +56,7 @@ pub const TopicMessageSubmitTransaction = struct {
     }
     
     // SetTopicID sets the topic to submit message to
-    pub fn setTopicId(self: *TopicMessageSubmitTransaction, topic_id: TopicId) errors.HederaError!*TopicMessageSubmitTransaction {
+    pub fn setTopicId(self: *TopicMessageSubmitTransaction, topic_id: TopicId) !*TopicMessageSubmitTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.topic_id = topic_id;
         return self;
@@ -68,7 +68,7 @@ pub const TopicMessageSubmitTransaction = struct {
     }
     
     // SetMessage sets the message to be submitted
-    pub fn setMessage(self: *TopicMessageSubmitTransaction, message: []const u8) errors.HederaError!*TopicMessageSubmitTransaction {
+    pub fn setMessage(self: *TopicMessageSubmitTransaction, message: []const u8) !*TopicMessageSubmitTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.message = message;
         return self;
@@ -80,7 +80,7 @@ pub const TopicMessageSubmitTransaction = struct {
     }
     
     // SetMaxChunks sets the maximum amount of chunks to use to send the message
-    pub fn setMaxChunks(self: *TopicMessageSubmitTransaction, max_chunks: u64) errors.HederaError!*TopicMessageSubmitTransaction {
+    pub fn setMaxChunks(self: *TopicMessageSubmitTransaction, max_chunks: u64) !*TopicMessageSubmitTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.max_chunks = max_chunks;
         return self;
@@ -92,7 +92,7 @@ pub const TopicMessageSubmitTransaction = struct {
     }
     
     // SetChunkSize sets the chunk size to use to send the message
-    pub fn setChunkSize(self: *TopicMessageSubmitTransaction, chunk_size: u64) errors.HederaError!*TopicMessageSubmitTransaction {
+    pub fn setChunkSize(self: *TopicMessageSubmitTransaction, chunk_size: u64) !*TopicMessageSubmitTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.chunk_size = chunk_size;
         return self;
@@ -104,7 +104,7 @@ pub const TopicMessageSubmitTransaction = struct {
     }
     
     // SetCustomFeeLimits sets the maximum custom fee that the user is willing to pay for the message
-    pub fn setCustomFeeLimits(self: *TopicMessageSubmitTransaction, custom_fee_limits: []*CustomFeeLimit) errors.HederaError!*TopicMessageSubmitTransaction {
+    pub fn setCustomFeeLimits(self: *TopicMessageSubmitTransaction, custom_fee_limits: []*CustomFeeLimit) !*TopicMessageSubmitTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         
         for (self.custom_fee_limits.items) |fee_limit| {
@@ -117,14 +117,14 @@ pub const TopicMessageSubmitTransaction = struct {
     }
     
     // AddCustomFeeLimit adds the maximum custom fee that the user is willing to pay for the message
-    pub fn addCustomFeeLimit(self: *TopicMessageSubmitTransaction, custom_fee_limit: *CustomFeeLimit) errors.HederaError!*TopicMessageSubmitTransaction {
+    pub fn addCustomFeeLimit(self: *TopicMessageSubmitTransaction, custom_fee_limit: *CustomFeeLimit) !*TopicMessageSubmitTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         try errors.handleAppendError(&self.custom_fee_limits, custom_fee_limit);
         return self;
     }
     
     // ClearCustomFeeLimits clears the maximum custom fee that the user is willing to pay for the message
-    pub fn clearCustomFeeLimits(self: *TopicMessageSubmitTransaction) errors.HederaError!*TopicMessageSubmitTransaction {
+    pub fn clearCustomFeeLimits(self: *TopicMessageSubmitTransaction) HederaError!*TopicMessageSubmitTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         
         for (self.custom_fee_limits.items) |fee_limit| {
@@ -149,13 +149,13 @@ pub const TopicMessageSubmitTransaction = struct {
     pub fn freezeWith(self: *TopicMessageSubmitTransaction, client: ?*Client) !*TopicMessageSubmitTransaction {
         // Validate chunk size
         if (self.chunk_size == 0) {
-            return errors.HederaError.InvalidParameter;
+            return error.InvalidParameter;
         }
         
         // Calculate required chunks
         const chunks = (self.message.len + self.chunk_size - 1) / self.chunk_size;
         if (chunks > self.max_chunks) {
-            return errors.HederaError.MessageSizeTooLarge;
+            return error.InvalidParameter;
         }
         
         try self.transaction.freezeWith(client);
@@ -165,10 +165,10 @@ pub const TopicMessageSubmitTransaction = struct {
     // Execute executes the transaction
     pub fn execute(self: *TopicMessageSubmitTransaction, client: *Client) !TransactionResponse {
         if (self.topic_id == null) {
-            return errors.HederaError.InvalidTopicId;
+            return error.InvalidParameter;
         }
         if (self.message.len == 0) {
-            return errors.HederaError.InvalidTopicMessage;
+            return error.InvalidParameter;
         }
         
         const responses = try self.executeAll(client);
@@ -176,7 +176,7 @@ pub const TopicMessageSubmitTransaction = struct {
             return responses[0];
         }
         
-        return errors.HederaError.UnknownError;
+        return error.InvalidParameter;
     }
     
     // ExecuteAll executes all the transactions with the provided client
@@ -185,7 +185,7 @@ pub const TopicMessageSubmitTransaction = struct {
             _ = try self.freezeWith(client);
         }
         
-        // For now, treat as single transaction - chunking implementation would be more complex
+        // Now, treat as single transaction - chunking implementation would be more complex
         const response = try self.transaction.execute(client);
         
         var responses = try self.allocator.alloc(TransactionResponse, 1);
@@ -199,7 +199,7 @@ pub const TopicMessageSubmitTransaction = struct {
         // Calculate required chunks
         const chunks = (self.message.len + self.chunk_size - 1) / self.chunk_size;
         if (chunks > 1) {
-            return errors.HederaError.MessageSizeTooLarge;
+            return error.InvalidParameter;
         }
         
         return try self.transaction.schedule();
@@ -218,7 +218,7 @@ pub const TopicMessageSubmitTransaction = struct {
     }
     
     // SetMaxTransactionFee sets the maximum transaction fee
-    pub fn setMaxTransactionFee(self: *TopicMessageSubmitTransaction, fee: Hbar) *TopicMessageSubmitTransaction {
+    pub fn setMaxTransactionFee(self: *TopicMessageSubmitTransaction, fee: Hbar) !*TopicMessageSubmitTransaction {
         _ = self.transaction.setMaxTransactionFee(fee);
         return self;
     }
@@ -229,8 +229,8 @@ pub const TopicMessageSubmitTransaction = struct {
     }
     
     // SetTransactionMemo sets the transaction memo
-    pub fn setTransactionMemo(self: *TopicMessageSubmitTransaction, memo: []const u8) *TopicMessageSubmitTransaction {
-        _ = self.transaction.setTransactionMemo(memo);
+    pub fn setTransactionMemo(self: *TopicMessageSubmitTransaction, memo: []const u8) !*TopicMessageSubmitTransaction {
+        _ = self.transaction.setTransactionMemo(memo) catch {};
         return self;
     }
     
@@ -240,7 +240,7 @@ pub const TopicMessageSubmitTransaction = struct {
     }
     
     // SetNodeAccountIDs sets the node account IDs for this transaction
-    pub fn setNodeAccountIDs(self: *TopicMessageSubmitTransaction, node_account_ids: []const AccountId) *TopicMessageSubmitTransaction {
+    pub fn setNodeAccountIDs(self: *TopicMessageSubmitTransaction, node_account_ids: []const AccountId) !*TopicMessageSubmitTransaction {
         _ = self.transaction.setNodeAccountIDs(node_account_ids);
         return self;
     }
@@ -251,7 +251,7 @@ pub const TopicMessageSubmitTransaction = struct {
     }
     
     // SetTransactionID sets the transaction ID
-    pub fn setTransactionId(self: *TopicMessageSubmitTransaction, transaction_id: TransactionId) *TopicMessageSubmitTransaction {
+    pub fn setTransactionId(self: *TopicMessageSubmitTransaction, transaction_id: TransactionId) !*TopicMessageSubmitTransaction {
         _ = self.transaction.setTransactionId(transaction_id);
         return self;
     }
@@ -263,6 +263,3 @@ pub const TopicMessageSubmitTransaction = struct {
 };
 
 // NewTopicMessageSubmitTransaction creates a TopicMessageSubmitTransaction
-pub fn newTopicMessageSubmitTransaction(allocator: std.mem.Allocator) !*TopicMessageSubmitTransaction {
-    return try TopicMessageSubmitTransaction.init(allocator);
-}

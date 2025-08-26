@@ -183,6 +183,8 @@ pub const TransactionType = enum {
     }
 };
 
+// Factory function for creating a new NetworkGetExecutionTimeQuery
+
 // NetworkGetVersionInfoQuery gets network version information
 pub const NetworkGetVersionInfoQuery = struct {
     base: Query,

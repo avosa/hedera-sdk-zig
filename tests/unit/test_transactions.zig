@@ -45,11 +45,11 @@ test "Transaction ID generation and setting" {
     const account_id = hedera.AccountId.init(0, 0, 123);
     
     // Test setting transaction ID
-    const tx_id = hedera.TransactionId.generate(delete_account_id);
+    const tx_id = hedera.TransactionId.generate(account_id);
     _ = try transaction.setTransactionId(tx_id);
     
     try testing.expect(transaction.transaction_id != null);
-    try testing.expect(transaction.transaction_id.?.account_id.equals(delete_account_id));
+    try testing.expect(transaction.transaction_id.?.account_id.equals(account_id));
     try testing.expect(transaction.transaction_id.?.isValid());
     
     // Test that frozen transactions cannot be modified
@@ -72,7 +72,7 @@ test "Transaction signing" {
     
     // Set up transaction
     const account_id = hedera.AccountId.init(0, 0, 123);
-    const tx_id = hedera.TransactionId.generate(delete_account_id);
+    const tx_id = hedera.TransactionId.generate(account_id);
     _ = try transaction.setTransactionId(tx_id);
     _ = try transaction.addNodeAccountId(hedera.AccountId.init(0, 0, 3));
     
@@ -412,7 +412,7 @@ test "Transaction validation and error handling" {
     defer transaction.deinit();
     
     try testing.expectError(error.InvalidTransactionFee, transaction.setMaxTransactionFee(hedera.Hbar.ZERO));
-    try testing.expectError(error.InvalidTransactionFee, transaction.setMaxTransactionFee(hedera.Hbar.fromTinybars(-1000)));
+    try testing.expectError(error.InvalidTransactionFee, transaction.setMaxTransactionFee(try hedera.Hbar.fromTinybars(-1000)));
     
     // Test invalid node account IDs
     try testing.expectError(error.InvalidNodeAccountId, transaction.addNodeAccountId(hedera.AccountId.init(0, 0, 0)));

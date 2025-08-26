@@ -247,11 +247,11 @@ test "Topic message query" {
     const start_time = hedera.Timestamp.fromSeconds(1000000000);
     const end_time = hedera.Timestamp.fromSeconds(2000000000);
     
-    _ = query.setStartTime(start_time);
-    _ = query.setEndTime(end_time);
+    _ = try query.setStartTime(start_time);
+    _ = try query.setEndTime(end_time);
     
     // Set limit
-    _ = query.setLimit(100);
+    _ = try query.setLimit(100);
     
     // Subscribe to topic (would set up subscription handler)
     // This would typically involve a callback function
@@ -374,7 +374,7 @@ test "Topic subscription handling" {
     _ = try query.setTopicId(topic_id);
     
     // Set retry configuration
-    _ = query.setMaxRetry(5);
+    _ = try query.setMaxRetry(5);
     
     // Verify settings
     try testing.expectEqual(@as(u64, 4444), query.topic_id.?.num());

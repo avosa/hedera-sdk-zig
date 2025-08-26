@@ -2,8 +2,8 @@ const std = @import("std");
 const testing = std.testing;
 
 // Main test runner that includes all test files
-test "Hedera SDK Tests" {
-    std.log.info("Running Hedera SDK Tests", .{});
+test "all tests" {
+    std.log.info("Running all tests", .{});
 
     // Unit tests
     _ = @import("unit/abi_test.zig");
@@ -188,6 +188,6 @@ test "Hedera SDK Tests" {
 
 // Test runner entry point
 pub fn main() !void {
-    std.log.info("Starting Hedera SDK Test Suite", .{});
+    std.log.info("Starting test suite", .{});
     testing.refAllDecls(@This());
 }

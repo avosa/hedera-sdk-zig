@@ -47,7 +47,7 @@ pub const AccountStakersQuery = struct {
     }
     
     // Set the account ID to query
-    pub fn setAccountId(self: *AccountStakersQuery, account_id: AccountId) *AccountStakersQuery {
+    pub fn setAccountId(self: *AccountStakersQuery, account_id: AccountId) !*AccountStakersQuery {
         self.account_id = account_id;
         return self;
     }
@@ -108,3 +108,5 @@ pub const AccountStakersQuery = struct {
         return result;
     }
 };
+
+

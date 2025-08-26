@@ -1,5 +1,7 @@
 const std = @import("std");
 const Duration = @import("duration.zig").Duration;
+const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
+const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 
 // Timestamp represents a point in time with nanosecond precision
 pub const Timestamp = struct {
@@ -195,6 +197,44 @@ pub const Timestamp = struct {
         };
     }
     
+    // Parse Timestamp from protobuf bytes
+    pub fn fromProtobuf(allocator: std.mem.Allocator, bytes: []const u8) !Timestamp {
+        _ = allocator; // Not used for Timestamp
+        if (bytes.len == 0) {
+            return Timestamp.init(0, 0);
+        }
+        
+        var reader = ProtoReader.init(bytes);
+        var seconds: i64 = 0;
+        var nanos: i32 = 0;
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            switch (tag.field_number) {
+                1 => seconds = try reader.readInt64(),
+                2 => nanos = try reader.readInt32(),
+                else => try reader.skipField(tag.wire_type),
+            }
+        }
+        
+        return Timestamp.init(seconds, nanos);
+    }
+    
+    // Serialize Timestamp to protobuf bytes
+    pub fn toProtobuf(self: Timestamp, allocator: std.mem.Allocator) ![]u8 {
+        var writer = ProtoWriter.init(allocator);
+        defer writer.deinit();
+        
+        if (self.seconds != 0) {
+            try writer.writeInt64(1, self.seconds);
+        }
+        if (self.nanos != 0) {
+            try writer.writeInt32(2, self.nanos);
+        }
+        
+        return writer.toOwnedSlice();
+    }
+
     // Constants
     pub const ZERO = Timestamp{ .seconds = 0, .nanos = 0 };
     pub const UNIX_EPOCH = Timestamp{ .seconds = 0, .nanos = 0 };

@@ -10,6 +10,8 @@ const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
 
+
+
 // Token balance information
 pub const TokenBalance = struct {
     token_id: TokenId,
@@ -136,26 +138,26 @@ pub const AccountBalanceQuery = struct {
     }
     
     // Set the account ID to query
-    pub fn setAccountId(self: *AccountBalanceQuery, account_id: AccountId) *AccountBalanceQuery {
+    pub fn setAccountId(self: *AccountBalanceQuery, account_id: AccountId) !*AccountBalanceQuery {
         self.contract_id = null; // Clear contract ID when setting account ID
         self.account_id = account_id;
         self.base.is_payment_required = false; // Balance queries are free
         return self;
     }
     
-    // Set max retry attempts (Go SDK compatibility)
-    pub fn setMaxRetry(self: *AccountBalanceQuery, retry_count: u32) *AccountBalanceQuery {
+    // Set max retry attempts
+    pub fn setMaxRetry(self: *AccountBalanceQuery, retry_count: u32) !*AccountBalanceQuery {
         self.base.max_attempts = retry_count;
         return self;
     }
     
-    // Get max retry attempts (Go SDK compatibility)
+    // Get max retry attempts
     pub fn max_retry(self: AccountBalanceQuery) u32 {
         return self.base.max_attempts;
     }
     
     // Set the contract ID to query
-    pub fn setContractId(self: *AccountBalanceQuery, contract_id: ContractId) *AccountBalanceQuery {
+    pub fn setContractId(self: *AccountBalanceQuery, contract_id: ContractId) !*AccountBalanceQuery {
         self.account_id = null; // Clear account ID when setting contract ID
         self.contract_id = contract_id;
         self.base.is_payment_required = false; // Balance queries are free
@@ -163,31 +165,37 @@ pub const AccountBalanceQuery = struct {
     }
     
     // Set query payment
-    pub fn setQueryPayment(self: *AccountBalanceQuery, amount: Hbar) *AccountBalanceQuery {
-        _ = self.base.setQueryPayment(amount);
+    pub fn setQueryPayment(self: *AccountBalanceQuery, amount: Hbar) !*AccountBalanceQuery {
+        _ = try self.base.setQueryPayment(amount);
         return self;
     }
     
-    // Get query payment (Go SDK compatibility)
+    // Set max query payment
+    pub fn setMaxQueryPayment(self: *AccountBalanceQuery, amount: Hbar) !*AccountBalanceQuery {
+        _ = self.base.setMaxQueryPayment(amount);
+        return self;
+    }
+    
+    // Get query payment
     pub fn payment(self: AccountBalanceQuery) ?Hbar {
         return self.base.payment_amount;
     }
     
     // Set request timeout
-    pub fn setRequestTimeout(self: *AccountBalanceQuery, timeout: Duration) *AccountBalanceQuery {
+    pub fn setRequestTimeout(self: *AccountBalanceQuery, timeout: Duration) !*AccountBalanceQuery {
         self.request_timeout = timeout;
-        _ = self.base.setRequestTimeout(timeout.toMilliseconds());
+        _ = try self.base.setRequestTimeout(timeout.toMilliseconds());
         return self;
     }
     
     // Set max backoff
-    pub fn setMaxBackoff(self: *AccountBalanceQuery, backoff: Duration) *AccountBalanceQuery {
+    pub fn setMaxBackoff(self: *AccountBalanceQuery, backoff: Duration) !*AccountBalanceQuery {
         self.max_backoff = backoff;
         return self;
     }
     
     // Set min backoff
-    pub fn setMinBackoff(self: *AccountBalanceQuery, backoff: Duration) *AccountBalanceQuery {
+    pub fn setMinBackoff(self: *AccountBalanceQuery, backoff: Duration) !*AccountBalanceQuery {
         self.min_backoff = backoff;
         return self;
     }
@@ -196,6 +204,10 @@ pub const AccountBalanceQuery = struct {
     pub fn execute(self: *AccountBalanceQuery, client: *Client) !AccountBalance {
         if (self.account_id == null and self.contract_id == null) {
             return error.AccountOrContractIdRequired;
+        }
+        
+        if (self.account_id) |aid| {
+            std.debug.print("\nQuerying balance for account: {}.{}.{}\n", .{ aid.shard, aid.realm, aid.account });
         }
         
         const response = try self.base.execute(client);
@@ -276,12 +288,21 @@ pub const AccountBalanceQuery = struct {
     fn parseResponse(self: *AccountBalanceQuery, response: QueryResponse) !AccountBalance {
         try response.validateStatus();
         
+        std.debug.print("Response bytes length: {d}\n", .{response.response_bytes.len});
+        std.debug.print("Response bytes (hex): ", .{});
+        for (response.response_bytes[0..@min(response.response_bytes.len, 50)]) |byte| {
+            std.debug.print("{x:0>2} ", .{byte});
+        }
+        std.debug.print("\n", .{});
+        
         var reader = ProtoReader.init(response.response_bytes);
         var balance = AccountBalance.init(self.base.allocator);
         
         // Parse CryptoGetAccountBalanceResponse
         while (reader.hasMore()) {
             const tag = try reader.readTag();
+            
+            std.debug.print("Field {d}, type {}\n", .{ tag.field_number, tag.wire_type });
             
             switch (tag.field_number) {
                 1 => {
@@ -295,6 +316,7 @@ pub const AccountBalanceQuery = struct {
                 3 => {
                     // balance (in tinybars)
                     const tinybars = try reader.readUint64();
+                    std.debug.print("Parsed balance: {d} tinybars\n", .{tinybars});
                     balance.hbars = try Hbar.fromTinybars(@intCast(tinybars));
                 },
                 4 => {

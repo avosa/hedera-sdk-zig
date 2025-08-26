@@ -36,7 +36,7 @@ pub const RLP = struct {
             }
         }
         
-        pub fn setValue(self: *Item, data: []const u8) *Item {
+        pub fn setValue(self: *Item, data: []const u8) !*Item {
             if (self.data.len > 0) {
                 self.allocator.free(self.data);
             }

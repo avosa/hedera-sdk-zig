@@ -1,4 +1,6 @@
 const std = @import("std");
+const errors = @import("../core/errors.zig");
+const HederaError = errors.HederaError;
 const Query = @import("../query/query.zig").Query;
 const Client = @import("../network/client.zig").Client;
 const AccountId = @import("../core/id.zig").AccountId;
@@ -26,7 +28,7 @@ pub const LiveHashQuery = struct {
     }
     
     // Set the account ID that owns the live hash
-    pub fn setAccountId(self: *LiveHashQuery, account_id: AccountId) *LiveHashQuery {
+    pub fn setAccountId(self: *LiveHashQuery, account_id: AccountId) !*LiveHashQuery {
         self.account_id = account_id;
         return self;
     }
@@ -95,7 +97,7 @@ pub const LiveHashQuery = struct {
             }
         }
         
-        return error.InvalidResponse;
+        return HederaError.InvalidProtobuf;
     }
     
     fn parseLiveHashFromBytes(data: []const u8, allocator: std.mem.Allocator) !LiveHash {
@@ -196,3 +198,5 @@ pub const LiveHashQuery = struct {
         return error.InvalidKeyFormat;
     }
 };
+
+// Factory function for creating a new LiveHashQuery

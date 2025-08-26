@@ -39,11 +39,11 @@ pub const AccountBalance = struct {
         self.pending_airdrops.deinit();
     }
     
-    pub fn setTokenBalance(self: *AccountBalance, token_id: TokenId, balance: u64) *AccountBalance {
+    pub fn setTokenBalance(self: *AccountBalance, token_id: TokenId, balance: u64) !*AccountBalance {
         try self.token_balances.put(token_id, balance);
     }
     
-    pub fn setTokenBalanceWithDecimals(self: *AccountBalance, token_id: TokenId, balance: u64, decimals: u32) *AccountBalance {
+    pub fn setTokenBalanceWithDecimals(self: *AccountBalance, token_id: TokenId, balance: u64, decimals: u32) !*AccountBalance {
         try self.token_decimal_balances.put(token_id, DecimalBalance{
             .balance = balance,
             .decimals = decimals,

@@ -33,10 +33,15 @@ pub const TokenRejectTransaction = struct {
     }
     
     // Set the owner account
-    pub fn setOwner(self: *TokenRejectTransaction, owner: AccountId) errors.HederaError!*TokenRejectTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setOwner(self: *TokenRejectTransaction, owner: AccountId) !*TokenRejectTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.owner = owner;
         return self;
+    }
+    
+    // Alias for setOwner to match example usage
+    pub fn setOwnerId(self: *TokenRejectTransaction, owner: AccountId) !*TokenRejectTransaction {
+        return self.setOwner(owner);
     }
     
     // Add a fungible token to reject
@@ -46,6 +51,20 @@ pub const TokenRejectTransaction = struct {
         });
     }
     
+    // Set multiple token IDs to reject
+    pub fn setTokenIds(self: *TokenRejectTransaction, token_ids: []const TokenId) !*TokenRejectTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
+        
+        // Clear existing references and add new ones
+        self.token_references.clearRetainingCapacity();
+        for (token_ids) |token_id| {
+            try self.token_references.append(TokenReference{
+                .token_id = token_id,
+            });
+        }
+        return self;
+    }
+    
     // Add an NFT to reject
     pub fn addNftId(self: *TokenRejectTransaction, nft_id: NftId) !void {
         try self.token_references.append(TokenReference{
@@ -53,11 +72,30 @@ pub const TokenRejectTransaction = struct {
         });
     }
     
+    // Set multiple NFT IDs to reject
+    pub fn setNftIds(self: *TokenRejectTransaction, nft_ids: []const NftId) !*TokenRejectTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
+        
+        // Clear existing references and add NFT references
+        self.token_references.clearRetainingCapacity();
+        for (nft_ids) |nft_id| {
+            try self.token_references.append(TokenReference{
+                .nft_id = nft_id,
+            });
+        }
+        return self;
+    }
+    
     // Set all token references to reject
     pub fn setTokenReferences(self: *TokenRejectTransaction, references: []const TokenReference) !*TokenRejectTransaction {
         self.token_references.clearAndFree();
         try self.token_references.appendSlice(references);
         return self;
+    }
+    
+    // Freeze the transaction
+    pub fn freezeWith(self: *TokenRejectTransaction, client: *Client) !void {
+        try self.base.freezeWith(client);
     }
     
     // Execute the transaction
@@ -146,3 +184,5 @@ pub const TokenRejectTransaction = struct {
         try self.base.writeCommonFields(writer);
     }
 };
+
+// Constructor function matching the pattern used by other transactions

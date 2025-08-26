@@ -10,7 +10,7 @@ pub fn createFile(allocator: std.mem.Allocator, client: ?*hedera.Client, params:
     const p = params orelse return error.MissingParams;
     
     // Create transaction
-    var tx = hedera.newFileCreateTransaction(allocator);
+    var tx = hedera.fileCreateTransaction(allocator);
     defer tx.deinit();
     
     // Set keys

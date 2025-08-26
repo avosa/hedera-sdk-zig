@@ -37,7 +37,7 @@ pub const TransactionFeeSchedule = struct {
         }
     }
     
-    pub fn setFeeData(self: *Self, fee_data: *FeeData) *Self {
+    pub fn setFeeData(self: *Self, fee_data: *FeeData) !*Self {
         if (self.fee_data) |old_fee_data| {
             old_fee_data.deinit();
             self.allocator.destroy(old_fee_data);

@@ -1,396 +1,193 @@
+// Account creation transaction for Hedera network
+// Handles new account creation with comprehensive configuration options
+
 const std = @import("std");
-const AccountId = @import("../core/id.zig").AccountId;
-const Hbar = @import("../core/hbar.zig").Hbar;
-const Key = @import("../crypto/key.zig").Key;
-const Duration = @import("../core/duration.zig").Duration;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
 const TransactionResponse = @import("../transaction/transaction.zig").TransactionResponse;
-const TransactionReceipt = @import("../transaction/transaction.zig").TransactionReceipt;
-const Client = @import("../network/client.zig").Client;
-const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
-const errors = @import("../core/errors.zig");
+const ProtoWriter = @import("../protobuf/writer.zig").ProtoWriter;
+const AccountId = @import("../core/id.zig").AccountId;
+const Key = @import("../crypto/key.zig").Key;
+const Hbar = @import("../core/hbar.zig").Hbar;
+const Duration = @import("../core/duration.zig").Duration;
+const HederaError = @import("../core/errors.zig").HederaError;
+const requireNotFrozen = @import("../core/errors.zig").requireNotFrozen;
+const requirePositive = @import("../core/errors.zig").requirePositive;
+const requireMaxLength = @import("../core/errors.zig").requireMaxLength;
+const requireNotNull = @import("../core/errors.zig").requireNotNull;
 
-// Match Go SDK's NewAccountCreateTransaction factory function
-pub fn newAccountCreateTransaction(allocator: std.mem.Allocator) AccountCreateTransaction {
-    return AccountCreateTransaction.init(allocator);
-}
-
-// AccountCreateTransaction creates a new account on Hedera
+// AccountCreateTransaction structure
 pub const AccountCreateTransaction = struct {
     base: Transaction,
-    key: ?Key,
-    initial_balance: Hbar,
-    receiver_signature_required: bool,
-    auto_renew_period: Duration,
+    
+    // Required fields
+    key: ?Key = null,
+    
+    // Optional fields with defaults
+    initial_balance: Hbar = Hbar.zero(),
+    auto_renew_period: Duration = Duration.fromDays(90),
+    receiver_signature_required: bool = false,
+    memo: []const u8 = "",
+    max_automatic_token_associations: i32 = 0,
+    
+    // Staking fields
+    staked_account_id: ?AccountId = null,
+    staked_node_id: ?i64 = null,
+    decline_staking_reward: bool = false,
+    
+    // Alias field
+    alias: ?[]const u8 = null,
+    
+    // Record threshold fields
     send_record_threshold: Hbar,
     receive_record_threshold: Hbar,
-    proxy_account_id: ?AccountId,
-    memo: []const u8,
-    max_automatic_token_associations: i32,
-    staked_account_id: ?AccountId,
-    staked_node_id: ?i64,
-    decline_staking_reward: bool,
-    alias_key: ?Key,
-    alias_evm_address: ?[]const u8,
-    alias: ?[]const u8,
     
-    pub fn init(allocator: std.mem.Allocator) AccountCreateTransaction {
-        var tx = AccountCreateTransaction{
+    const Self = @This();
+    
+    pub fn init(allocator: std.mem.Allocator) Self {
+        const max_i64 = 9223372036854775807;
+        return Self{
             .base = Transaction.init(allocator),
-            .key = null,
-            .initial_balance = Hbar.zero(),
-            .receiver_signature_required = false,
-            .auto_renew_period = Duration.fromSeconds(7890000), // Match Go SDK default
-            .send_record_threshold = Hbar.max(),
-            .receive_record_threshold = Hbar.max(),
-            .proxy_account_id = null,
-            .memo = "",
-            .max_automatic_token_associations = 0,
-            .staked_account_id = null,
-            .staked_node_id = null,
-            .decline_staking_reward = false,
-            .alias_key = null,
-            .alias_evm_address = null,
-            .alias = null,
+            .send_record_threshold = Hbar{ .tinybars = max_i64 },
+            .receive_record_threshold = Hbar{ .tinybars = max_i64 },
         };
-        
-        // Set default max transaction fee to 5 HBAR like Go SDK
-        tx.base.max_transaction_fee = Hbar.from(5) catch Hbar.zero();
-        
-        return tx;
     }
     
-    pub fn deinit(self: *AccountCreateTransaction) void {
+    pub fn deinit(self: *Self) void {
         self.base.deinit();
     }
     
     // Set the key for the new account
-    pub fn setKey(self: *AccountCreateTransaction, key: Key) errors.HederaError!*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setKey(self: *Self, key: Key) HederaError!*Self {
+        try requireNotFrozen(self.base.frozen);
         self.key = key;
         return self;
     }
     
-    // Sets account key and ECDSA key for alias
-    pub fn setKeyWithAlias(self: *AccountCreateTransaction, key: Key, ecdsa_key: Key) !*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    // Set ECDSA key with derived alias
+    pub fn setECDSAKeyWithAlias(self: *Self, key: Key) HederaError!*Self {
+        try self.setKeyWithoutAlias(key);
+        
+        // Derive EVM address from ECDSA public key
+        switch (key) {
+            .ecdsa_secp256k1 => |ecdsa_key| {
+                // Derive alias from ECDSA key
+                const derived_alias = try ecdsa_key.toEvmAddress(self.base.allocator);
+                self.alias = derived_alias;
+            },
+            else => return HederaError.InvalidAliasKey,
+        }
+        return self;
+    }
+    
+    // Set key with separate alias key
+    pub fn setKeyWithAlias(self: *Self, key: Key, alias_key: Key) HederaError!*Self {
+        try self.setKeyWithoutAlias(key);
+        
+        // Derive alias from the separate alias key
+        switch (alias_key) {
+            .ecdsa_secp256k1 => |ecdsa_key| {
+                const derived_alias = try ecdsa_key.toEvmAddress(self.base.allocator);
+                self.alias = derived_alias;
+            },
+            else => return HederaError.InvalidAliasKey,
+        }
+        return self;
+    }
+    
+    // Set key without alias
+    pub fn setKeyWithoutAlias(self: *Self, key: Key) HederaError!*Self {
+        try requireNotFrozen(self.base.frozen);
         self.key = key;
-        
-        // Extract EVM address from ECDSA key
-        const evm_address = try ecdsa_key.toEvmAddress(self.base.allocator);
-        defer self.base.allocator.free(evm_address);
-        
-        // Convert hex string to bytes (remove 0x prefix if present)
-        var start_idx: usize = 0;
-        if (std.mem.startsWith(u8, evm_address, "0x")) {
-            start_idx = 2;
-            return self;
-        }
-        
-        const hex_str = evm_address[start_idx..];
-        const alias_bytes = try self.base.allocator.alloc(u8, hex_str.len / 2);
-        _ = try std.fmt.hexToBytes(alias_bytes, hex_str);
-        
-        if (self.alias) |old_alias| {
-            self.base.allocator.free(old_alias);
-        }
-        self.alias = alias_bytes;
-        
         return self;
     }
     
-    // Sets ECDSA key and derives EVM address
-    pub fn setEcdsaKeyWithAlias(self: *AccountCreateTransaction, ecdsa_key: Key) !*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        
-        // Set the key
-        self.key = ecdsa_key;
-        
-        // Extract EVM address from ECDSA key
-        const evm_address = try ecdsa_key.toEvmAddress(self.base.allocator);
-        defer self.base.allocator.free(evm_address);
-        
-        // Convert hex string to bytes (remove 0x prefix if present)
-        var start_idx: usize = 0;
-        if (std.mem.startsWith(u8, evm_address, "0x")) {
-            start_idx = 2;
-            return self;
-        }
-        
-        const hex_str = evm_address[start_idx..];
-        const alias_bytes = try self.base.allocator.alloc(u8, hex_str.len / 2);
-        _ = try std.fmt.hexToBytes(alias_bytes, hex_str);
-        
-        if (self.alias) |old_alias| {
-            self.base.allocator.free(old_alias);
-        }
-        self.alias = alias_bytes;
-        
-        return self;
-    }
-    
-    // Set initial balance for the new account
-    pub fn setInitialBalance(self: *AccountCreateTransaction, balance: Hbar) errors.HederaError!*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    // Set initial balance
+    pub fn setInitialBalance(self: *Self, balance: Hbar) HederaError!*Self {
+        try requireNotFrozen(self.base.frozen);
+        try requirePositive(balance.tinybars);
         self.initial_balance = balance;
         return self;
     }
     
-    // Set whether receiver signature is required
-    pub fn setReceiverSignatureRequired(self: *AccountCreateTransaction, required: bool) errors.HederaError!*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        self.receiver_signature_required = required;
-        return self;
-    }
-    
-    // Accepts EVM address string or raw bytes  
-    pub fn setAliasBytes(self: *AccountCreateTransaction, input: []const u8) !*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        
-        if (self.alias) |old_alias| {
-            self.base.allocator.free(old_alias);
-        }
-        
-        // Check if input is hex string (starts with 0x or is all hex chars)
-        if (std.mem.startsWith(u8, input, "0x")) {
-            // Hex string with 0x prefix
-            const hex_str = input[2..];
-            const alias_bytes = try self.base.allocator.alloc(u8, hex_str.len / 2);
-            _ = try std.fmt.hexToBytes(alias_bytes, hex_str);
-            self.alias = alias_bytes;
-        } else if (isHexString(input)) {
-            // Hex string without prefix
-            const alias_bytes = try self.base.allocator.alloc(u8, input.len / 2);
-            _ = try std.fmt.hexToBytes(alias_bytes, input);
-            self.alias = alias_bytes;
-        } else {
-            // Raw bytes - just copy
-            self.alias = try self.base.allocator.dupe(u8, input);
-        }
-        
-        return self;
-    }
-    
-    fn isHexString(str: []const u8) bool {
-        if (str.len == 0 or str.len % 2 != 0) return false;
-        for (str) |c| {
-            if (!std.ascii.isHex(c)) return false;
-        }
-        return true;
-    }
-    
-    pub fn setAlias(self: *AccountCreateTransaction, evm_address: []const u8) !*AccountCreateTransaction {
-        return self.setAliasBytes(evm_address);
-    }
-    
     // Set auto renew period
-    pub fn setAutoRenewPeriod(self: *AccountCreateTransaction, period: Duration) errors.HederaError!*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        
-        const min_period = Duration.fromDays(1);
-        const max_period = Duration.fromDays(3653); // ~10 years
-        
-        if (period.seconds < min_period.seconds or period.seconds > max_period.seconds) {
-            return errors.HederaError.InvalidExpirationTime;
-        }
-        
+    pub fn setAutoRenewPeriod(self: *Self, period: Duration) HederaError!*Self {
+        try requireNotFrozen(self.base.frozen);
+        try requirePositive(period.seconds);
         self.auto_renew_period = period;
         return self;
     }
     
     // Set account memo
-    pub fn setAccountMemo(self: *AccountCreateTransaction, memo: []const u8) errors.HederaError!*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        try errors.requireStringNotTooLong(memo, 100);
-        
+    pub fn setAccountMemo(self: *Self, memo: []const u8) HederaError!*Self {
+        try requireNotFrozen(self.base.frozen);
+        try requireMaxLength(memo, 100);
         self.memo = memo;
         return self;
     }
     
+    // Set receiver signature required
+    pub fn setReceiverSignatureRequired(self: *Self, required: bool) HederaError!*Self {
+        try requireNotFrozen(self.base.frozen);
+        self.receiver_signature_required = required;
+        return self;
+    }
     
     // Set max automatic token associations
-    pub fn setMaxAutomaticTokenAssociations(self: *AccountCreateTransaction, max: i32) errors.HederaError!*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        
-        if (max < 0 or max > 5000) {
-            return errors.HederaError.InvalidTokenMaximumSupply;
-        }
-        
+    pub fn setMaxAutomaticTokenAssociations(self: *Self, max: i32) HederaError!*Self {
+        try requireNotFrozen(self.base.frozen);
+        if (max < -1) return HederaError.InvalidParameter;
         self.max_automatic_token_associations = max;
         return self;
     }
     
-    // SetProxyAccountID sets the ID of the account to which this account is proxy staked
-    // Deprecated but kept for compatibility with Go SDK
-    pub fn setProxyAccountId(self: *AccountCreateTransaction, id: AccountId) errors.HederaError!*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        self.proxy_account_id = id;
-        return self;
-    }
-    
-    
-    // Getter methods matching Go SDK
-    pub fn getKey(self: *const AccountCreateTransaction) ?Key {
-        return self.key;
-    }
-    
-    pub fn getInitialBalance(self: *const AccountCreateTransaction) Hbar {
-        return self.initial_balance;
-    }
-    
-    pub fn getMaxAutomaticTokenAssociations(self: *const AccountCreateTransaction) i32 {
-        return self.max_automatic_token_associations;
-    }
-    
-    pub fn getAutoRenewPeriod(self: *const AccountCreateTransaction) Duration {
-        return self.auto_renew_period;
-    }
-    
-    pub fn getProxyAccountId(self: *const AccountCreateTransaction) ?AccountId {
-        return self.proxy_account_id;
-    }
-    
-    pub fn getProxyAccountID(self: *const AccountCreateTransaction) ?AccountId {
-        return self.proxy_account_id;
-    }
-    
-    pub fn getAccountMemo(self: *const AccountCreateTransaction) []const u8 {
-        return self.memo;
-    }
-    
-    pub fn getStakedAccountId(self: *const AccountCreateTransaction) ?AccountId {
-        return self.staked_account_id;
-    }
-    
-    pub fn getStakedNodeId(self: *const AccountCreateTransaction) ?i64 {
-        return self.staked_node_id;
-    }
-    
-    pub fn getDeclineStakingReward(self: *const AccountCreateTransaction) bool {
-        return self.decline_staking_reward;
-    }
-    
-    pub fn getAlias(self: *const AccountCreateTransaction) ?[]const u8 {
-        return self.alias;
-    }
-    
-    pub fn getReceiverSignatureRequired(self: *const AccountCreateTransaction) bool {
-        return self.receiver_signature_required;
-    }
-    
-    
     // Set staked account ID
-    pub fn setStakedAccountId(self: *AccountCreateTransaction, account_id: AccountId) errors.HederaError!*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        
-        if (self.staked_node_id != null) {
-            return errors.HederaError.InvalidTransaction;
-        }
-        
+    pub fn setStakedAccountId(self: *Self, account_id: AccountId) HederaError!*Self {
+        try requireNotFrozen(self.base.frozen);
         self.staked_account_id = account_id;
+        self.staked_node_id = null; // Clear node ID when setting account ID
         return self;
     }
-    
     
     // Set staked node ID
-    pub fn setStakedNodeId(self: *AccountCreateTransaction, node_id: i64) errors.HederaError!*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        
-        if (self.staked_account_id != null) {
-            return errors.HederaError.InvalidTransaction;
-        }
-        
+    pub fn setStakedNodeId(self: *Self, node_id: i64) HederaError!*Self {
+        try requireNotFrozen(self.base.frozen);
+        if (node_id < -1) return HederaError.InvalidStakedId;
         self.staked_node_id = node_id;
+        self.staked_account_id = null; // Clear account ID when setting node ID
         return self;
     }
     
-    
     // Set decline staking reward
-    pub fn setDeclineStakingReward(self: *AccountCreateTransaction, decline: bool) errors.HederaError!*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setDeclineStakingReward(self: *Self, decline: bool) HederaError!*Self {
+        try requireNotFrozen(self.base.frozen);
         self.decline_staking_reward = decline;
         return self;
     }
     
-    
-    // Set alias key
-    pub fn setAliasKey(self: *AccountCreateTransaction, key: Key) errors.HederaError!*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        
-        if (self.alias_evm_address != null) {
-            return errors.HederaError.InvalidTransaction;
+    // Set alias
+    pub fn setAlias(self: *Self, alias: []const u8) !*Self {
+        if (self.base.frozen) return error.TransactionFrozen;
+        // Validate alias length (20 for EVM address, 32 for raw key, 33 for Ed25519, 34 for ECDSA with prefix)
+        if (alias.len == 20 or alias.len == 32 or alias.len == 33 or alias.len == 34) {
+            self.alias = alias;
+            return self;
         }
-        
-        self.alias_key = key;
-        return self;
+        return error.InvalidAlias;
     }
     
-    // Set alias EVM address
-    pub fn setAliasEvmAddress(self: *AccountCreateTransaction, address: []const u8) errors.HederaError!*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        
-        if (address.len != 20) {
-            return errors.HederaError.InvalidTransaction;
-        }
-        
-        if (self.alias_key != null) {
-            return errors.HederaError.InvalidTransaction;
-        }
-        
-        self.alias_evm_address = address;
-        return self;
-    }
-    
-    // Freeze the transaction
-    pub fn freeze(self: *AccountCreateTransaction) !void {
-        try self.base.freeze();
-    }
-    
-    // Freeze with client
-    pub fn freezeWith(self: *AccountCreateTransaction, client: *Client) !void {
-        try self.base.freezeWith(client);
-    }
-    
-    // Sign the transaction
-    pub fn sign(self: *AccountCreateTransaction, private_key: anytype) !void {
-        try self.base.sign(private_key);
-    }
-    
-    // Sign with operator
-    pub fn signWithOperator(self: *AccountCreateTransaction, client: *Client) !void {
-        try self.base.signWithOperator(client);
-    }
-    
-    // Set transaction memo matching Go SDK chaining pattern
-    pub fn setTransactionMemo(self: *AccountCreateTransaction, memo: []const u8) !*AccountCreateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        self.memo = memo;
-        _ = self.base.setTransactionMemo(memo);
-        return self;
-    }
-    
-    // Execute the transaction
-    pub fn execute(self: *AccountCreateTransaction, client: *Client) !TransactionResponse {
-        if (self.key == null) {
-            return error.KeyRequired;
-        }
-        
-        return try self.base.execute(client);
-    }
-    
-    // Build transaction body
-    pub fn buildTransactionBody(self: *AccountCreateTransaction) ![]u8 {
+    // Build transaction body for a specific node
+    pub fn buildTransactionBodyForNode(self: *Self, node: AccountId) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
         defer writer.deinit();
         
-        // TransactionBody message
+        // Build TransactionBody
         
         // transactionID = 1
         if (self.base.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
             defer tx_id_writer.deinit();
             
-            // Write TransactionID fields
+            // validStart
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
             defer timestamp_writer.deinit();
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
@@ -399,6 +196,7 @@ pub const AccountCreateTransaction = struct {
             defer self.base.allocator.free(timestamp_bytes);
             try tx_id_writer.writeMessage(1, timestamp_bytes);
             
+            // accountID
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
@@ -408,31 +206,20 @@ pub const AccountCreateTransaction = struct {
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
             
-            if (tx_id.scheduled) {
-                try tx_id_writer.writeBool(3, true);
-            }
-            
-            if (tx_id.nonce) |n| {
-                try tx_id_writer.writeInt32(4, @intCast(n));
-            }
-            
             const tx_id_bytes = try tx_id_writer.toOwnedSlice();
             defer self.base.allocator.free(tx_id_bytes);
             try writer.writeMessage(1, tx_id_bytes);
         }
         
         // nodeAccountID = 2
-        if (self.base.node_account_ids.items.len > 0) {
-            var node_writer = ProtoWriter.init(self.base.allocator);
-            defer node_writer.deinit();
-            const node = self.base.node_account_ids.items[0];
-            try node_writer.writeInt64(1, @intCast(node.shard));
-            try node_writer.writeInt64(2, @intCast(node.realm));
-            try node_writer.writeInt64(3, @intCast(node.account));
-            const node_bytes = try node_writer.toOwnedSlice();
-            defer self.base.allocator.free(node_bytes);
-            try writer.writeMessage(2, node_bytes);
-        }
+        var node_writer = ProtoWriter.init(self.base.allocator);
+        defer node_writer.deinit();
+        try node_writer.writeInt64(1, @intCast(node.shard));
+        try node_writer.writeInt64(2, @intCast(node.realm));
+        try node_writer.writeInt64(3, @intCast(node.account));
+        const node_bytes = try node_writer.toOwnedSlice();
+        defer self.base.allocator.free(node_bytes);
+        try writer.writeMessage(2, node_bytes);
         
         // transactionFee = 3
         if (self.base.max_transaction_fee) |fee| {
@@ -449,65 +236,68 @@ pub const AccountCreateTransaction = struct {
         
         // memo = 5
         if (self.base.transaction_memo.len > 0) {
-            try writer.writeString(5, self.base.transaction_memo);
+            try writer.writeStringField(5, self.base.transaction_memo);
         }
         
-        // cryptoCreateAccount = 11 (oneof data)
-        var create_writer = ProtoWriter.init(self.base.allocator);
-        defer create_writer.deinit();
+        // cryptoCreateAccount = 11
+        const create_body = try self.buildCreateAccountBody();
+        defer self.base.allocator.free(create_body);
+        try writer.writeMessage(11, create_body);
         
-        // key = 1
+        return writer.toOwnedSlice() catch HederaError.SerializationFailed;
+    }
+    
+    // Build CryptoCreateTransactionBody
+    fn buildCreateAccountBody(self: *Self) ![]u8 {
+        var writer = ProtoWriter.init(self.base.allocator);
+        defer writer.deinit();
+        
+        // key = 1 (REQUIRED)
         if (self.key) |key| {
             const key_bytes = try self.encodeKey(key);
             defer self.base.allocator.free(key_bytes);
-            try create_writer.writeMessage(1, key_bytes);
+            try writer.writeMessage(1, key_bytes);
+        } else {
+            return HederaError.KeyRequired;
         }
         
         // initialBalance = 2
-        try create_writer.writeUint64(2, @intCast(self.initial_balance.toTinybars()));
+        try writer.writeUint64(2, @intCast(self.initial_balance.toTinybars()));
         
-        // receiverSigRequired = 3
+        // proxyAccountID = 3 (field 3 reserved)
+        
+        // sendRecordThreshold = 6
+        try writer.writeUint64(6, @intCast(self.send_record_threshold.toTinybars()));
+        
+        // receiveRecordThreshold = 7
+        try writer.writeUint64(7, @intCast(self.receive_record_threshold.toTinybars()));
+        
+        // receiverSigRequired = 8
         if (self.receiver_signature_required) {
-            try create_writer.writeBool(3, true);
+            try writer.writeBool(8, true);
         }
         
-        // autoRenewPeriod = 4
+        // autoRenewPeriod = 9
         var auto_renew_writer = ProtoWriter.init(self.base.allocator);
         defer auto_renew_writer.deinit();
         try auto_renew_writer.writeInt64(1, self.auto_renew_period.seconds);
         const auto_renew_bytes = try auto_renew_writer.toOwnedSlice();
         defer self.base.allocator.free(auto_renew_bytes);
-        try create_writer.writeMessage(4, auto_renew_bytes);
+        try writer.writeMessage(9, auto_renew_bytes);
         
-        // proxyAccountID = 5 (deprecated but included for compatibility)
-        if (self.proxy_account_id) |proxy| {
-            var proxy_writer = ProtoWriter.init(self.base.allocator);
-            defer proxy_writer.deinit();
-            try proxy_writer.writeInt64(1, @intCast(proxy.shard));
-            try proxy_writer.writeInt64(2, @intCast(proxy.realm));
-            try proxy_writer.writeInt64(3, @intCast(proxy.account));
-            const proxy_bytes = try proxy_writer.toOwnedSlice();
-            defer self.base.allocator.free(proxy_bytes);
-            try create_writer.writeMessage(5, proxy_bytes);
-        }
+        // shardID = 10 (field 10 reserved)
+        // realmID = 11 (field 11 reserved)
+        // newRealmAdminKey = 12 (field 12 reserved)
         
-        // sendRecordThreshold = 6 (deprecated)
-        try create_writer.writeUint64(6, @intCast(self.send_record_threshold.toTinybars()));
-        
-        // receiveRecordThreshold = 7 (deprecated)
-        try create_writer.writeUint64(7, @intCast(self.receive_record_threshold.toTinybars()));
-        
-        // memo = 8
+        // memo = 13
         if (self.memo.len > 0) {
-            try create_writer.writeString(8, self.memo);
+            try writer.writeStringField(13, self.memo);
         }
         
-        // maxAutomaticTokenAssociations = 9
-        if (self.max_automatic_token_associations > 0) {
-            try create_writer.writeInt32(9, self.max_automatic_token_associations);
-        }
+        // maxAutomaticTokenAssociations = 14
+        try writer.writeInt32(14, self.max_automatic_token_associations);
         
-        // stakedAccountId = 10 or stakedNodeId = 11
+        // stakedAccountId = 15 or stakedNodeId = 16
         if (self.staked_account_id) |staked| {
             var staked_writer = ProtoWriter.init(self.base.allocator);
             defer staked_writer.deinit();
@@ -516,94 +306,92 @@ pub const AccountCreateTransaction = struct {
             try staked_writer.writeInt64(3, @intCast(staked.account));
             const staked_bytes = try staked_writer.toOwnedSlice();
             defer self.base.allocator.free(staked_bytes);
-            try create_writer.writeMessage(10, staked_bytes);
+            try writer.writeMessage(15, staked_bytes);
         } else if (self.staked_node_id) |node_id| {
-            try create_writer.writeInt64(11, node_id);
+            try writer.writeInt64(16, node_id);
         }
         
-        // declineStakingReward = 12
+        // declineReward = 17
         if (self.decline_staking_reward) {
-            try create_writer.writeBool(12, true);
+            try writer.writeBool(17, true);
         }
         
-        // alias = 18 (bytes field for EVM address)
+        // alias = 18
         if (self.alias) |alias_bytes| {
-            try create_writer.writeBytes(18, alias_bytes);
+            try writer.writeBytesField(18, alias_bytes);
         }
         
-        const create_bytes = try create_writer.toOwnedSlice();
-        defer self.base.allocator.free(create_bytes);
-        try writer.writeMessage(11, create_bytes);
-        
-        return writer.toOwnedSlice();
+        return writer.toOwnedSlice() catch HederaError.SerializationFailed;
     }
     
-    fn encodeKey(self: *AccountCreateTransaction, key: Key) ![]u8 {
+    // Encode key to protobuf
+    fn encodeKey(self: *Self, key: Key) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
         defer writer.deinit();
         
         switch (key) {
-            .ed25519 => |k| {
-                try writer.writeString(2, &k.bytes);
+            .ed25519 => |pub_key| {
+                // ed25519 = 2
+                try writer.writeBytesField(2, pub_key.bytes[0..32]);
             },
-            .ecdsa_secp256k1 => |k| {
-                try writer.writeString(7, &k.bytes);
+            .ecdsa_secp256k1 => |pub_key| {
+                // ecdsaSecp256k1 = 4
+                try writer.writeBytesField(4, &pub_key.bytes);
             },
-            .key_list => |list| {
-                var list_writer = ProtoWriter.init(self.base.allocator);
-                defer list_writer.deinit();
-                
-                for (list.keys.items) |item_key| {
-                    const item_bytes = try self.encodeKey(item_key);
-                    defer self.base.allocator.free(item_bytes);
-                    try list_writer.writeMessage(1, item_bytes);
-                }
-                
-                const list_bytes = try list_writer.toOwnedSlice();
-                defer self.base.allocator.free(list_bytes);
-                try writer.writeMessage(6, list_bytes);
-            },
-            .threshold_key => |tk| {
-                var tk_writer = ProtoWriter.init(self.base.allocator);
-                defer tk_writer.deinit();
-                
-                try tk_writer.writeUint32(1, tk.threshold);
-                
-                var keys_writer = ProtoWriter.init(self.base.allocator);
-                defer keys_writer.deinit();
-                
-                for (tk.keys.keys.items) |item_key| {
-                    const item_bytes = try self.encodeKey(item_key);
-                    defer self.base.allocator.free(item_bytes);
-                    try keys_writer.writeMessage(1, item_bytes);
-                }
-                
-                const keys_bytes = try keys_writer.toOwnedSlice();
-                defer self.base.allocator.free(keys_bytes);
-                try tk_writer.writeMessage(2, keys_bytes);
-                
-                const tk_bytes = try tk_writer.toOwnedSlice();
-                defer self.base.allocator.free(tk_bytes);
-                try writer.writeMessage(5, tk_bytes);
-            },
-            .contract_id => |cid| {
-                var cid_writer = ProtoWriter.init(self.base.allocator);
-                defer cid_writer.deinit();
-                try cid_writer.writeString(1, cid.contract_id);
-                const cid_bytes = try cid_writer.toOwnedSlice();
-                defer self.base.allocator.free(cid_bytes);
-                try writer.writeMessage(1, cid_bytes);
-            },
-            .delegatable_contract_id => |cid| {
-                var cid_writer = ProtoWriter.init(self.base.allocator);
-                defer cid_writer.deinit();
-                try cid_writer.writeString(1, cid.contract_id);
-                const cid_bytes = try cid_writer.toOwnedSlice();
-                defer self.base.allocator.free(cid_bytes);
-                try writer.writeMessage(8, cid_bytes);
-            },
+            else => return HederaError.InvalidAliasKey,
         }
         
-        return writer.toOwnedSlice();
+        return writer.toOwnedSlice() catch HederaError.SerializationFailed;
+    }
+    
+    // Freeze the transaction
+    pub fn freeze(self: *Self) HederaError!*Self {
+        // Validate required fields
+        if (self.key == null) {
+            return HederaError.KeyRequired;
+        }
+        self.base.frozen = true;
+        return self;
+    }
+    
+    // Freeze with client
+    pub fn freezeWith(self: *Self, client: anytype) HederaError!*Self {
+        // Validate required fields
+        if (self.key == null) {
+            return HederaError.KeyRequired;
+        }
+        _ = self.base.freezeWith(client) catch return HederaError.TransactionFrozen;
+        return self;
+    }
+    
+    // Sign the transaction
+    pub fn sign(self: *Self, private_key: anytype) HederaError!*Self {
+        _ = self.base.sign(private_key) catch return HederaError.TransactionFrozen;
+        return self;
+    }
+    
+    // Execute transaction
+    pub fn execute(self: *Self, client: anytype) !TransactionResponse {
+        // Validate required fields
+        if (self.key == null) {
+            return HederaError.KeyRequired;
+        }
+        
+        // Set default fee if not set (2 HBAR)
+        if (self.base.max_transaction_fee == null) {
+            self.base.max_transaction_fee = try Hbar.fromTinybars(200_000_000);
+        }
+        
+        // Override base buildTransactionBodyForNode
+        self.base.buildTransactionBodyForNode = buildTransactionBodyForNodeWrapper;
+        
+        // Execute through base transaction
+        return self.base.execute(client);
+    }
+    
+    // Wrapper function for Transaction base class function pointer
+    pub fn buildTransactionBodyForNodeWrapper(transaction: *Transaction, node: AccountId) anyerror![]u8 {
+        const self = @as(*AccountCreateTransaction, @fieldParentPtr("base", transaction));
+        return self.buildTransactionBodyForNode(node);
     }
 };

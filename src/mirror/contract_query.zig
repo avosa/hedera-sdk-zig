@@ -43,32 +43,32 @@ pub const ContractCallResultQuery = struct {
         };
     }
 
-    pub fn setContractId(self: *ContractCallResultQuery, contract_id: ContractId) *ContractCallResultQuery {
+    pub fn setContractId(self: *ContractCallResultQuery, contract_id: ContractId) !*ContractCallResultQuery {
         self.contract_id = contract_id;
         return self;
     }
 
-    pub fn setTimestamp(self: *ContractCallResultQuery, timestamp: Timestamp) *ContractCallResultQuery {
+    pub fn setTimestamp(self: *ContractCallResultQuery, timestamp: Timestamp) !*ContractCallResultQuery {
         self.timestamp = timestamp;
         return self;
     }
 
-    pub fn setTransactionId(self: *ContractCallResultQuery, transaction_id: []const u8) *ContractCallResultQuery {
+    pub fn setTransactionId(self: *ContractCallResultQuery, transaction_id: []const u8) !*ContractCallResultQuery {
         self.transaction_id = transaction_id;
         return self;
     }
 
-    pub fn setFrom(self: *ContractCallResultQuery, from: Timestamp) *ContractCallResultQuery {
+    pub fn setFrom(self: *ContractCallResultQuery, from: Timestamp) !*ContractCallResultQuery {
         self.from = from;
         return self;
     }
 
-    pub fn setLimit(self: *ContractCallResultQuery, limit: u32) *ContractCallResultQuery {
+    pub fn setLimit(self: *ContractCallResultQuery, limit: u32) !*ContractCallResultQuery {
         self.limit = @min(limit, 1000);
         return self;
     }
 
-    pub fn setOrder(self: *ContractCallResultQuery, order: Order) *ContractCallResultQuery {
+    pub fn setOrder(self: *ContractCallResultQuery, order: Order) !*ContractCallResultQuery {
         self.order = order;
         return self;
     }
@@ -199,17 +199,17 @@ pub const ContractStateQuery = struct {
         };
     }
 
-    pub fn setSlot(self: *ContractStateQuery, slot: [32]u8) *ContractStateQuery {
+    pub fn setSlot(self: *ContractStateQuery, slot: [32]u8) !*ContractStateQuery {
         self.slot = slot;
         return self;
     }
 
-    pub fn setLimit(self: *ContractStateQuery, limit: u32) *ContractStateQuery {
+    pub fn setLimit(self: *ContractStateQuery, limit: u32) !*ContractStateQuery {
         self.limit = @min(limit, 1000);
         return self;
     }
 
-    pub fn setOrder(self: *ContractStateQuery, order: ContractCallResultQuery.Order) *ContractStateQuery {
+    pub fn setOrder(self: *ContractStateQuery, order: ContractCallResultQuery.Order) !*ContractStateQuery {
         self.order = order;
         return self;
     }

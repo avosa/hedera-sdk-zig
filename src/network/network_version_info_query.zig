@@ -201,3 +201,5 @@ pub const NetworkVersionInfoQuery = struct {
         return info;
     }
 };
+
+// Factory function for creating a new NetworkVersionInfoQuery

@@ -11,7 +11,7 @@ const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 pub const AccountAllowanceDeleteTransaction = struct {
     base: Transaction,
     nft_allowances: std.ArrayList(NftRemoveAllowance),
-    nft_allowance_deletions: std.ArrayList(NftRemoveAllowance),  // Alias for compatibility
+    nft_allowance_deletions: std.ArrayList(NftRemoveAllowance),
     
     const NftRemoveAllowance = struct {
         token_id: TokenId,
@@ -140,7 +140,4 @@ pub const AccountAllowanceDeleteTransaction = struct {
     }
 };
 
-// Factory function matching Hedera SDK patterns
-pub fn newAccountAllowanceDeleteTransaction(allocator: std.mem.Allocator) AccountAllowanceDeleteTransaction {
-    return AccountAllowanceDeleteTransaction.init(allocator);
-}
+

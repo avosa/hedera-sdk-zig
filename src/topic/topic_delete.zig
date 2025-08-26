@@ -29,7 +29,7 @@ pub const TopicDeleteTransaction = struct {
     }
     
     // SetTopicID sets the topic IDentifier
-    pub fn setTopicId(self: *TopicDeleteTransaction, topic_id: TopicId) errors.HederaError!*TopicDeleteTransaction {
+    pub fn setTopicId(self: *TopicDeleteTransaction, topic_id: TopicId) !*TopicDeleteTransaction {
         try errors.requireNotFrozen(self.transaction.frozen);
         self.topic_id = topic_id;
         return self;
@@ -43,7 +43,7 @@ pub const TopicDeleteTransaction = struct {
     // Execute executes the transaction
     pub fn execute(self: *TopicDeleteTransaction, client: *Client) !TransactionResponse {
         if (self.topic_id == null) {
-            return errors.HederaError.InvalidTopicId;
+            return error.InvalidParameter;
         }
         return try self.transaction.execute(client);
     }
@@ -72,8 +72,8 @@ pub const TopicDeleteTransaction = struct {
     }
     
     // SetMaxTransactionFee sets the maximum transaction fee
-    pub fn setMaxTransactionFee(self: *TopicDeleteTransaction, fee: Hbar) *TopicDeleteTransaction {
-        _ = self.transaction.setMaxTransactionFee(fee);
+    pub fn setMaxTransactionFee(self: *TopicDeleteTransaction, fee: Hbar) !*TopicDeleteTransaction {
+        _ = self.transaction.setMaxTransactionFee(fee) catch {};
         return self;
     }
     
@@ -83,7 +83,7 @@ pub const TopicDeleteTransaction = struct {
     }
     
     // SetTransactionMemo sets the transaction memo
-    pub fn setTransactionMemo(self: *TopicDeleteTransaction, memo: []const u8) *TopicDeleteTransaction {
+    pub fn setTransactionMemo(self: *TopicDeleteTransaction, memo: []const u8) !*TopicDeleteTransaction {
         _ = self.transaction.setTransactionMemo(memo);
         return self;
     }
@@ -94,8 +94,8 @@ pub const TopicDeleteTransaction = struct {
     }
     
     // SetNodeAccountIDs sets the node account IDs for this transaction
-    pub fn setNodeAccountIDs(self: *TopicDeleteTransaction, node_account_ids: []const AccountId) *TopicDeleteTransaction {
-        _ = self.transaction.setNodeAccountIDs(node_account_ids);
+    pub fn setNodeAccountIDs(self: *TopicDeleteTransaction, node_account_ids: []const AccountId) !*TopicDeleteTransaction {
+        _ = self.transaction.setNodeAccountIds(node_account_ids) catch {};
         return self;
     }
     
@@ -106,6 +106,3 @@ pub const TopicDeleteTransaction = struct {
 };
 
 // NewTopicDeleteTransaction creates a TopicDeleteTransaction
-pub fn newTopicDeleteTransaction(allocator: std.mem.Allocator) !*TopicDeleteTransaction {
-    return try TopicDeleteTransaction.init(allocator);
-}

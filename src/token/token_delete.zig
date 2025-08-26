@@ -5,57 +5,58 @@ const TransactionResponse = @import("../transaction/transaction.zig").Transactio
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
-const errors = @import("../core/errors.zig");
+const HederaError = @import("../core/errors.zig").HederaError;
+const requireNotFrozen = @import("../core/errors.zig").requireNotFrozen;
 
 // TokenDeleteTransaction deletes a token from the Hedera network
 pub const TokenDeleteTransaction = struct {
     base: Transaction,
     token_id: ?TokenId,
-    
+
     pub fn init(allocator: std.mem.Allocator) TokenDeleteTransaction {
         return TokenDeleteTransaction{
             .base = Transaction.init(allocator),
             .token_id = null,
         };
     }
-    
+
     pub fn deinit(self: *TokenDeleteTransaction) void {
         self.base.deinit();
     }
-    
+
     // Set the token to delete
-    pub fn setTokenId(self: *TokenDeleteTransaction, token_id: TokenId) errors.HederaError!*TokenDeleteTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setTokenId(self: *TokenDeleteTransaction, token_id: TokenId) HederaError!*TokenDeleteTransaction {
+        try requireNotFrozen(self.base.frozen);
         self.token_id = token_id;
         return self;
     }
-    
-    // Getter method for uniformity with Go SDK
+
+    // Getter method
     pub fn getTokenId(self: *const TokenDeleteTransaction) ?TokenId {
         return self.token_id;
     }
-    
+
     // Execute the transaction
     pub fn execute(self: *TokenDeleteTransaction, client: *Client) !TransactionResponse {
         if (self.token_id == null) {
             return error.TokenIdRequired;
         }
-        
+
         return try self.base.execute(client);
     }
-    
+
     // Build transaction body
     pub fn buildTransactionBody(self: *TokenDeleteTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
         defer writer.deinit();
-        
+
         // Common transaction fields
         try self.writeCommonFields(&writer);
-        
+
         // tokenDeletion = 38 (oneof data)
         var delete_writer = ProtoWriter.init(self.base.allocator);
         defer delete_writer.deinit();
-        
+
         // token = 1
         if (self.token_id) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
@@ -67,20 +68,20 @@ pub const TokenDeleteTransaction = struct {
             defer self.base.allocator.free(token_bytes);
             try delete_writer.writeMessage(1, token_bytes);
         }
-        
+
         const delete_bytes = try delete_writer.toOwnedSlice();
         defer self.base.allocator.free(delete_bytes);
         try writer.writeMessage(38, delete_bytes);
-        
+
         return writer.toOwnedSlice();
     }
-    
+
     fn writeCommonFields(self: *TokenDeleteTransaction, writer: *ProtoWriter) !void {
         // transactionID = 1
         if (self.base.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
             defer tx_id_writer.deinit();
-            
+
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
             defer timestamp_writer.deinit();
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
@@ -88,7 +89,7 @@ pub const TokenDeleteTransaction = struct {
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
             defer self.base.allocator.free(timestamp_bytes);
             try tx_id_writer.writeMessage(1, timestamp_bytes);
-            
+
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
@@ -97,16 +98,16 @@ pub const TokenDeleteTransaction = struct {
             const account_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_bytes);
             try tx_id_writer.writeMessage(2, account_bytes);
-            
+
             if (tx_id.nonce) |n| {
                 try tx_id_writer.writeInt32(4, @intCast(n));
             }
-            
+
             const tx_id_bytes = try tx_id_writer.toOwnedSlice();
             defer self.base.allocator.free(tx_id_bytes);
             try writer.writeMessage(1, tx_id_bytes);
         }
-        
+
         // nodeAccountID = 2
         if (self.base.node_account_ids.items.len > 0) {
             var node_writer = ProtoWriter.init(self.base.allocator);
@@ -119,12 +120,12 @@ pub const TokenDeleteTransaction = struct {
             defer self.base.allocator.free(node_bytes);
             try writer.writeMessage(2, node_bytes);
         }
-        
+
         // transactionFee = 3
         if (self.base.max_transaction_fee) |fee| {
             try writer.writeUint64(3, @intCast(fee.toTinybars()));
         }
-        
+
         // transactionValidDuration = 4
         var duration_writer = ProtoWriter.init(self.base.allocator);
         defer duration_writer.deinit();
@@ -132,10 +133,12 @@ pub const TokenDeleteTransaction = struct {
         const duration_bytes = try duration_writer.toOwnedSlice();
         defer self.base.allocator.free(duration_bytes);
         try writer.writeMessage(4, duration_bytes);
-        
+
         // memo = 5
         if (self.base.transaction_memo.len > 0) {
             try writer.writeString(5, self.base.transaction_memo);
         }
     }
 };
+
+// Constructor function matching the pattern used by other transactions

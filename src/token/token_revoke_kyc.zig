@@ -27,20 +27,20 @@ pub const TokenRevokeKycTransaction = struct {
     }
     
     // Set the token to revoke KYC for
-    pub fn setTokenId(self: *TokenRevokeKycTransaction, token_id: TokenId) errors.HederaError!*TokenRevokeKycTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setTokenId(self: *TokenRevokeKycTransaction, token_id: TokenId) !*TokenRevokeKycTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.token_id = token_id;
         return self;
     }
     
     // Set the account to revoke KYC from
-    pub fn setAccountId(self: *TokenRevokeKycTransaction, account_id: AccountId) errors.HederaError!*TokenRevokeKycTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setAccountId(self: *TokenRevokeKycTransaction, account_id: AccountId) !*TokenRevokeKycTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.account_id = account_id;
         return self;
     }
     
-    // Getter methods for uniformity with Go SDK
+    
     pub fn getTokenId(self: *const TokenRevokeKycTransaction) ?TokenId {
         return self.token_id;
     }
@@ -169,3 +169,5 @@ pub const TokenRevokeKycTransaction = struct {
         }
     }
 };
+
+

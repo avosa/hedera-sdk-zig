@@ -1,6 +1,6 @@
 const std = @import("std");
 const errors = @import("../core/errors.zig");
-const FileId = @import("../core/id.zig").FileId;
+const HederaError = errors.HederaError;const FileId = @import("../core/id.zig").FileId;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
 const TransactionResponse = @import("../transaction/transaction.zig").TransactionResponse;
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
@@ -24,9 +24,32 @@ pub const FileDeleteTransaction = struct {
     }
     
     // Set the file ID to delete
-    pub fn setFileId(self: *FileDeleteTransaction, file_id: FileId) errors.HederaError!*FileDeleteTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setFileId(self: *FileDeleteTransaction, file_id: FileId) !*FileDeleteTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.file_id = file_id;
+        return self;
+    }
+    
+    // Freeze the transaction
+    pub fn freeze(self: *FileDeleteTransaction) HederaError!void {
+        try self.base.freeze();
+    }
+    
+    // Freeze with client
+    pub fn freezeWith(self: *FileDeleteTransaction, client: *Client) !*FileDeleteTransaction {
+        try self.base.freezeWith(client);
+        return self;
+    }
+    
+    // Sign the transaction
+    pub fn sign(self: *FileDeleteTransaction, private_key: anytype) HederaError!*FileDeleteTransaction {
+        try self.base.sign(private_key);
+        return self;
+    }
+    
+    // Sign with operator
+    pub fn signWithOperator(self: *FileDeleteTransaction, client: *Client) HederaError!*FileDeleteTransaction {
+        try self.base.signWithOperator(client);
         return self;
     }
     
@@ -134,3 +157,5 @@ pub const FileDeleteTransaction = struct {
         }
     }
 };
+
+

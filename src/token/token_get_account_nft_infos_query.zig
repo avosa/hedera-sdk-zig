@@ -40,7 +40,7 @@ pub const TokenGetAccountNftInfosQuery = struct {
 
     pub fn init(allocator: std.mem.Allocator) Self {
         return .{
-            .query = Query.init(allocator, .TokenGetAccountNftInfos),
+            .query = Query.init(allocator),
             .account_id = null,
             .start = 0,
             .end = 0,
@@ -52,7 +52,7 @@ pub const TokenGetAccountNftInfosQuery = struct {
     }
 
     /// Set the account to query NFTs for
-    pub fn setAccountId(self: *Self, account_id: AccountId) *Self {
+    pub fn setAccountId(self: *Self, account_id: AccountId) !*Self {
         self.account_id = account_id;
         return self;
     }
@@ -63,7 +63,7 @@ pub const TokenGetAccountNftInfosQuery = struct {
     }
 
     /// Set the start serial number (inclusive)
-    pub fn setStart(self: *Self, start: i64) *Self {
+    pub fn setStart(self: *Self, start: i64) !*Self {
         self.start = start;
         return self;
     }
@@ -74,7 +74,7 @@ pub const TokenGetAccountNftInfosQuery = struct {
     }
 
     /// Set the end serial number (inclusive)
-    pub fn setEnd(self: *Self, end: i64) *Self {
+    pub fn setEnd(self: *Self, end: i64) !*Self {
         self.end = end;
         return self;
     }
@@ -85,20 +85,20 @@ pub const TokenGetAccountNftInfosQuery = struct {
     }
 
     /// Set the maximum number of NFTs to return
-    pub fn setMaxQueryPayment(self: *Self, max_payment: i64) *Self {
+    pub fn setMaxQueryPayment(self: *Self, max_payment: i64) !*Self {
         self.query.setMaxQueryPayment(max_payment);
         return self;
     }
 
     /// Set the query payment
-    pub fn setQueryPayment(self: *Self, payment: i64) *Self {
+    pub fn setQueryPayment(self: *Self, payment: i64) !*Self {
         self.query.setQueryPayment(payment);
         return self;
     }
 
     /// Set node account IDs
     pub fn setNodeAccountIds(self: *Self, node_account_ids: []const AccountId) !*Self {
-        try self.query.setNodeAccountIds(node_account_ids);
+        self.query.setNodeAccountIds(node_account_ids);
         return self;
     }
 
@@ -273,6 +273,8 @@ pub const TokenGetAccountNftInfosQuery = struct {
         return list.toOwnedSlice();
     }
 };
+
+
 
 test "TokenGetAccountNftInfosQuery initialization" {
     const testing = std.testing;

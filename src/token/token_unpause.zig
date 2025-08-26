@@ -8,11 +8,6 @@ const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const errors = @import("../core/errors.zig");
 
 // Factory function for TokenUnpauseTransaction
-pub fn newTokenUnpauseTransaction(allocator: std.mem.Allocator) *TokenUnpauseTransaction {
-    const tx = allocator.create(TokenUnpauseTransaction) catch @panic("Out of memory");
-    tx.* = TokenUnpauseTransaction.init(allocator);
-    return tx;
-}
 
 // TokenUnpauseTransaction unpauses token operations
 pub const TokenUnpauseTransaction = struct {
@@ -31,13 +26,13 @@ pub const TokenUnpauseTransaction = struct {
     }
     
     // Set the token to unpause
-    pub fn setTokenId(self: *TokenUnpauseTransaction, token_id: TokenId) errors.HederaError!*TokenUnpauseTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setTokenId(self: *TokenUnpauseTransaction, token_id: TokenId) !*TokenUnpauseTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.token_id = token_id;
         return self;
     }
     
-    // Getter method for uniformity with Go SDK
+    
     pub fn getTokenId(self: *const TokenUnpauseTransaction) ?TokenId {
         return self.token_id;
     }

@@ -77,7 +77,7 @@ pub fn setup(allocator: std.mem.Allocator, client_ptr: *?*hedera.Client, params:
             defer private_key.deinit();
             
             const operator_key = try private_key.toOperatorKey();
-            _ = client.setOperator(account_id, operator_key);
+            _ = try client.setOperator(account_id, operator_key);
             
             log.info("Operator set: {s}", .{account_id_str});
         }

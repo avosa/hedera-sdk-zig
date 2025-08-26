@@ -10,7 +10,7 @@ pub fn createTopic(allocator: std.mem.Allocator, client: ?*hedera.Client, params
     const p = params orelse return error.MissingParams;
     
     // Create transaction
-    var tx = try hedera.newTopicCreateTransaction(allocator);
+    var tx = try hedera.topicCreateTransaction(allocator);
     defer tx.deinit();
     
     // Set admin key

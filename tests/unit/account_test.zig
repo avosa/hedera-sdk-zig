@@ -7,7 +7,7 @@ test "Account create transaction" {
     defer arena.deinit();
     const allocator = arena.allocator();
     
-    var tx = hedera.newAccountCreateTransaction(allocator);
+    var tx = hedera.accountCreateTransaction(allocator);
     defer tx.deinit();
     
     // Generate key for new account
@@ -40,7 +40,7 @@ test "Account create with alias" {
     defer arena.deinit();
     const allocator = arena.allocator();
     
-    var tx = hedera.newAccountCreateTransaction(allocator);
+    var tx = hedera.accountCreateTransaction(allocator);
     defer tx.deinit();
     
     // Generate ECDSA key for alias
@@ -51,6 +51,9 @@ test "Account create with alias" {
     const public_key = key.getPublicKey();
     const alias = try public_key.toBytes(allocator);
     defer allocator.free(alias);
+    
+    // Verify alias length is valid (should be 34 for ECDSA with prefix)
+    try testing.expectEqual(@as(usize, 34), alias.len);
     
     _ = try tx.setAlias(alias);
     
@@ -397,11 +400,10 @@ test "Token transfer structure" {
         .account_id = hedera.AccountId.init(0, 0, 1001),
         .amount = 1000000,
         .transfers = std.ArrayList(hedera.AccountAmount).init(allocator),
-        .nft_transfers = std.ArrayList(hedera.NftTransfer).init(allocator),
         .expected_decimals = 6,
+        .is_approved = false,
     };
     defer token_transfer.transfers.deinit();
-    defer token_transfer.nft_transfers.deinit();
     
     // Add account amounts
     try token_transfer.transfers.append(.{
@@ -416,17 +418,8 @@ test "Token transfer structure" {
         .is_approved = true,
     });
     
-    // Add NFT transfer
-    try token_transfer.nft_transfers.append(.{
-        .nft_id = hedera.NftId.init(hedera.TokenId.init(0, 0, 3000), 42),
-        .sender_account_id = hedera.AccountId.init(0, 0, 100),
-        .receiver_account_id = hedera.AccountId.init(0, 0, 200),
-        .is_approved = true,
-    });
-    
     try testing.expectEqual(@as(u64, 3000), token_transfer.token_id.num());
     try testing.expectEqual(@as(usize, 2), token_transfer.transfers.items.len);
-    try testing.expectEqual(@as(usize, 1), token_transfer.nft_transfers.items.len);
     try testing.expectEqual(@as(?u32, 6), token_transfer.expected_decimals);
 }
 

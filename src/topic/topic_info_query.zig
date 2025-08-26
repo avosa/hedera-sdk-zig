@@ -87,13 +87,13 @@ pub const TopicInfoQuery = struct {
     }
     
     // Set the topic ID to query
-    pub fn setTopicId(self: *TopicInfoQuery, topic_id: TopicId) *TopicInfoQuery {
+    pub fn setTopicId(self: *TopicInfoQuery, topic_id: TopicId) !*TopicInfoQuery {
         self.topic_id = topic_id;
         return self;
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *TopicInfoQuery, payment: Hbar) *TopicInfoQuery {
+    pub fn setQueryPayment(self: *TopicInfoQuery, payment: Hbar) !*TopicInfoQuery {
         self.base.payment_amount = payment;
         return self;
     }
@@ -314,3 +314,5 @@ pub const TopicInfoQuery = struct {
         return info;
     }
 };
+
+// Factory function for creating a new TopicInfoQuery

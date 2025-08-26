@@ -12,11 +12,6 @@ const errors = @import("../core/errors.zig");
 pub const MAX_TOKEN_ASSOCIATIONS: usize = 100;
 
 // Factory function for TokenAssociateTransaction
-pub fn newTokenAssociateTransaction(allocator: std.mem.Allocator) *TokenAssociateTransaction {
-    const tx = allocator.create(TokenAssociateTransaction) catch @panic("Out of memory");
-    tx.* = TokenAssociateTransaction.init(allocator);
-    return tx;
-}
 
 // TokenAssociateTransaction associates tokens with an account
 pub const TokenAssociateTransaction = struct {
@@ -38,24 +33,24 @@ pub const TokenAssociateTransaction = struct {
     }
     
     // Set the account to associate tokens with
-    pub fn setAccountId(self: *TokenAssociateTransaction, account_id: AccountId) errors.HederaError!*TokenAssociateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setAccountId(self: *TokenAssociateTransaction, account_id: AccountId) !*TokenAssociateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.account_id = account_id;
         return self;
     }
     
     // Includes a token for association
-    pub fn addTokenId(self: *TokenAssociateTransaction, token_id: TokenId) errors.HederaError!*TokenAssociateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn addTokenId(self: *TokenAssociateTransaction, token_id: TokenId) !*TokenAssociateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (self.token_ids.items.len >= MAX_TOKEN_ASSOCIATIONS) {
-            return errors.HederaError.TokenTransferListSizeLimitExceeded;
+            return error.InvalidParameter;
         }
         
         // Check for duplicates
         for (self.token_ids.items) |existing| {
             if (existing.equals(token_id)) {
-                return errors.HederaError.TokenIdRepeatedInTokenList;
+                return error.InvalidParameter;
             }
         }
         
@@ -64,11 +59,11 @@ pub const TokenAssociateTransaction = struct {
     }
     
     // Set the list of tokens to associate
-    pub fn setTokenIds(self: *TokenAssociateTransaction, token_ids: []const TokenId) errors.HederaError!*TokenAssociateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setTokenIds(self: *TokenAssociateTransaction, token_ids: []const TokenId) !*TokenAssociateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (token_ids.len > MAX_TOKEN_ASSOCIATIONS) {
-            return errors.HederaError.TokenTransferListSizeLimitExceeded;
+            return error.InvalidParameter;
         }
         
         // Clear existing tokens
@@ -78,7 +73,7 @@ pub const TokenAssociateTransaction = struct {
         for (token_ids) |token_id| {
             for (self.token_ids.items) |existing| {
                 if (existing.equals(token_id)) {
-                    return errors.HederaError.TokenIdRepeatedInTokenList;
+                    return error.InvalidParameter;
                 }
             }
             try errors.handleAppendError(&self.token_ids, token_id);
@@ -86,7 +81,7 @@ pub const TokenAssociateTransaction = struct {
         return self;
     }
     
-    // Getter methods for uniformity with Go SDK
+    
     pub fn getAccountId(self: *const TokenAssociateTransaction) ?AccountId {
         return self.account_id;
     }
@@ -98,6 +93,11 @@ pub const TokenAssociateTransaction = struct {
     // Freeze the transaction with client for execution
     pub fn freezeWith(self: *TokenAssociateTransaction, client: *Client) !void {
         try self.base.freezeWith(client);
+    }
+    
+    // Sign the transaction with a private key
+    pub fn sign(self: *TokenAssociateTransaction, private_key: anytype) !void {
+        try self.base.sign(private_key);
     }
     
     // Execute the transaction

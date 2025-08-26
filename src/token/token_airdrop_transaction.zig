@@ -83,6 +83,11 @@ pub const TokenAirdropTransaction = struct {
         });
     }
     
+    // Freeze the transaction
+    pub fn freezeWith(self: *TokenAirdropTransaction, client: *Client) !void {
+        try self.base.freezeWith(client);
+    }
+    
     // Execute the transaction
     pub fn execute(self: *TokenAirdropTransaction, client: *Client) !TransactionResponse {
         return try self.base.execute(client);
@@ -206,3 +211,5 @@ pub const TokenAirdropTransaction = struct {
         try self.base.writeCommonFields(writer);
     }
 };
+
+// Constructor function matching the pattern used by other transactions

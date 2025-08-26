@@ -63,13 +63,13 @@ pub const FileInfoQuery = struct {
     }
     
     // Set the file ID to query
-    pub fn setFileId(self: *FileInfoQuery, file_id: FileId) *FileInfoQuery {
+    pub fn setFileId(self: *FileInfoQuery, file_id: FileId) !*FileInfoQuery {
         self.file_id = file_id;
         return self;
     }
     
     // Set the query payment amount
-    pub fn setQueryPayment(self: *FileInfoQuery, payment: Hbar) *FileInfoQuery {
+    pub fn setQueryPayment(self: *FileInfoQuery, payment: Hbar) !*FileInfoQuery {
         self.base.payment_amount = payment;
         return self;
     }
@@ -259,3 +259,5 @@ pub const FileInfoQuery = struct {
         return info;
     }
 };
+
+// Factory function for creating a new FileInfoQuery

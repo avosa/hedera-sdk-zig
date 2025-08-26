@@ -3,7 +3,8 @@ const AccountId = @import("../core/id.zig").AccountId;
 const LedgerId = @import("../core/ledger_id.zig").LedgerId;
 const Duration = @import("../core/duration.zig").Duration;
 const Timestamp = @import("../core/timestamp.zig").Timestamp;
-const GrpcClient = @import("../grpc/grpc_client.zig").GrpcClient;
+const GrpcConnection = @import("grpc_tls.zig").GrpcTlsConnection;
+const Node = @import("node.zig").Node;
 
 pub const ServiceEndpoint = struct {
     ip_address_v4: []const u8,
@@ -215,7 +216,7 @@ pub const ManagedNode = struct {
     address: NodeAddress,
     health: NodeHealth,
     stats: NodeStats,
-    grpc_client: ?GrpcClient,
+    grpc_client: ?GrpcConnection,
     allocator: std.mem.Allocator,
     min_backoff: Duration,
     max_backoff: Duration,
@@ -246,17 +247,17 @@ pub const ManagedNode = struct {
         }
     }
 
-    pub fn setTlsEnabled(self: *ManagedNode, enabled: bool) *ManagedNode {
+    pub fn setTlsEnabled(self: *ManagedNode, enabled: bool) !*ManagedNode {
         self.enable_tls = enabled;
         return self;
     }
 
-    pub fn setCertificateHash(self: *ManagedNode, cert_hash: [32]u8) *ManagedNode {
+    pub fn setCertificateHash(self: *ManagedNode, cert_hash: [32]u8) !*ManagedNode {
         self.cert_hash = cert_hash;
         return self;
     }
 
-    pub fn setBackoffLimits(self: *ManagedNode, min_backoff: Duration, max_backoff: Duration) *ManagedNode {
+    pub fn setBackoffLimits(self: *ManagedNode, min_backoff: Duration, max_backoff: Duration) !*ManagedNode {
         self.min_backoff = min_backoff;
         self.max_backoff = max_backoff;
         return self;
@@ -298,9 +299,14 @@ pub const ManagedNode = struct {
         const port = self.address.getPort(self.enable_tls);
 
         const address = try std.net.Address.parseIp(endpoint, port);
-        self.grpc_client = try GrpcClient.init(self.allocator, address);
+        const node = Node{
+            .account_id = self.account_id,
+            .address = address,
+            .hostname = endpoint,
+        };
+        self.grpc_client = try GrpcConnection.init(self.allocator, node);
         if (self.enable_tls) {
-            try self.grpc_client.?.enableTls(self.cert_hash);
+            try self.grpc_client.?.connect();
         }
     }
 

@@ -262,7 +262,7 @@ test "Key validation and error handling" {
     }
 }
 
-test "Key type detection and compatibility" {
+test "Key type detection" {
     const allocator = testing.allocator;
     
     // Generate both key types

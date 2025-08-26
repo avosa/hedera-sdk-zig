@@ -75,7 +75,7 @@ pub fn parseTimestamp(seconds_str: []const u8) !hedera.Timestamp {
 // Parse Hbar amount from tinybar string
 pub fn parseHbar(tinybar_str: []const u8) !hedera.Hbar {
     const tinybars = try std.fmt.parseInt(i64, tinybar_str, 10);
-    return hedera.Hbar.fromTinybars(tinybars);
+    return try hedera.Hbar.fromTinybars(tinybars);
 }
 
 // Helper to split ID string

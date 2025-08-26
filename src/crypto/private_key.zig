@@ -46,7 +46,7 @@ pub const PrivateKey = struct {
         return PrivateKey.init(allocator, .EcdsaSecp256k1, &key_bytes);
     }
     
-    // Match Go SDK's GeneratePrivateKey (defaults to Ed25519)
+    // Generate a new private key (defaults to Ed25519)
     pub fn generatePrivateKey(allocator: std.mem.Allocator) !PrivateKey {
         return generateEd25519(allocator);
     }
@@ -76,7 +76,7 @@ pub const PrivateKey = struct {
         return fromDer(hex_bytes, allocator);
     }
     
-    // Match Go SDK's PrivateKeyFromString naming pattern
+    
     pub fn privateKeyFromString(allocator: std.mem.Allocator, key_str: []const u8) !PrivateKey {
         return fromString(allocator, key_str);
     }
@@ -92,22 +92,20 @@ pub const PrivateKey = struct {
         var key_type: KeyType = .Ed25519;
         var key_start: usize = 0;
         
-        // Look for ED25519 OID
-        const ed25519_oid = [_]u8{ 0x06, 0x03, 0x2b, 0x65, 0x70 };
-        const ecdsa_oid = [_]u8{ 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01 };
-        
-        if (std.mem.indexOf(u8, der_bytes, &ed25519_oid)) |_| {
+        // Identify key type by OID in DER structure
+        // Ed25519 OID: 06 03 2b 65 70
+        // ECDSA OID: 06 07 2a 86 48 ce 3d 02 01
+        if (std.mem.indexOf(u8, der_bytes, &[_]u8{ 0x06, 0x03, 0x2b, 0x65, 0x70 })) |_| {
+            // Ed25519 key found
             key_type = .Ed25519;
-            // Find the key bytes (usually after 0x04, 0x20)
-            if (std.mem.indexOf(u8, der_bytes, &[_]u8{ 0x04, 0x20 })) |pos| {
-                key_start = pos + 2;
-            }
-        } else if (std.mem.indexOf(u8, der_bytes, &ecdsa_oid)) |_| {
+        } else if (std.mem.indexOf(u8, der_bytes, &[_]u8{ 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01 })) |_| {
+            // ECDSA secp256k1 key found
             key_type = .EcdsaSecp256k1;
-            // Find the key bytes
-            if (std.mem.lastIndexOf(u8, der_bytes, &[_]u8{ 0x04, 0x20 })) |pos| {
-                key_start = pos + 2;
-            }
+        }
+        
+        // Find the actual key bytes (after 0x04, 0x20)
+        if (std.mem.indexOf(u8, der_bytes, &[_]u8{ 0x04, 0x20 })) |pos| {
+            key_start = pos + 2;
         }
         
         if (key_start == 0 or key_start + 32 > der_bytes.len) {
@@ -274,7 +272,7 @@ pub const PrivateKey = struct {
         return pem.toOwnedSlice();
     }
     
-    // Alias for toDer (Go SDK compatibility)
+    // Alias for toDer
     pub fn toBytesDer(self: *const PrivateKey, allocator: std.mem.Allocator) ![]u8 {
         return self.toDer(allocator);
     }

@@ -289,11 +289,11 @@ test "Transaction signing with multiple keys" {
     defer signer2.deinit();
     
     // Freeze transaction before signing
-    try tx.base.freezeWith(null);
+    _ = try tx.base.freezeWith(null);
     
     // Sign with multiple keys
-    try tx.base.sign(signer1);
-    try tx.base.sign(signer2);
+    _ = try tx.base.sign(signer1);
+    _ = try tx.base.sign(signer2);
     
     // Verify signatures were added
     try testing.expectEqual(@as(usize, 2), tx.base.signatures.items.len);
@@ -365,10 +365,10 @@ test "Freeze transaction with key" {
     defer freeze_key.deinit();
     
     // Freeze transaction before signing
-    try freeze_tx.base.freezeWith(null);
+    _ = try freeze_tx.base.freezeWith(null);
     
     // Transaction should be signable with freeze key
-    try freeze_tx.base.sign(freeze_key);
+    _ = try freeze_tx.base.sign(freeze_key);
     
     try testing.expectEqual(@as(usize, 1), freeze_tx.base.signatures.items.len);
 }

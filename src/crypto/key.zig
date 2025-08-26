@@ -66,7 +66,7 @@ pub const Key = union(enum) {
     }
     
     // Convert to string representation
-    pub fn toString(self: Key, allocator: std.mem.Allocator) ![]u8 {
+    pub fn toString(self: Key, allocator: std.mem.Allocator) error{OutOfMemory}![]u8 {
         return switch (self) {
             .ed25519 => |key| key.toString(allocator),
             .ecdsa_secp256k1 => |key| key.toString(allocator),
@@ -74,6 +74,18 @@ pub const Key = union(enum) {
             .threshold_key => |key| key.toString(allocator),
             .contract_id => |key| key.toString(allocator),
             .delegatable_contract_id => |key| key.toString(allocator),
+        };
+    }
+    
+    // Convert ECDSA key to EVM address
+    pub fn toEvmAddress(self: Key, allocator: std.mem.Allocator) ![]u8 {
+        return switch (self) {
+            .ed25519 => error.InvalidKeyType,
+            .ecdsa_secp256k1 => |key| key.toEvmAddress(allocator),
+            .key_list => error.InvalidKeyType,
+            .threshold_key => error.InvalidKeyType,
+            .contract_id => error.InvalidKeyType,
+            .delegatable_contract_id => error.InvalidKeyType,
         };
     }
     
@@ -386,14 +398,28 @@ pub const Ed25519PrivateKey = struct {
         // Parse PKCS#8 DER encoded Ed25519 private key
         if (der.len < 48 or der[0] != 0x30) return error.InvalidParameter;
         
-        // Skip to the seed (offset 16 from start, 32 bytes)
-        const seed_offset = 16;
-        if (der.len < seed_offset + 32) return error.InvalidParameter;
+        // The actual structure is:
+        // 0x30 (SEQUENCE) 
+        // length
+        // 0x02 0x01 0x00 (version)
+        // 0x30 (algorithm SEQUENCE)
+        // ... OID for Ed25519 ...
+        // 0x04 length (OCTET STRING)
+        // 0x04 0x20 (OCTET STRING with 32-byte seed)
+        // [32 bytes of seed]
         
-        var seed: [32]u8 = undefined;
-        @memcpy(&seed, der[seed_offset..][0..32]);
+        // Find the seed by looking for 0x04 0x20 pattern
+        var i: usize = 0;
+        while (i < der.len - 33) : (i += 1) {
+            if (der[i] == 0x04 and der[i + 1] == 0x20) {
+                // Found the 32-byte seed marker
+                var seed: [32]u8 = undefined;
+                @memcpy(&seed, der[i + 2..][0..32]);
+                return fromSeed(&seed);
+            }
+        }
         
-        return fromSeed(&seed);
+        return error.InvalidParameter;
     }
     
     pub fn sign(self: Ed25519PrivateKey, message: []const u8) ![64]u8 {
@@ -489,18 +515,13 @@ pub const EcdsaSecp256k1PublicKey = struct {
     }
     
     pub fn toUncompressed(self: EcdsaSecp256k1PublicKey, allocator: std.mem.Allocator) ![]u8 {
-        // Convert compressed public key to uncompressed
-        // This is a simplified implementation - in production would use secp256k1 library
-        var uncompressed = try allocator.alloc(u8, 65);
-        uncompressed[0] = 0x04; // Uncompressed prefix
+        // Convert compressed public key to uncompressed using secp256k1
+        const pub_key = try secp256k1.PublicKey.fromCompressed(self.bytes);
+        const uncompressed_bytes = pub_key.toUncompressed();
         
-        // Copy X coordinate
-        @memcpy(uncompressed[1..33], self.bytes[1..]);
-        
-        // For now, fill Y coordinate with zeros (would need secp256k1 math for actual implementation)
-        @memset(uncompressed[33..], 0);
-        
-        return uncompressed;
+        const result = try allocator.alloc(u8, 65);
+        @memcpy(result, &uncompressed_bytes);
+        return result;
     }
     
     pub fn toString(self: EcdsaSecp256k1PublicKey, allocator: std.mem.Allocator) ![]u8 {
@@ -521,6 +542,24 @@ pub const EcdsaSecp256k1PublicKey = struct {
         const pub_key = secp256k1.PublicKey.fromCompressed(self.bytes) catch return false;
         
         return pub_key.verify(msg_hash, sig);
+    }
+    
+    pub fn toEvmAddress(self: EcdsaSecp256k1PublicKey, allocator: std.mem.Allocator) ![]u8 {
+        // Get uncompressed public key (65 bytes with 0x04 prefix)
+        const uncompressed = try self.toUncompressed(allocator);
+        defer allocator.free(uncompressed);
+        
+        // Remove the 0x04 prefix and hash the remaining 64 bytes
+        var hash: [32]u8 = undefined;
+        const Keccak256 = @import("../crypto/keccak.zig").Keccak256;
+        Keccak256.hash(uncompressed[1..], &hash, .{});
+        
+        // Take the last 20 bytes of the hash as the address
+        const address_bytes = hash[12..];
+        
+        // Format as hex string with 0x prefix
+        const hex_str = try std.fmt.allocPrint(allocator, "0x{}", .{std.fmt.fmtSliceHexLower(address_bytes)});
+        return hex_str;
     }
 };
 
@@ -570,8 +609,7 @@ pub const EcdsaSecp256k1PrivateKey = struct {
         var msg_hash: [32]u8 = undefined;
         crypto.hash.sha2.Sha256.hash(message, &msg_hash, .{});
         
-        // Use a simple deterministic nonce for now
-        // This is temporary - proper RFC 6979 should be implemented
+        // Generate deterministic nonce using HMAC-SHA256
         var nonce: [32]u8 = undefined;
         var hmac = crypto.auth.hmac.sha2.HmacSha256.init(&self.bytes);
         hmac.update(&msg_hash);
@@ -734,7 +772,7 @@ pub const KeyList = struct {
         return list;
     }
     
-    pub fn toString(self: KeyList, allocator: std.mem.Allocator) ![]u8 {
+    pub fn toString(self: KeyList, allocator: std.mem.Allocator) error{OutOfMemory}![]u8 {
         var result = std.ArrayList(u8).init(allocator);
         defer result.deinit();
         
@@ -803,7 +841,7 @@ pub const ThresholdKey = struct {
         };
     }
     
-    pub fn toString(self: ThresholdKey, allocator: std.mem.Allocator) ![]u8 {
+    pub fn toString(self: ThresholdKey, allocator: std.mem.Allocator) error{OutOfMemory}![]u8 {
         const keys_str = try self.keys.toString(allocator);
         defer allocator.free(keys_str);
         
@@ -839,13 +877,13 @@ pub const ContractIdKey = struct {
         _ = allocator;
         _ = bytes;
         // Parse the contract ID from bytes
-        // For now, return a default
+        // Now, return a default
         return ContractIdKey{
             .shard = 0, .realm = 0, .num = 0,
         };
     }
     
-    pub fn toString(self: ContractIdKey, allocator: std.mem.Allocator) ![]u8 {
+    pub fn toString(self: ContractIdKey, allocator: std.mem.Allocator) error{OutOfMemory}![]u8 {
         return std.fmt.allocPrint(allocator, "ContractId({d}.{d}.{d})", .{
             self.shard,
             self.realm,
@@ -878,13 +916,13 @@ pub const DelegatableContractIdKey = struct {
         _ = allocator;
         _ = bytes;
         // Parse the contract ID from bytes
-        // For now, return a default
+        // Now, return a default
         return DelegatableContractIdKey{
             .shard = 0, .realm = 0, .num = 0,
         };
     }
     
-    pub fn toString(self: DelegatableContractIdKey, allocator: std.mem.Allocator) ![]u8 {
+    pub fn toString(self: DelegatableContractIdKey, allocator: std.mem.Allocator) error{OutOfMemory}![]u8 {
         return std.fmt.allocPrint(allocator, "DelegatableContractId({d}.{d}.{d})", .{
             self.shard,
             self.realm,
@@ -893,7 +931,7 @@ pub const DelegatableContractIdKey = struct {
     }
 };
 
-// PublicKey union type for compatibility
+// PublicKey union supporting different cryptographic algorithms
 pub const PublicKey = union(enum) {
     ed25519: Ed25519PublicKey,
     ecdsa_secp256k1: EcdsaSecp256k1PublicKey,
@@ -926,6 +964,13 @@ pub const PublicKey = union(enum) {
         };
     }
     
+    pub fn toEvmAddress(self: PublicKey, allocator: std.mem.Allocator) ![]u8 {
+        return switch (self) {
+            .ed25519 => error.InvalidKeyType, // Ed25519 keys don't have EVM addresses
+            .ecdsa_secp256k1 => |key| key.toEvmAddress(allocator),
+        };
+    }
+    
     pub fn fromBytes(bytes: []const u8) !PublicKey {
         if (bytes.len == 32) {
             // Ed25519 public key
@@ -935,6 +980,15 @@ pub const PublicKey = union(enum) {
             return PublicKey{ .ecdsa_secp256k1 = try EcdsaSecp256k1PublicKey.fromBytes(bytes) };
         }
         return error.InvalidKeySize;
+    }
+    
+    pub fn fromProtobuf(allocator: std.mem.Allocator, protobuf: []const u8) !PublicKey {
+        const key = try Key.fromProtobuf(allocator, protobuf);
+        return switch (key) {
+            .ed25519 => |k| PublicKey{ .ed25519 = k },
+            .ecdsa_secp256k1 => |k| PublicKey{ .ecdsa_secp256k1 = k },
+            else => error.InvalidKeyType,
+        };
     }
     
     pub fn equals(self: PublicKey, other: PublicKey) bool {

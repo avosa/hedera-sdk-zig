@@ -21,28 +21,28 @@ pub const CustomFixedFee = struct {
         };
     }
 
-    pub fn setAmount(self: *CustomFixedFee, amount: u64) *CustomFixedFee {
+    pub fn setAmount(self: *CustomFixedFee, amount: u64) !*CustomFixedFee {
         self.amount = amount;
         return self;
     }
 
-    pub fn setHbarAmount(self: *CustomFixedFee, hbar: Hbar) *CustomFixedFee {
+    pub fn setHbarAmount(self: *CustomFixedFee, hbar: Hbar) !*CustomFixedFee {
         self.amount = hbar.toTinybars();
         self.denomination_token_id = null;
         return self;
     }
 
-    pub fn setDenominationTokenId(self: *CustomFixedFee, token_id: TokenId) *CustomFixedFee {
+    pub fn setDenominationTokenId(self: *CustomFixedFee, token_id: TokenId) !*CustomFixedFee {
         self.denomination_token_id = token_id;
         return self;
     }
 
-    pub fn setFeeCollectorAccountId(self: *CustomFixedFee, account_id: AccountId) *CustomFixedFee {
+    pub fn setFeeCollectorAccountId(self: *CustomFixedFee, account_id: AccountId) !*CustomFixedFee {
         self.fee_collector_account_id = account_id;
         return self;
     }
 
-    pub fn setAllCollectorsAreExempt(self: *CustomFixedFee, exempt: bool) *CustomFixedFee {
+    pub fn setAllCollectorsAreExempt(self: *CustomFixedFee, exempt: bool) !*CustomFixedFee {
         self.all_collectors_are_exempt = exempt;
         return self;
     }

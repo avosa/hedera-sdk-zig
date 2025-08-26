@@ -31,8 +31,8 @@ pub const TokenUpdateNftsTransaction = struct {
     }
     
     // Set the token ID
-    pub fn setTokenId(self: *TokenUpdateNftsTransaction, token_id: TokenId) errors.HederaError!*TokenUpdateNftsTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setTokenId(self: *TokenUpdateNftsTransaction, token_id: TokenId) !*TokenUpdateNftsTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.token_id = token_id;
         return self;
     }
@@ -51,8 +51,8 @@ pub const TokenUpdateNftsTransaction = struct {
     
     // Set the metadata for the NFTs
     pub fn setMetadata(self: *TokenUpdateNftsTransaction, metadata: []const u8) !*TokenUpdateNftsTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
-        if (metadata.len > 100) return errors.HederaError.InvalidParameter;
+        if (self.base.frozen) return error.TransactionFrozen;
+        if (metadata.len > 100) return error.InvalidParameter;
         
         if (self.metadata) |old| {
             self.base.allocator.free(old);
@@ -118,3 +118,5 @@ pub const TokenUpdateNftsTransaction = struct {
         try self.base.writeCommonFields(writer);
     }
 };
+
+

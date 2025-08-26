@@ -12,7 +12,7 @@ pub const TransactionResponse = struct {
     scheduled_transaction_id: ?TransactionId,
     node_id: AccountId,
     hash: []const u8,
-    transaction_hash: []const u8,  // For Go SDK compatibility
+    transaction_hash: []const u8,
     validate_status: bool,
     include_child_receipts: bool,
     transaction: ?*anyopaque, // TransactionInterface - will be properly typed when we implement the interface system
@@ -44,22 +44,22 @@ pub const TransactionResponse = struct {
         self.allocator.free(self.transaction_hash);
     }
     
-    pub fn setScheduledTransactionId(self: *Self, scheduled_transaction_id: TransactionId) *Self {
+    pub fn setScheduledTransactionId(self: *Self, scheduled_transaction_id: TransactionId) !*Self {
         self.scheduled_transaction_id = scheduled_transaction_id;
         return self;
     }
     
-    pub fn setValidateStatus(self: *Self, validate_status: bool) *Self {
+    pub fn setValidateStatus(self: *Self, validate_status: bool) !*Self {
         self.validate_status = validate_status;
         return self;
     }
     
-    pub fn setIncludeChildReceipts(self: *Self, include_child_receipts: bool) *Self {
+    pub fn setIncludeChildReceipts(self: *Self, include_child_receipts: bool) !*Self {
         self.include_child_receipts = include_child_receipts;
         return self;
     }
     
-    pub fn setTransaction(self: *Self, transaction: *anyopaque) *Self {
+    pub fn setTransaction(self: *Self, transaction: *anyopaque) !*Self {
         self.transaction = transaction;
         return self;
     }
@@ -87,10 +87,10 @@ pub const TransactionResponse = struct {
     pub fn getRecord(self: *const Self, client: *Client) !TransactionRecord {
         const TransactionRecordQuery = @import("../query/transaction_record_query.zig").TransactionRecordQuery;
         
-        return try TransactionRecordQuery.init(self.allocator)
-            .setTransactionId(self.transaction_id)
-            .setIncludeChildRecords(self.include_child_receipts)
-            .execute(client);
+        var query = TransactionRecordQuery.init(self.allocator);
+        _ = query.setTransactionId(self.transaction_id);
+        _ = query.setIncludeChildRecords(self.include_child_receipts);
+        return try query.execute(client);
     }
     
     pub fn getRecordAsync(self: *const Self, client: *Client) !TransactionRecord {
@@ -102,13 +102,13 @@ pub const TransactionResponse = struct {
             .executeAsync(client);
     }
     
-    fn getReceiptQuery(self: *const Self, client: *Client) !*TransactionReceiptQuery {
+    pub fn getReceiptQuery(self: *const Self, client: *Client) !*TransactionReceiptQuery {
         _ = client;
         const query_ptr = try self.allocator.create(TransactionReceiptQuery);
         query_ptr.* = TransactionReceiptQuery.init(self.allocator);
-        _ = query_ptr.setTransactionId(self.transaction_id);
-        _ = query_ptr.setValidateStatus(self.validate_status);
-        _ = query_ptr.setIncludeChildReceipts(self.include_child_receipts);
+        _ = try query_ptr.setTransactionId(self.transaction_id);
+        _ = try query_ptr.setValidateStatus(self.validate_status);
+        _ = try query_ptr.setIncludeChildReceipts(self.include_child_receipts);
         return query_ptr;
     }
     

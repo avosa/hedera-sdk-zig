@@ -1,6 +1,6 @@
 const std = @import("std");
 const Status = @import("../core/status.zig").Status;
-const TransactionReceipt = @import("../transaction/transaction_receipt.zig").TransactionReceipt;
+pub const TransactionReceipt = @import("../transaction/transaction_receipt.zig").TransactionReceipt;
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const AccountId = @import("../core/id.zig").AccountId;
 const ContractId = @import("../core/id.zig").ContractId;
@@ -79,19 +79,19 @@ pub const TransactionReceiptQuery = struct {
     }
     
     // Set the transaction ID
-    pub fn setTransactionId(self: *TransactionReceiptQuery, transaction_id: TransactionId) *TransactionReceiptQuery {
+    pub fn setTransactionId(self: *TransactionReceiptQuery, transaction_id: TransactionId) !*TransactionReceiptQuery {
         self.transaction_id = transaction_id;
         return self;
     }
     
     // Set whether to include child receipts
-    pub fn setIncludeChildren(self: *TransactionReceiptQuery, include: bool) *TransactionReceiptQuery {
+    pub fn setIncludeChildren(self: *TransactionReceiptQuery, include: bool) !*TransactionReceiptQuery {
         self.include_children = include;
         return self;
     }
     
     // Set whether to include duplicate receipts
-    pub fn setIncludeDuplicates(self: *TransactionReceiptQuery, include: bool) *TransactionReceiptQuery {
+    pub fn setIncludeDuplicates(self: *TransactionReceiptQuery, include: bool) !*TransactionReceiptQuery {
         self.include_duplicates = include;
         return self;
     }
@@ -202,7 +202,7 @@ pub const TransactionReceiptQuery = struct {
                             1 => {
                                 // status
                                 const status_code = try receipt_reader.readInt32();
-                                receipt.status = @enumFromInt(status_code);
+                                receipt.status = try Status.fromInt(status_code);
                             },
                             2 => {
                                 // accountID

@@ -64,37 +64,37 @@ pub fn SubscriptionHandle(comptime T: type) type {
             self.message_buffer.deinit();
         }
         
-        pub fn setErrorCallback(self: *Self, error_callback: ErrorCallbackFn) *Self {
+        pub fn setErrorCallback(self: *Self, error_callback: ErrorCallbackFn) !*Self {
             self.error_callback = error_callback;
             return self;
         }
         
-        pub fn setContext(self: *Self, context: *anyopaque) *Self {
+        pub fn setContext(self: *Self, context: *anyopaque) !*Self {
             self.context = context;
             return self;
         }
         
-        pub fn setAutoReconnect(self: *Self, auto_reconnect: bool) *Self {
+        pub fn setAutoReconnect(self: *Self, auto_reconnect: bool) !*Self {
             self.auto_reconnect = auto_reconnect;
             return self;
         }
         
-        pub fn setMaxReconnectAttempts(self: *Self, max_attempts: u32) *Self {
+        pub fn setMaxReconnectAttempts(self: *Self, max_attempts: u32) !*Self {
             self.max_reconnect_attempts = max_attempts;
             return self;
         }
         
-        pub fn setReconnectDelay(self: *Self, delay_ms: u64) *Self {
+        pub fn setReconnectDelay(self: *Self, delay_ms: u64) !*Self {
             self.reconnect_delay_ms = delay_ms;
             return self;
         }
         
-        pub fn setTimeout(self: *Self, timeout_ms: u64) *Self {
+        pub fn setTimeout(self: *Self, timeout_ms: u64) !*Self {
             self.timeout_ms = timeout_ms;
             return self;
         }
         
-        pub fn setBufferSize(self: *Self, buffer_size: usize) *Self {
+        pub fn setBufferSize(self: *Self, buffer_size: usize) !*Self {
             self.mutex.lock();
             defer self.mutex.unlock();
             

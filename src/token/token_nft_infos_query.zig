@@ -26,20 +26,37 @@ pub const TokenNftInfosQuery = struct {
     }
     
     // Set token ID to query NFTs for
-    pub fn setTokenId(self: *TokenNftInfosQuery, token_id: TokenId) *TokenNftInfosQuery {
+    pub fn setTokenId(self: *TokenNftInfosQuery, token_id: TokenId) !*TokenNftInfosQuery {
         self.token_id = token_id;
         return self;
     }
     
     // Set start serial number (inclusive)
-    pub fn setStart(self: *TokenNftInfosQuery, start: i64) *TokenNftInfosQuery {
+    pub fn setStart(self: *TokenNftInfosQuery, start: i64) !*TokenNftInfosQuery {
         self.start_serial = start;
         return self;
     }
     
     // Set end serial number (inclusive)  
-    pub fn setEnd(self: *TokenNftInfosQuery, end: i64) *TokenNftInfosQuery {
+    pub fn setEnd(self: *TokenNftInfosQuery, end: i64) !*TokenNftInfosQuery {
         self.end_serial = end;
+        return self;
+    }
+    
+    // Get cost of the query
+    pub fn getCost(self: *TokenNftInfosQuery, client: *Client) !@import("../core/hbar.zig").Hbar {
+        return try self.base.getCost(client);
+    }
+    
+    // Set query payment
+    pub fn setQueryPayment(self: *TokenNftInfosQuery, amount: @import("../core/hbar.zig").Hbar) !*TokenNftInfosQuery {
+        _ = self.base.setQueryPayment(amount);
+        return self;
+    }
+    
+    // Set max query payment
+    pub fn setMaxQueryPayment(self: *TokenNftInfosQuery, amount: @import("../core/hbar.zig").Hbar) !*TokenNftInfosQuery {
+        _ = self.base.setMaxQueryPayment(amount);
         return self;
     }
     
@@ -262,19 +279,19 @@ pub const TokenGetAccountNftInfosQuery = struct {
     }
     
     // Set account ID to query NFTs for
-    pub fn setAccountId(self: *TokenGetAccountNftInfosQuery, account_id: AccountId) *TokenGetAccountNftInfosQuery {
+    pub fn setAccountId(self: *TokenGetAccountNftInfosQuery, account_id: AccountId) !*TokenGetAccountNftInfosQuery {
         self.account_id = account_id;
         return self;
     }
     
     // Set start NFT ID for pagination
-    pub fn setStart(self: *TokenGetAccountNftInfosQuery, start: NftId) *TokenGetAccountNftInfosQuery {
+    pub fn setStart(self: *TokenGetAccountNftInfosQuery, start: NftId) !*TokenGetAccountNftInfosQuery {
         self.start_token = start;
         return self;
     }
     
     // Set end NFT ID for pagination
-    pub fn setEnd(self: *TokenGetAccountNftInfosQuery, end: NftId) *TokenGetAccountNftInfosQuery {
+    pub fn setEnd(self: *TokenGetAccountNftInfosQuery, end: NftId) !*TokenGetAccountNftInfosQuery {
         self.end_token = end;
         return self;
     }
@@ -396,3 +413,5 @@ pub const TokenNftInfo = struct {
         if (self.ledger_id) |ledger| allocator.free(ledger);
     }
 };
+
+  

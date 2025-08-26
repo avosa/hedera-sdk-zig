@@ -1,5 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const errors = @import("../core/errors.zig");
+const HederaError = errors.HederaError;
 const Query = @import("../query/query.zig").Query;
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const AccountId = @import("../core/id.zig").AccountId;
@@ -8,6 +10,11 @@ const Client = @import("../network/client.zig").Client;
 const Status = @import("../core/status.zig").Status;
 const Hbar = @import("../core/hbar.zig").Hbar;
 const protobuf = @import("../protobuf/protobuf.zig");
+
+
+pub fn newTransactionReceiptQuery(allocator: Allocator) TransactionReceiptQuery {
+    return TransactionReceiptQuery.init(allocator);
+}
 
 pub const TransactionReceiptQuery = struct {
     query: Query,
@@ -19,8 +26,13 @@ pub const TransactionReceiptQuery = struct {
     const Self = @This();
     
     pub fn init(allocator: Allocator) Self {
+        var query = Query.init(allocator);
+        query.service_name = "proto.CryptoService";
+        query.method_name = "getTransactionReceipts";
+        query.is_payment_required = false; // Receipt queries are free
+        
         return Self{
-            .query = Query.init(allocator),
+            .query = query,
             .transaction_id = null,
             .validate_status = true,
             .include_duplicates = false,
@@ -32,61 +44,61 @@ pub const TransactionReceiptQuery = struct {
         self.query.deinit();
     }
     
-    pub fn setTransactionId(self: *Self, transaction_id: TransactionId) *Self {
+    pub fn setTransactionId(self: *Self, transaction_id: TransactionId) !*Self {
         self.transaction_id = transaction_id;
         return self;
     }
     
-    pub fn setValidateStatus(self: *Self, validate: bool) *Self {
+    pub fn setValidateStatus(self: *Self, validate: bool) !*Self {
         self.validate_status = validate;
         return self;
     }
     
-    pub fn setIncludeDuplicates(self: *Self, include: bool) *Self {
+    pub fn setIncludeDuplicates(self: *Self, include: bool) !*Self {
         self.include_duplicates = include;
         return self;
     }
     
-    pub fn setIncludeChildren(self: *Self, include: bool) *Self {
+    pub fn setIncludeChildren(self: *Self, include: bool) !*Self {
         self.include_children = include;
         return self;
     }
     
-    pub fn setIncludeChildReceipts(self: *Self, include: bool) *Self {
+    pub fn setIncludeChildReceipts(self: *Self, include: bool) !*Self {
         return self.setIncludeChildren(include);
     }
     
-    pub fn setNodeAccountIds(self: *Self, node_account_ids: []const AccountId) *Self {
+    pub fn setNodeAccountIds(self: *Self, node_account_ids: []const AccountId) !*Self {
         self.query.setNodeAccountIds(node_account_ids);
         return self;
     }
     
-    pub fn setMaxQueryPayment(self: *Self, max_query_payment: anytype) *Self {
+    pub fn setMaxQueryPayment(self: *Self, max_query_payment: anytype) !*Self {
         self.query.setMaxQueryPayment(max_query_payment);
         return self;
     }
     
-    pub fn setQueryPayment(self: *Self, query_payment: anytype) *Self {
+    pub fn setQueryPayment(self: *Self, query_payment: anytype) !*Self {
         self.query.setQueryPayment(query_payment);
         return self;
     }
     
-    pub fn setMaxRetry(self: *Self, max_retry: u32) *Self {
+    pub fn setMaxRetry(self: *Self, max_retry: u32) !*Self {
         self.query.setMaxRetry(max_retry);
         return self;
     }
     
-    pub fn setMaxBackoff(self: *Self, max_backoff: anytype) *Self {
+    pub fn setMaxBackoff(self: *Self, max_backoff: anytype) !*Self {
         self.query.setMaxBackoff(max_backoff);
         return self;
     }
     
-    pub fn setMinBackoff(self: *Self, min_backoff: anytype) *Self {
+    pub fn setMinBackoff(self: *Self, min_backoff: anytype) !*Self {
         self.query.setMinBackoff(min_backoff);
         return self;
     }
     
-    pub fn setRetryHandler(self: *Self, retry_handler: anytype) *Self {
+    pub fn setRetryHandler(self: *Self, retry_handler: anytype) !*Self {
         self.query.setRetryHandler(retry_handler);
         return self;
     }
@@ -96,7 +108,12 @@ pub const TransactionReceiptQuery = struct {
             return error.TransactionIdNotSet;
         }
         
-        const response = try self.query.execute(client);
+        // Build the query bytes for this specific query
+        const query_bytes = try self.buildQuery();
+        defer self.query.allocator.free(query_bytes);
+        
+        // Execute with our custom query bytes
+        const response = try self.query.executeWithBytes(client, query_bytes);
         const receipt = try self.parseResponse(response.response_bytes);
         
         if (self.validate_status) {
@@ -145,7 +162,7 @@ pub const TransactionReceiptQuery = struct {
         const transaction_id = self.transaction_id.?;
         
         // transactionID = 1
-        const tx_id_bytes = try transaction_id.toProtobufBytes(self.query.allocator);
+        const tx_id_bytes = try transaction_id.toBytes(self.query.allocator);
         defer self.query.allocator.free(tx_id_bytes);
         try self.writeProtobufField(&buffer, 1, tx_id_bytes);
         
@@ -166,6 +183,12 @@ pub const TransactionReceiptQuery = struct {
         // Parse TransactionGetReceiptResponse protobuf message
         var reader = protobuf.ProtobufReader.init(self.query.allocator, response_bytes);
         
+        var receipt: ?TransactionReceipt = null;
+        var child_receipts = std.ArrayList(TransactionReceipt).init(self.query.allocator);
+        defer child_receipts.deinit();
+        var duplicate_receipts = std.ArrayList(TransactionReceipt).init(self.query.allocator);
+        defer duplicate_receipts.deinit();
+        
         while (try reader.nextField()) |field_const| {
             var field = field_const;
             switch (field.tag) {
@@ -178,23 +201,45 @@ pub const TransactionReceiptQuery = struct {
                     const receipt_bytes = try field.readBytes(self.query.allocator);
                     defer self.query.allocator.free(receipt_bytes);
                     
-                    return try TransactionReceipt.fromProtobufBytes(self.query.allocator, receipt_bytes);
+                    receipt = try TransactionReceipt.fromProtobufBytes(self.query.allocator, receipt_bytes);
                 },
                 3 => {
                     // duplicateTransactionReceipts = 3 (repeated TransactionReceipt)
-                    // Handle duplicates if needed
-                    try field.skip();
+                    const duplicate_bytes = try field.readBytes(self.query.allocator);
+                    defer self.query.allocator.free(duplicate_bytes);
+                    
+                    const duplicate_receipt = try TransactionReceipt.fromProtobufBytes(self.query.allocator, duplicate_bytes);
+                    try duplicate_receipts.append(duplicate_receipt);
                 },
                 4 => {
                     // childTransactionReceipts = 4 (repeated TransactionReceipt)  
-                    // Handle children if needed
-                    try field.skip();
+                    const child_bytes = try field.readBytes(self.query.allocator);
+                    defer self.query.allocator.free(child_bytes);
+                    
+                    const child_receipt = try TransactionReceipt.fromProtobufBytes(self.query.allocator, child_bytes);
+                    try child_receipts.append(child_receipt);
                 },
                 else => try field.skip(),
             }
         }
         
-        return error.InvalidResponse;
+        if (receipt) |*r| {
+            // Add child receipts if any were found
+            if (child_receipts.items.len > 0) {
+                const children = try self.query.allocator.dupe(TransactionReceipt, child_receipts.items);
+                r.children = children;
+            }
+            
+            // Add duplicate receipts if any were found
+            if (duplicate_receipts.items.len > 0) {
+                const duplicates = try self.query.allocator.dupe(TransactionReceipt, duplicate_receipts.items);
+                r.duplicates = duplicates;
+            }
+            
+            return r.*;
+        }
+        
+        return HederaError.InvalidProtobuf;
     }
     
     pub fn getCost(self: *Self, client: *Client) !Hbar {

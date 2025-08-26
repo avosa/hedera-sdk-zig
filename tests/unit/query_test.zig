@@ -12,7 +12,7 @@ test "Query payment transaction" {
     
     // Set payment amount
     const payment = try hedera.Hbar.from(1);
-    _ = query.setQueryPayment(payment);
+    _ = try query.setQueryPayment(payment);
     
     try testing.expectEqual(payment.toTinybars(), query.base.payment_amount.?.toTinybars());
 }
@@ -26,17 +26,17 @@ test "Query max retry and backoff" {
     defer query.deinit();
     
     // Set max retry
-    _ = query.setMaxRetry(5);
+    _ = try query.setMaxRetry(5);
     try testing.expectEqual(@as(u32, 5), query.max_retry);
     
     // Set max backoff
     const max_backoff = hedera.Duration.fromSeconds(8);
-    _ = query.setMaxBackoff(max_backoff);
+    _ = try query.setMaxBackoff(max_backoff);
     try testing.expectEqual(@as(i64, 8), query.max_backoff.seconds);
     
     // Set min backoff
     const min_backoff = hedera.Duration.fromMillis(250);
-    _ = query.setMinBackoff(min_backoff);
+    _ = try query.setMinBackoff(min_backoff);
     try testing.expectEqual(@as(i64, 0), query.min_backoff.seconds);
     try testing.expectEqual(@as(i32, 250000000), query.min_backoff.nanos);
 }
@@ -51,13 +51,13 @@ test "Account balance query" {
     
     // Set account ID
     const account_id = hedera.AccountId.init(0, 0, 1234);
-    _ = query.setAccountId(account_id);
+    _ = try query.setAccountId(account_id);
     
     try testing.expectEqual(@as(u64, 1234), query.account_id.?.account);
     
     // Set contract ID (alternative)
     const contract_id = hedera.ContractId.init(0, 0, 5678);
-    _ = query.setContractId(contract_id);
+    _ = try query.setContractId(contract_id);
     
     try testing.expectEqual(@as(u64, 5678), query.contract_id.?.num());
 }
@@ -87,7 +87,7 @@ test "Account records query" {
     
     // Set account ID
     const account_id = hedera.AccountId.init(0, 0, 200);
-    _ = query.setAccountId(account_id);
+    _ = try query.setAccountId(account_id);
     
     try testing.expectEqual(@as(u64, 200), query.account_id.?.account);
 }
@@ -102,7 +102,7 @@ test "Account stakers query" {
     
     // Set account ID
     const account_id = hedera.AccountId.init(0, 0, 300);
-    _ = query.setAccountId(account_id);
+    _ = try query.setAccountId(account_id);
     
     try testing.expectEqual(@as(u64, 300), query.account_id.?.account);
 }
@@ -117,7 +117,7 @@ test "Contract bytecode query" {
     
     // Set contract ID
     const contract_id = hedera.ContractId.init(0, 0, 1000);
-    _ = query.setContractId(contract_id);
+    _ = try query.setContractId(contract_id);
     
     try testing.expectEqual(@as(u64, 1000), query.contract_id.?.num());
 }
@@ -132,7 +132,7 @@ test "Contract call query" {
     
     // Set contract ID
     const contract_id = hedera.ContractId.init(0, 0, 2000);
-    _ = query.setContractId(contract_id);
+    _ = try query.setContractId(contract_id);
     
     // Set gas
     _ = try query.setGas(100000);
@@ -161,7 +161,7 @@ test "Contract info query" {
     
     // Set contract ID
     const contract_id = hedera.ContractId.init(0, 0, 3000);
-    _ = query.setContractId(contract_id);
+    _ = try query.setContractId(contract_id);
     
     try testing.expectEqual(@as(u64, 3000), query.contract_id.?.num());
 }
@@ -176,7 +176,7 @@ test "File contents query" {
     
     // Set file ID
     const file_id = hedera.FileId.init(0, 0, 111);
-    _ = query.setFileId(file_id);
+    _ = try query.setFileId(file_id);
     
     try testing.expectEqual(@as(u64, 111), query.file_id.?.num());
 }
@@ -191,7 +191,7 @@ test "File info query" {
     
     // Set file ID
     const file_id = hedera.FileId.init(0, 0, 222);
-    _ = query.setFileId(file_id);
+    _ = try query.setFileId(file_id);
     
     try testing.expectEqual(@as(u64, 222), query.file_id.?.num());
 }
@@ -206,11 +206,11 @@ test "Token balance query" {
     
     // Set token ID
     const token_id = hedera.TokenId.init(0, 0, 1000);
-    _ = query.setTokenId(token_id);
+    _ = try query.setTokenId(token_id);
     
     // Set account ID
     const account_id = hedera.AccountId.init(0, 0, 100);
-    _ = query.setAccountId(account_id);
+    _ = try query.setAccountId(account_id);
     
     try testing.expectEqual(@as(u64, 1000), query.token_id.?.num());
     try testing.expectEqual(@as(u64, 100), query.account_id.?.account);
@@ -226,7 +226,7 @@ test "Token info query" {
     
     // Set token ID
     const token_id = hedera.TokenId.init(0, 0, 2000);
-    _ = query.setTokenId(token_id);
+    _ = try query.setTokenId(token_id);
     
     try testing.expectEqual(@as(u64, 2000), query.token_id.?.num());
 }
@@ -244,7 +244,7 @@ test "Token NFT info query" {
         .token_id = hedera.TokenId.init(0, 0, 3000),
         .serial_number = 42,
     };
-    _ = query.setNftId(nft_id);
+    _ = try query.setNftId(nft_id);
     
     try testing.expectEqual(@as(u64, 3000), query.nft_id.?.token_id.num());
     try testing.expectEqual(@as(u64, 42), query.nft_id.?.serial_number);
@@ -260,7 +260,7 @@ test "Topic info query" {
     
     // Set topic ID
     const topic_id = hedera.TopicId.init(0, 0, 777);
-    _ = query.setTopicId(topic_id);
+    _ = try query.setTopicId(topic_id);
     
     try testing.expectEqual(@as(u64, 777), query.topic_id.?.num());
 }
@@ -279,14 +279,14 @@ test "Topic message query" {
     
     // Set start time
     const start_time = hedera.Timestamp.fromSeconds(1000000000);
-    _ = query.setStartTime(start_time);
+    _ = try query.setStartTime(start_time);
     
     // Set end time
     const end_time = hedera.Timestamp.fromSeconds(2000000000);
-    _ = query.setEndTime(end_time);
+    _ = try query.setEndTime(end_time);
     
     // Set limit
-    _ = query.setLimit(100);
+    _ = try query.setLimit(100);
     
     try testing.expectEqual(@as(u64, 888), query.topic_id.?.num());
     try testing.expectEqual(@as(i64, 1000000000), query.start_time.?.seconds);
@@ -304,7 +304,7 @@ test "Schedule info query" {
     
     // Set schedule ID
     const schedule_id = hedera.ScheduleId.init(0, 0, 555);
-    _ = query.setScheduleId(schedule_id);
+    _ = try query.setScheduleId(schedule_id);
     
     try testing.expectEqual(@as(u64, 555), query.schedule_id.?.num());
 }
@@ -319,13 +319,13 @@ test "Transaction receipt query" {
     
     // Set transaction ID
     const tx_id = hedera.TransactionId.generate(hedera.AccountId.init(0, 0, 100));
-    _ = query.setTransactionId(tx_id);
+    _ = try query.setTransactionId(tx_id);
     
     // Set include children
-    _ = query.setIncludeChildren(true);
+    _ = try query.setIncludeChildren(true);
     
     // Set include duplicates
-    _ = query.setIncludeDuplicates(true);
+    _ = try query.setIncludeDuplicates(true);
     
     try testing.expectEqual(@as(u64, 100), query.transaction_id.?.account_id.account);
     try testing.expect(query.include_children);
@@ -342,13 +342,13 @@ test "Transaction record query" {
     
     // Set transaction ID
     const tx_id = hedera.TransactionId.generate(hedera.AccountId.init(0, 0, 200));
-    _ = query.setTransactionId(tx_id);
+    _ = try query.setTransactionId(tx_id);
     
     // Set include children
-    _ = query.setIncludeChildren(true);
+    _ = try query.setIncludeChildren(true);
     
     // Set include duplicates
-    _ = query.setIncludeDuplicates(true);
+    _ = try query.setIncludeDuplicates(true);
     
     try testing.expectEqual(@as(u64, 200), query.transaction_id.?.account_id.account);
     try testing.expect(query.include_children);
@@ -382,14 +382,14 @@ test "Query cost estimation" {
     defer operator_key.deinit();
     
     const op_key = try operator_key.toOperatorKey();
-    _ = client.setOperator(operator_id, op_key);
+    _ = try client.setOperator(operator_id, op_key);
     
     // Create query
     var query = hedera.AccountBalanceQuery.init(allocator);
     defer query.deinit();
     
     const account_id = hedera.AccountId.init(0, 0, 98);
-    _ = query.setAccountId(account_id);
+    _ = try query.setAccountId(account_id);
     
     // Get cost estimate
     const cost = try query.getCost(&client);
@@ -431,7 +431,7 @@ test "Query timeout configuration" {
     
     // Set request timeout
     const timeout = hedera.Duration.fromSeconds(30);
-    _ = query.setRequestTimeout(timeout);
+    _ = try query.setRequestTimeout(timeout);
     
     try testing.expectEqual(@as(i64, 30), query.request_timeout.seconds);
 }
@@ -448,11 +448,11 @@ test "Query builder pattern" {
     const account_id = hedera.AccountId.init(0, 0, 1234);
     
     // Set methods individually (chaining not supported with error unions)
-    _ = query.setAccountId(account_id);
-    _ = query.setQueryPayment(try hedera.Hbar.from(1));
-    _ = query.setMaxRetry(3);
-    _ = query.setMaxBackoff(hedera.Duration.fromSeconds(8));
-    _ = query.setMinBackoff(hedera.Duration.fromMillis(250));
+    _ = try query.setAccountId(account_id);
+    _ = try query.setQueryPayment(try hedera.Hbar.from(1));
+    _ = try query.setMaxRetry(3);
+    _ = try query.setMaxBackoff(hedera.Duration.fromSeconds(8));
+    _ = try query.setMinBackoff(hedera.Duration.fromMillis(250));
     
     // Verify all settings
     try testing.expectEqual(@as(u64, 1234), query.account_id.?.account);

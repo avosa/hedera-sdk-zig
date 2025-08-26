@@ -44,62 +44,62 @@ pub const EthereumLegacyTransaction = struct {
     }
     
     // Set nonce
-    pub fn setNonce(self: *EthereumLegacyTransaction, nonce: u64) errors.HederaError!*EthereumLegacyTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setNonce(self: *EthereumLegacyTransaction, nonce: u64) !*EthereumLegacyTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.nonce = nonce;
         return self;
     }
     
     // Set gas price
-    pub fn setGasPrice(self: *EthereumLegacyTransaction, gas_price: []const u8) errors.HederaError!*EthereumLegacyTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setGasPrice(self: *EthereumLegacyTransaction, gas_price: []const u8) !*EthereumLegacyTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         if (self.gas_price.len > 0) self.base.allocator.free(self.gas_price);
-        self.gas_price = errors.handleDupeError(self.base.allocator, gas_price) catch return errors.HederaError.OutOfMemory;
+        self.gas_price = errors.handleDupeError(self.base.allocator, gas_price) catch return error.InvalidParameter;
         return self;
     }
     
     // Set gas limit
-    pub fn setGasLimit(self: *EthereumLegacyTransaction, gas_limit: u64) errors.HederaError!*EthereumLegacyTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setGasLimit(self: *EthereumLegacyTransaction, gas_limit: u64) !*EthereumLegacyTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.gas_limit = gas_limit;
         return self;
     }
     
     // Set to address
-    pub fn setTo(self: *EthereumLegacyTransaction, to: []const u8) errors.HederaError!*EthereumLegacyTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setTo(self: *EthereumLegacyTransaction, to: []const u8) !*EthereumLegacyTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         if (self.to) |old_to| self.base.allocator.free(old_to);
-        self.to = errors.handleDupeError(self.base.allocator, to) catch return errors.HederaError.OutOfMemory;
+        self.to = errors.handleDupeError(self.base.allocator, to) catch return error.InvalidParameter;
         return self;
     }
     
     // Set value
-    pub fn setValue(self: *EthereumLegacyTransaction, value: []const u8) errors.HederaError!*EthereumLegacyTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setValue(self: *EthereumLegacyTransaction, value: []const u8) !*EthereumLegacyTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         if (self.value.len > 0) self.base.allocator.free(self.value);
-        self.value = errors.handleDupeError(self.base.allocator, value) catch return errors.HederaError.OutOfMemory;
+        self.value = errors.handleDupeError(self.base.allocator, value) catch return error.InvalidParameter;
         return self;
     }
     
     // Set data
-    pub fn setData(self: *EthereumLegacyTransaction, data: []const u8) errors.HederaError!*EthereumLegacyTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setData(self: *EthereumLegacyTransaction, data: []const u8) !*EthereumLegacyTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         if (self.data.len > 0) self.base.allocator.free(self.data);
-        self.data = errors.handleDupeError(self.base.allocator, data) catch return errors.HederaError.OutOfMemory;
+        self.data = errors.handleDupeError(self.base.allocator, data) catch return error.InvalidParameter;
         return self;
     }
     
     // Set signature
-    pub fn setSignature(self: *EthereumLegacyTransaction, v: []const u8, r: []const u8, s: []const u8) errors.HederaError!*EthereumLegacyTransaction {
-        if (self.base.frozen) return errors.HederaError.InvalidTransaction;
+    pub fn setSignature(self: *EthereumLegacyTransaction, v: []const u8, r: []const u8, s: []const u8) !*EthereumLegacyTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         if (self.v.len > 0) self.base.allocator.free(self.v);
         if (self.r.len > 0) self.base.allocator.free(self.r);
         if (self.s.len > 0) self.base.allocator.free(self.s);
         
-        self.v = errors.handleDupeError(self.base.allocator, v) catch return errors.HederaError.OutOfMemory;
-        self.r = errors.handleDupeError(self.base.allocator, r) catch return errors.HederaError.OutOfMemory;
-        self.s = errors.handleDupeError(self.base.allocator, s) catch return errors.HederaError.OutOfMemory;
+        self.v = errors.handleDupeError(self.base.allocator, v) catch return error.InvalidParameter;
+        self.r = errors.handleDupeError(self.base.allocator, r) catch return error.InvalidParameter;
+        self.s = errors.handleDupeError(self.base.allocator, s) catch return error.InvalidParameter;
         return self;
     }
     

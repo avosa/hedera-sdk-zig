@@ -2,11 +2,11 @@
 
 This is a server that implements the [SDK TCK specification](https://github.com/hiero-ledger/hiero-sdk-tck/) for the Hedera SDK Zig implementation.
 
-## 🎯 Overview
+## TARGET: Overview
 
 The Technology Compatibility Kit (TCK) ensures that the Zig SDK implements the Hedera protocol correctly and consistently with other official SDKs. It provides a JSON-RPC 2.0 server that exposes all SDK functionality for automated testing and validation.
 
-## 🚀 Quick Start
+## LAUNCH Quick Start
 
 ### Prerequisites
 
@@ -33,7 +33,7 @@ zig build run
 - `MIRROR_NODE_REST_URL`: Mirror node REST endpoint
 - `MIRROR_NODE_REST_JAVA_URL`: Mirror node Java REST endpoint
 
-## 🐳 Docker Usage
+##  Docker Usage
 
 ### Build and Run with Docker Compose
 
@@ -58,7 +58,7 @@ docker build -t hedera-sdk-zig-tck -f tck/Dockerfile .
 docker run -p 8544:8544 hedera-sdk-zig-tck
 ```
 
-## 🔧 Configuration
+## SETUP Configuration
 
 The TCK server can be configured in several ways:
 
@@ -99,7 +99,7 @@ Use the `setup` JSON-RPC method to configure the client at runtime:
 }
 ```
 
-## 📡 API Reference
+##  API Reference
 
 The TCK server implements JSON-RPC 2.0 and supports the following methods:
 
@@ -155,7 +155,7 @@ The TCK server implements JSON-RPC 2.0 and supports the following methods:
 
 - `generateKey` - Generate Ed25519 key pair
 
-## 🧪 Testing
+## TEST: Testing
 
 ### Test the Server
 
@@ -186,14 +186,14 @@ docker run --rm \\
   AccountCreate
 ```
 
-## 🏗️ Architecture
+## BUILD: Architecture
 
 ```
-┌─────────────────┐     JSON-RPC      ┌─────────────────┐      SDK Calls      ┌─────────────────┐
-│                 │  ───────────────>  │                 │  ───────────────>   │                 │
-│  TCK Test Suite │                    │   TCK Server    │                     │  Hedera SDK     │
-│                 │  <───────────────  │  (Zig HTTP)     │  <───────────────   │  (Zig Library)  │
-└─────────────────┘     JSON Response  └─────────────────┘      Results        └─────────────────┘
+     JSON-RPC            SDK Calls      
+                   >                     >                    
+  TCK Test Suite                        TCK Server                           Hedera SDK     
+                   <    (Zig HTTP)       <     (Zig Library)  
+     JSON Response        Results        
 ```
 
 ### Components
@@ -204,7 +204,7 @@ docker run --rm \\
 - **`utils/`**: Utility functions for parsing and validation
 - **`build.zig`**: Build configuration for the TCK server
 
-## 🔍 Debugging
+## SEARCH: Debugging
 
 ### Enable Debug Logging
 
@@ -230,7 +230,7 @@ docker-compose logs -f hedera-sdk-zig-tck
 2. **Network Connection**: Verify network configuration in setup call
 3. **Missing Operator**: Set operator credentials via setup or environment
 
-## 🤝 Contributing
+##  Contributing
 
 This TCK implementation ensures compatibility with the official Hedera SDK standards. When adding new methods:
 
@@ -240,11 +240,11 @@ This TCK implementation ensures compatibility with the official Hedera SDK stand
 4. Test with official TCK test suite
 5. Update this README
 
-## 📝 License
+## NOTE: License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](../LICENSE) file for details.
 
-## 🆘 Support
+##  Support
 
 - **Issues**: Report bugs or request features in the main repository
 - **Documentation**: See the main [Hedera SDK Zig documentation](../README.md)
@@ -252,4 +252,4 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](../LIC
 
 ---
 
-**🎉 Congratulations!** You now have a fully functional TCK server for the Hedera SDK Zig implementation, ensuring compatibility with the official Hedera ecosystem!
+**SUCCESS Congratulations!** You now have a fully functional TCK server for the Hedera SDK Zig implementation, ensuring compatibility with the official Hedera ecosystem!

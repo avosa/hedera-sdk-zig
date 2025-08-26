@@ -29,16 +29,16 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
     }
     
     // Set the token ID for fee schedule update
-    pub fn setTokenId(self: *TokenFeeScheduleUpdateTransaction, token_id: TokenId) errors.HederaError!*TokenFeeScheduleUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setTokenId(self: *TokenFeeScheduleUpdateTransaction, token_id: TokenId) !*TokenFeeScheduleUpdateTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.token_id = token_id;
         return self;
     }
     
     // Set custom fees for the token
     pub fn setCustomFees(self: *TokenFeeScheduleUpdateTransaction, fees: []const CustomFee) !*TokenFeeScheduleUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        if (fees.len > 10) return errors.HederaError.InvalidTokenMaximumSupply; // Maximum 10 custom fees per token
+        if (self.base.frozen) return error.TransactionFrozen;
+        if (fees.len > 10) return error.InvalidParameter; // Maximum 10 custom fees per token
         
         // Clear existing fees
         self.custom_fees.clearRetainingCapacity();
@@ -53,15 +53,15 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
     
     // Includes a custom fee for the token
     pub fn addCustomFee(self: *TokenFeeScheduleUpdateTransaction, fee: CustomFee) !*TokenFeeScheduleUpdateTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
-        if (self.custom_fees.items.len >= 10) return errors.HederaError.InvalidTokenMaximumSupply;
+        if (self.base.frozen) return error.TransactionFrozen;
+        if (self.custom_fees.items.len >= 10) return error.InvalidParameter;
         
         const cloned_fee = fee.clone();
         try self.custom_fees.append(cloned_fee);
         return self;
     }
     
-    // Getter methods for uniformity with Go SDK
+    
     pub fn getTokenId(self: *const TokenFeeScheduleUpdateTransaction) ?TokenId {
         return self.token_id;
     }
@@ -181,3 +181,5 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
         }
     }
 };
+
+

@@ -39,15 +39,15 @@ pub const BatchTransaction = struct {
     
     // Add a transaction to the batch
     pub fn addTransaction(self: *BatchTransaction, transaction: *Transaction) !void {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+        if (self.base.frozen) return error.TransactionFrozen;
         try self.transactions.append(transaction);
     }
     
     // Set all transactions in the batch
-    pub fn setTransactions(self: *BatchTransaction, transactions: []*Transaction) errors.HederaError!*BatchTransaction {
-        if (self.base.frozen) return errors.HederaError.TransactionFrozen;
+    pub fn setTransactions(self: *BatchTransaction, transactions: []*Transaction) !*BatchTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.transactions.clearAndFree();
-        self.transactions.appendSlice(transactions) catch return errors.HederaError.OutOfMemory;
+        self.transactions.appendSlice(transactions) catch return error.InvalidParameter;
         return self;
     }
     
@@ -188,4 +188,12 @@ pub const BatchTransaction = struct {
         // Write standard transaction fields
         try self.base.writeCommonFields(writer);
     }
+    
+    // Freeze the transaction with client
+    pub fn freezeWith(self: *BatchTransaction, client: *Client) !*BatchTransaction {
+        try self.base.freezeWith(client);
+        return self;
+    }
 };
+
+

@@ -186,7 +186,7 @@ pub const ManagedNetwork = struct {
         self.healthy_nodes.deinit();
     }
 
-    pub fn setConfig(self: *ManagedNetwork, config: NetworkConfig) *ManagedNetwork {
+    pub fn setConfig(self: *ManagedNetwork, config: NetworkConfig) !*ManagedNetwork {
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -194,7 +194,7 @@ pub const ManagedNetwork = struct {
         return self;
     }
 
-    pub fn setLoadBalancingStrategy(self: *ManagedNetwork, strategy: LoadBalancingStrategy) *ManagedNetwork {
+    pub fn setLoadBalancingStrategy(self: *ManagedNetwork, strategy: LoadBalancingStrategy) !*ManagedNetwork {
         self.mutex.lock();
         defer self.mutex.unlock();
         

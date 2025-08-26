@@ -1,6 +1,6 @@
 const std = @import("std");
 const errors = @import("../core/errors.zig");
-const ContractId = @import("../core/id.zig").ContractId;
+const HederaError = errors.HederaError;const ContractId = @import("../core/id.zig").ContractId;
 const AccountId = @import("../core/id.zig").AccountId;
 const Hbar = @import("../core/hbar.zig").Hbar;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
@@ -63,7 +63,7 @@ pub const ContractFunctionParameters = struct {
     }
     
     // Sets the function selector for the contract call
-    pub fn setFunction(self: *ContractFunctionParameters, function_name: []const u8) *ContractFunctionParameters {
+    pub fn setFunction(self: *ContractFunctionParameters, function_name: []const u8) !*ContractFunctionParameters {
         // Calculate function selector using Keccak256
         var hasher = std.crypto.hash.sha3.Keccak256.init(.{});
         hasher.update(function_name);
@@ -168,12 +168,12 @@ pub const ContractFunctionParameters = struct {
         try self.arguments.append(.{ .string_val = value });
     }
     
-    // Build function call data (alias for compatibility)
+    // Build function call data as bytes
     pub fn toBytes(self: ContractFunctionParameters) ![]u8 {
         return self.build();
     }
     
-    // Encode function call data (alias for Go SDK compatibility)
+    // Encode function call data
     pub fn encode(self: ContractFunctionParameters, allocator: std.mem.Allocator) ![]u8 {
         _ = allocator; // Parameters struct contains allocator
         return self.build();
@@ -298,8 +298,8 @@ pub const ContractExecuteTransaction = struct {
     }
     
     // SetContractID sets the contract ID to execute
-    pub fn setContractId(self: *ContractExecuteTransaction, contract_id: ContractId) errors.HederaError!*ContractExecuteTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setContractId(self: *ContractExecuteTransaction, contract_id: ContractId) !*ContractExecuteTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.contract_id = contract_id;
         return self;
     }
@@ -310,8 +310,8 @@ pub const ContractExecuteTransaction = struct {
     }
     
     // SetGas sets the gas limit for the contract execution
-    pub fn setGas(self: *ContractExecuteTransaction, gas: u64) errors.HederaError!*ContractExecuteTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setGas(self: *ContractExecuteTransaction, gas: u64) !*ContractExecuteTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.gas = @intCast(gas);
         return self;
     }
@@ -322,8 +322,8 @@ pub const ContractExecuteTransaction = struct {
     }
     
     // SetPayableAmount sets the amount of Hbar sent with the contract execution
-    pub fn setPayableAmount(self: *ContractExecuteTransaction, amount: Hbar) errors.HederaError!*ContractExecuteTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setPayableAmount(self: *ContractExecuteTransaction, amount: Hbar) !*ContractExecuteTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.payable_amount = amount;
         return self;
     }
@@ -334,8 +334,8 @@ pub const ContractExecuteTransaction = struct {
     }
     
     // SetFunctionParameters sets the function parameters for the contract execution
-    pub fn setFunctionParameters(self: *ContractExecuteTransaction, parameters: []const u8) errors.HederaError!*ContractExecuteTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setFunctionParameters(self: *ContractExecuteTransaction, parameters: []const u8) !*ContractExecuteTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         self.function_parameters = parameters;
         return self;
     }
@@ -346,8 +346,8 @@ pub const ContractExecuteTransaction = struct {
     }
     
     // SetFunction sets the function name and parameters for the contract execution
-    pub fn setFunction(self: *ContractExecuteTransaction, function_name: []const u8, parameters: ?*ContractFunctionParameters) errors.HederaError!*ContractExecuteTransaction {
-        try errors.requireNotFrozen(self.base.frozen);
+    pub fn setFunction(self: *ContractExecuteTransaction, function_name: []const u8, parameters: ?*ContractFunctionParameters) !*ContractExecuteTransaction {
+        if (self.base.frozen) return error.TransactionFrozen;
         
         var params = parameters;
         if (params == null) {
@@ -356,8 +356,31 @@ pub const ContractExecuteTransaction = struct {
         }
         
         _ = params.?.setFunction(function_name);
-        const data = params.?.build() catch return errors.HederaError.SerializationFailed;
+        const data = params.?.build() catch return error.InvalidParameter;
         self.function_parameters = data;
+        return self;
+    }
+    
+    // Freeze the transaction
+    pub fn freeze(self: *ContractExecuteTransaction) HederaError!void {
+        try self.base.freeze();
+    }
+    
+    // Freeze with client
+    pub fn freezeWith(self: *ContractExecuteTransaction, client: *Client) !*ContractExecuteTransaction {
+        try self.base.freezeWith(client);
+        return self;
+    }
+    
+    // Sign the transaction
+    pub fn sign(self: *ContractExecuteTransaction, private_key: anytype) HederaError!*ContractExecuteTransaction {
+        try self.base.sign(private_key);
+        return self;
+    }
+    
+    // Sign with operator
+    pub fn signWithOperator(self: *ContractExecuteTransaction, client: *Client) HederaError!*ContractExecuteTransaction {
+        try self.base.signWithOperator(client);
         return self;
     }
     
@@ -563,4 +586,56 @@ pub const ContractFunctionResult = struct {
         
         return allocator.dupe(u8, self.contract_call_result[data_start..data_end]);
     }
+    
+    // Parse ContractFunctionResult from protobuf bytes
+    pub fn fromProtobuf(allocator: std.mem.Allocator, bytes: []const u8) !ContractFunctionResult {
+        var reader = @import("../protobuf/encoding.zig").ProtoReader.init(bytes);
+        
+        var result = ContractFunctionResult{
+            .contract_id = ContractId{ .entity = @import("../core/id.zig").EntityId{ .shard = 0, .realm = 0, .num = 0 } },
+            .contract_call_result = &[_]u8{},
+            .error_message = &[_]u8{},
+            .bloom = &[_]u8{},
+            .gas_used = 0,
+            .logs = &[_]ContractLogInfo{},
+            .created_contract_ids = &[_]ContractId{},
+            .evm_address = null,
+            .gas = 0,
+            .amount = 0,
+            .function_parameters = &[_]u8{},
+            .sender_id = null,
+        };
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            switch (tag.field_number) {
+                1 => {
+                    // contractID
+                    const contract_bytes = try reader.readMessage();
+                    result.contract_id = try ContractId.fromProtobufBytes(allocator, contract_bytes);
+                },
+                2 => {
+                    // contractCallResult
+                    result.contract_call_result = try reader.readBytes();
+                },
+                3 => {
+                    // errorMessage
+                    result.error_message = try reader.readString();
+                },
+                4 => {
+                    // bloom
+                    result.bloom = try reader.readBytes();
+                },
+                5 => {
+                    // gasUsed
+                    result.gas_used = try reader.readUint64();
+                },
+                else => try reader.skipField(tag.wire_type),
+            }
+        }
+        
+        return result;
+    }
 };
+
+

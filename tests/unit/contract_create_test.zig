@@ -127,7 +127,7 @@ test "ContractCreateTransaction initial balance" {
     try testing.expect(tx.getInitialBalance().equals(balance));
     
     // Test with tinybars
-    const tiny_balance = hedera.Hbar.fromTinybars(5000000);
+    const tiny_balance = try hedera.Hbar.fromTinybars(5000000);
     _ = try tx.setInitialBalance(tiny_balance);
     try testing.expect(tx.getInitialBalance().equals(tiny_balance));
 }
@@ -564,7 +564,7 @@ test "ContractCreateTransaction large values" {
     try testing.expectEqual(tx.getGas(), std.math.maxInt(u32));
     
     // Test large initial balance
-    const large_balance = hedera.Hbar.fromTinybars(std.math.maxInt(u32));
+    const large_balance = try hedera.Hbar.fromTinybars(std.math.maxInt(u32));
     _ = try tx.setInitialBalance(large_balance);
     try testing.expect(tx.getInitialBalance().equals(large_balance));
     

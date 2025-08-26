@@ -1,5 +1,5 @@
-// Hedera SDK for Zig - Main entry point
-// Complete implementation matching Hedera Go SDK functionality
+// Hedera SDK for Zig
+// Provides comprehensive access to Hedera network services
 
 const std = @import("std");
 
@@ -38,60 +38,44 @@ pub const EcdsaSecp256k1PrivateKey = @import("crypto/key.zig").EcdsaSecp256k1Pri
 pub const EcdsaSecp256k1PublicKey = @import("crypto/key.zig").EcdsaSecp256k1PublicKey;
 pub const Mnemonic = @import("crypto/mnemonic.zig").Mnemonic;
 
+// Utilities
+pub const EnvLoader = @import("utils/env_loader.zig");
+
 // Network
 pub const Client = @import("network/client.zig").Client;
+pub const Operator = @import("network/client.zig").Operator;
 pub const Node = @import("network/node.zig").Node;
 pub const Network = @import("network/network.zig").Network;
-// These will be replaced by the more complete versions below
+pub const GrpcTlsConnection = @import("network/grpc_tls.zig").GrpcTlsConnection;
+pub const connectToNode = @import("network/grpc_tls.zig").connectToNode;
 
-// Factory functions matching Hedera SDK patterns
+// Convenience functions for common operations
 pub const clientForName = @import("network/client.zig").Client.clientForName;
 pub const accountIdFromString = @import("core/id.zig").AccountId.accountIdFromString;
 pub const privateKeyFromString = @import("crypto/private_key.zig").PrivateKey.privateKeyFromString;
 pub const generatePrivateKey = @import("crypto/private_key.zig").PrivateKey.generatePrivateKey;
 
-// Transaction factory functions - matching Hedera SDK naming patterns
-pub const newAccountCreateTransaction = @import("account/account_create.zig").newAccountCreateTransaction;
-pub const newAccountUpdateTransaction = @import("account/account_update.zig").newAccountUpdateTransaction;
-pub const newAccountDeleteTransaction = @import("account/account_delete.zig").newAccountDeleteTransaction;
-pub const newAccountAllowanceApproveTransaction = @import("account/account_allowance_approve_transaction.zig").newAccountAllowanceApproveTransaction;
-pub const newAccountAllowanceDeleteTransaction = @import("account/account_allowance_delete_transaction.zig").newAccountAllowanceDeleteTransaction;
-pub const newTokenCreateTransaction = @import("token/token_create.zig").newTokenCreateTransaction;
-pub const newTokenMintTransaction = @import("token/token_mint.zig").newTokenMintTransaction;
-pub const newTokenBurnTransaction = @import("token/token_burn.zig").newTokenBurnTransaction;
-pub const newTokenUpdateTransaction = @import("token/token_update.zig").newTokenUpdateTransaction;
-pub const newTokenDeleteTransaction = @import("token/token_delete.zig").newTokenDeleteTransaction;
-pub const newTokenFreezeTransaction = @import("token/token_freeze.zig").newTokenFreezeTransaction;
-pub const newTokenUnfreezeTransaction = @import("token/token_unfreeze.zig").newTokenUnfreezeTransaction;
-pub const newTokenWipeTransaction = @import("token/token_wipe.zig").newTokenWipeTransaction;
-pub const newTokenPauseTransaction = @import("token/token_pause.zig").newTokenPauseTransaction;
-pub const newTokenUnpauseTransaction = @import("token/token_unpause.zig").newTokenUnpauseTransaction;
-pub const newTokenAssociateTransaction = @import("token/token_associate.zig").newTokenAssociateTransaction;
-pub const newTokenDissociateTransaction = @import("token/token_dissociate.zig").newTokenDissociateTransaction;
-pub const newTopicCreateTransaction = @import("topic/topic_create.zig").newTopicCreateTransaction;
-pub const newTopicUpdateTransaction = @import("topic/topic_update.zig").newTopicUpdateTransaction;
-pub const newTopicDeleteTransaction = @import("topic/topic_delete.zig").newTopicDeleteTransaction;
-pub const newContractCreateTransaction = @import("contract/contract_create.zig").newContractCreateTransaction;
-pub const newContractUpdateTransaction = @import("contract/contract_update_transaction.zig").newContractUpdateTransaction;
-pub const newContractDeleteTransaction = @import("contract/contract_delete.zig").newContractDeleteTransaction;
-pub const newFileCreateTransaction = @import("file/file_create.zig").newFileCreateTransaction;
-pub const newFileUpdateTransaction = @import("file/file_update_transaction.zig").newFileUpdateTransaction;
-pub const newFileDeleteTransaction = @import("file/file_delete.zig").newFileDeleteTransaction;
-pub const newTransferTransaction = @import("transfer/transfer_transaction.zig").newTransferTransaction;
+// Transaction types
+
+// Query types
+
+// System/Node/Freeze transactions
 
 // Transaction base
 pub const Transaction = @import("transaction/transaction.zig").Transaction;
 pub const TransactionResponse = @import("transaction/transaction_response.zig").TransactionResponse;
 pub const SignatureMap = @import("transaction/transaction.zig").SignatureMap;
 
-// NEW Batch Transaction - PERFORMANCE CRITICAL
+// Batch, Ethereum, and PRNG Transactions
+
+// Batch Transaction for processing multiple operations
 pub const BatchTransaction = @import("transaction/batch_transaction.zig").BatchTransaction;
 
-// NEW Node Management - NETWORK ADMIN
+// Node Management operations
 pub const NodeCreateTransaction = @import("node/node_create_transaction.zig").NodeCreateTransaction;
 // ServiceEndpoint is defined below in managed_node.zig
 
-// NEW LiveHash operations - CRYPTOGRAPHIC PROOF
+// LiveHash operations for cryptographic proofs
 pub const LiveHashAddTransaction = @import("crypto/live_hash.zig").LiveHashAddTransaction;
 pub const LiveHashDeleteTransaction = @import("crypto/live_hash.zig").LiveHashDeleteTransaction;
 pub const LiveHash = @import("crypto/live_hash.zig").LiveHash;
@@ -114,7 +98,7 @@ pub const AccountStakersQuery = @import("account/account_stakers_query.zig").Acc
 pub const AccountStakers = @import("account/account_stakers_query.zig").AccountStakers;
 pub const AccountRecords = @import("account/account_records.zig").AccountRecords;
 
-// NEW Account Allowance operations - HIP-336 CRITICAL
+// Account Allowance operations (HIP-336)
 pub const AccountAllowanceApproveTransaction = @import("account/account_allowance_approve_transaction.zig").AccountAllowanceApproveTransaction;
 pub const AccountAllowanceDeleteTransaction = @import("account/account_allowance_delete_transaction.zig").AccountAllowanceDeleteTransaction;
 pub const HbarAllowance = @import("account/account_allowance_approve_transaction.zig").HbarAllowance;
@@ -176,7 +160,7 @@ pub const CustomFeeList = @import("token/custom_fee.zig").CustomFeeList;
 pub const TokenNftInfosQuery = @import("token/token_nft_infos_query.zig").TokenNftInfosQuery;
 pub const TokenGetAccountNftInfosQuery = @import("token/token_nft_infos_query.zig").TokenGetAccountNftInfosQuery;
 
-// NEW Token Airdrop operations - HIP-904 CRITICAL
+// Token Airdrop operations (HIP-904)
 pub const TokenAirdropTransaction = @import("token/token_airdrop_transaction.zig").TokenAirdropTransaction;
 pub const TokenCancelAirdropTransaction = @import("token/token_cancel_airdrop_transaction.zig").TokenCancelAirdropTransaction;
 pub const TokenClaimAirdropTransaction = @import("token/token_claim_airdrop_transaction.zig").TokenClaimAirdropTransaction;
@@ -238,6 +222,11 @@ pub const FreezeTransaction = @import("freeze/freeze_transaction.zig").FreezeTra
 pub const FreezeType = @import("freeze/freeze_transaction.zig").FreezeType;
 
 // System operations
+// Already exported earlier in file
+
+// Node operations  
+pub const NodeUpdateTransaction = @import("node/node_update_transaction.zig").NodeUpdateTransaction;
+pub const NodeDeleteTransaction = @import("node/node_delete_transaction.zig").NodeDeleteTransaction;
 
 // Network operations
 pub const NetworkVersionInfoQuery = @import("network/network_version_info_query.zig").NetworkVersionInfoQuery;
@@ -281,8 +270,12 @@ pub const ContractCreateFlow = @import("flow/contract_create_flow.zig").Contract
 pub const TokenRejectFlow = @import("flow/token_reject_flow.zig").TokenRejectFlow;
 pub const EthereumFlow = @import("flow/ethereum_flow.zig").EthereumFlow;
 pub const AccountInfoFlow = @import("flow/account_info_flow.zig").AccountInfoFlow;
-pub const CompleteAccountInfo = @import("flow/account_info_flow.zig").CompleteAccountInfo;
-pub const AccountSummary = @import("flow/account_info_flow.zig").AccountSummary;
+
+// Flow factory functions
+pub const contractCreateFlow = @import("flow/contract_create_flow.zig").contractCreateFlow;
+pub const tokenRejectFlow = @import("flow/token_reject_flow.zig").tokenRejectFlow;
+pub const ethereumFlow = @import("flow/ethereum_flow.zig").ethereumFlow;
+pub const accountInfoFlow = @import("flow/account_info_flow.zig").accountInfoFlow;
 
 // Utility operations
 pub const PrngTransaction = @import("utils/prng_transaction.zig").PrngTransaction;
@@ -303,13 +296,15 @@ pub const ContractLogInfo = @import("contract/contract_call_result.zig").Contrac
 
 // Mirror Node
 pub const MirrorNodeClient = @import("mirror/mirror_node_client.zig").MirrorNodeClient;
+pub const MirrorNodeContractCallQuery = @import("mirror/mirror_node_contract_call_query.zig").MirrorNodeContractCallQuery;
+pub const MirrorNodeContractEstimateGasQuery = @import("mirror/mirror_node_contract_estimate_gas_query.zig").MirrorNodeContractEstimateGasQuery;
 
 // Network
 pub const AddressBookQuery = @import("network/address_book_query.zig").AddressBookQuery;
 pub const NodeAddressBook = @import("network/address_book_query.zig").NodeAddressBook;
 
 // gRPC
-pub const GrpcClient = @import("grpc/grpc_client.zig").GrpcClient;
+pub const GrpcConnection = @import("network/grpc_tls.zig").GrpcTlsConnection;
 pub const HPACK = @import("grpc/hpack.zig").HPACK;
 
 // Ethereum
@@ -321,6 +316,18 @@ pub const PBKDF2 = @import("crypto/pbkdf2.zig");
 // Staking Components
 pub const ProxyStaker = @import("staking/proxy_staker.zig").ProxyStaker;
 pub const StakingInfo = @import("staking/proxy_staker.zig").StakingInfo;
+
+// Configuration
+pub const Config = @import("core/config.zig");
+pub const SystemFiles = Config.SystemFiles;
+pub const NetworkFiles = Config.NetworkFiles;
+pub const TransactionDefaults = Config.TransactionDefaults;
+pub const QueryDefaults = Config.QueryDefaults;
+pub const TokenConfig = Config.TokenConfig;
+pub const AccountConfig = Config.AccountConfig;
+pub const ContractConfig = Config.ContractConfig;
+pub const TopicConfig = Config.TopicConfig;
+pub const ScheduleConfig = Config.ScheduleConfig;
 
 // Exchange Rate Components
 pub const ExchangeRate = @import("core/exchange_rate.zig").ExchangeRate;
@@ -362,6 +369,110 @@ pub const ResponseType = @import("network/request.zig").ResponseType;
 pub const LoadBalancer = @import("network/load_balancer.zig").LoadBalancer;
 pub const TlsConfig = @import("network/tls_config.zig").TlsConfig;
 
+// Additional SDK Utilities and Optimizations
+// Extended validation utilities
+pub const Validation = @import("utils/validation.zig");
+pub const ExtendedValidationError = HederaError;
+pub const ExtendedValidationResult = Validation.ValidationResult;
+pub const AccountIdValidator = Validation.AccountIdValidator;
+pub const TransactionIdValidator = Validation.TransactionIdValidator;
+pub const HbarValidator = Validation.HbarValidator;
+pub const PrivateKeyValidator = Validation.PrivateKeyValidator;
+pub const NetworkValidator = Validation.NetworkValidator;
+pub const BatchValidator = Validation.BatchValidator;
+
+// Performance monitoring utilities
+pub const PerformanceMonitor = @import("utils/performance_monitor.zig").PerformanceMonitor;
+pub const PerformanceMetrics = @import("utils/performance_monitor.zig").PerformanceMetrics;
+pub const PerformanceSample = @import("utils/performance_monitor.zig").PerformanceSample;
+pub const PerformanceTimer = @import("utils/performance_monitor.zig").PerformanceTimer;
+pub const MemoryMonitor = @import("utils/performance_monitor.zig").MemoryMonitor;
+pub const PercentileStats = @import("utils/performance_monitor.zig").PercentileStats;
+
+// Enhanced logging capabilities
+pub const EnhancedLogging = @import("utils/enhanced_logging.zig");
+pub const Logger = EnhancedLogging.Logger;
+pub const LogLevel = EnhancedLogging.LogLevel;
+pub const LogContext = EnhancedLogging.LogContext;
+pub const LogEntry = EnhancedLogging.LogEntry;
+pub const JsonFormatter = EnhancedLogging.JsonFormatter;
+pub const TextFormatter = EnhancedLogging.TextFormatter;
+pub const ConsoleAppender = EnhancedLogging.ConsoleAppender;
+pub const FileAppender = EnhancedLogging.FileAppender;
+pub const LoggerRegistry = EnhancedLogging.LoggerRegistry;
+
+// Debug utilities
+pub const Debug = @import("utils/debug.zig");
+pub const DebugManager = Debug.DebugManager;
+pub const DebugLevel = Debug.DebugLevel;
+pub const DebugCategory = Debug.DebugCategory;
+pub const DebugEvent = Debug.DebugEvent;
+pub const MemoryTracker = Debug.MemoryTracker;
+pub const CallStackTracer = Debug.CallStackTracer;
+pub const PerformanceProfiler = Debug.PerformanceProfiler;
+
+// Connection pool optimizations
+pub const ConnectionPool = @import("network/connection_pool.zig").ConnectionPool;
+pub const ConnectionPoolManager = @import("network/connection_pool.zig").ConnectionPoolManager;
+pub const ConnectionPoolConfig = @import("network/connection_pool.zig").ConnectionPoolConfig;
+pub const PooledConnection = @import("network/connection_pool.zig").PooledConnection;
+pub const ConnectionState = @import("network/connection_pool.zig").ConnectionState;
+pub const ConnectionStats = @import("network/connection_pool.zig").ConnectionStats;
+pub const ConnectionFactory = @import("network/connection_pool.zig").ConnectionFactory;
+pub const PoolStats = @import("network/connection_pool.zig").PoolStats;
+pub const ConnectionPoolLoadBalancingStrategy = @import("network/connection_pool.zig").LoadBalancingStrategy;
+
+// Query caching mechanisms
+pub const QueryCache = @import("query/query_cache.zig").QueryCache;
+pub const QueryCacheConfig = @import("query/query_cache.zig").QueryCacheConfig;
+pub const CacheEntry = @import("query/query_cache.zig").CacheEntry;
+pub const CacheEntryMetadata = @import("query/query_cache.zig").CacheEntryMetadata;
+pub const EvictionStrategy = @import("query/query_cache.zig").EvictionStrategy;
+pub const CacheStats = @import("query/query_cache.zig").CacheStats;
+pub const QueryCacheKeyBuilder = @import("query/query_cache.zig").QueryCacheKeyBuilder;
+
+// Response compression support
+pub const Compression = @import("network/compression.zig");
+pub const CompressionEngine = Compression.CompressionEngine;
+pub const CompressionAlgorithm = Compression.CompressionAlgorithm;
+pub const CompressionConfig = Compression.CompressionConfig;
+pub const CompressionResult = Compression.CompressionResult;
+pub const DecompressionResult = Compression.DecompressionResult;
+pub const CompressionStats = Compression.CompressionStats;
+pub const AdaptiveCompression = Compression.AdaptiveCompression;
+pub const CompressionMiddleware = Compression.CompressionMiddleware;
+
+// Custom error types for specific scenarios
+pub const CustomErrors = @import("core/custom_errors.zig");
+pub const NetworkError = CustomErrors.NetworkError;
+pub const TransactionError = CustomErrors.TransactionError;
+pub const QueryError = CustomErrors.QueryError;
+pub const CryptographyError = CustomErrors.CryptographyError;
+pub const ConfigurationError = CustomErrors.ConfigurationError;
+pub const ErrorContext = CustomErrors.ErrorContext;
+pub const ErrorBuilder = CustomErrors.ErrorBuilder;
+
+// Extended retry mechanisms
+pub const ExtendedRetry = @import("network/extended_retry.zig");
+pub const RetryPolicy = ExtendedRetry.RetryPolicy;
+pub const RetryContext = ExtendedRetry.RetryContext;
+pub const RetryAttempt = ExtendedRetry.RetryAttempt;
+pub const CircuitBreaker = ExtendedRetry.CircuitBreaker;
+pub const CircuitBreakerState = ExtendedRetry.CircuitBreakerState;
+pub const CircuitBreakerConfig = ExtendedRetry.CircuitBreakerConfig;
+pub const RetryExecutor = ExtendedRetry.RetryExecutor;
+pub const RetryPolicies = ExtendedRetry.RetryPolicies;
+
+// Advanced network configuration options
+pub const AdvancedNetworkConfig = @import("network/advanced_config.zig").AdvancedNetworkConfig;
+pub const AdvancedTransportConfig = @import("network/advanced_config.zig").TransportConfig;
+pub const AdvancedTlsConfig = @import("network/advanced_config.zig").TlsConfig;
+pub const AdvancedHttpConfig = @import("network/advanced_config.zig").HttpConfig;
+pub const QosConfig = @import("network/advanced_config.zig").QosConfig;
+pub const AdvancedLoadBalancingConfig = @import("network/advanced_config.zig").LoadBalancingConfig;
+pub const MonitoringConfig = @import("network/advanced_config.zig").MonitoringConfig;
+pub const NetworkProfiles = @import("network/advanced_config.zig").NetworkProfiles;
+
 // Version information
 pub const SDK_VERSION = "1.0.0";
 pub const SUPPORTED_HEDERA_VERSION = "0.50.0";
@@ -378,49 +489,384 @@ pub fn deinit() void {
     // Currently no global cleanup required
 }
 
-test "Hedera SDK basic initialization" {
+// TCK Constructor Functions
+// These functions provide the expected interface for the Hedera TCK (Test Compatibility Kit)
+// They return initialized transaction/query objects ready for configuration
+
+// Account operations constructors
+pub fn accountCreateTransaction(allocator: std.mem.Allocator) AccountCreateTransaction {
+    return AccountCreateTransaction.init(allocator);
+}
+
+pub fn accountUpdateTransaction(allocator: std.mem.Allocator) AccountUpdateTransaction {
+    return AccountUpdateTransaction.init(allocator);
+}
+
+pub fn accountDeleteTransaction(allocator: std.mem.Allocator) AccountDeleteTransaction {
+    return AccountDeleteTransaction.init(allocator);
+}
+
+pub fn accountAllowanceApproveTransaction(allocator: std.mem.Allocator) AccountAllowanceApproveTransaction {
+    return AccountAllowanceApproveTransaction.init(allocator);
+}
+
+pub fn accountAllowanceDeleteTransaction(allocator: std.mem.Allocator) AccountAllowanceDeleteTransaction {
+    return AccountAllowanceDeleteTransaction.init(allocator);
+}
+
+// Transfer constructor
+pub fn transferTransaction(allocator: std.mem.Allocator) TransferTransaction {
+    return TransferTransaction.init(allocator);
+}
+
+// Token operations constructors
+pub fn tokenCreateTransaction(allocator: std.mem.Allocator) TokenCreateTransaction {
+    return TokenCreateTransaction.init(allocator);
+}
+
+pub fn tokenUpdateTransaction(allocator: std.mem.Allocator) TokenUpdateTransaction {
+    return TokenUpdateTransaction.init(allocator);
+}
+
+pub fn tokenDeleteTransaction(allocator: std.mem.Allocator) TokenDeleteTransaction {
+    return TokenDeleteTransaction.init(allocator);
+}
+
+pub fn tokenAssociateTransaction(allocator: std.mem.Allocator) TokenAssociateTransaction {
+    return TokenAssociateTransaction.init(allocator);
+}
+
+pub fn tokenDissociateTransaction(allocator: std.mem.Allocator) TokenDissociateTransaction {
+    return TokenDissociateTransaction.init(allocator);
+}
+
+pub fn tokenMintTransaction(allocator: std.mem.Allocator) TokenMintTransaction {
+    return TokenMintTransaction.init(allocator);
+}
+
+pub fn tokenBurnTransaction(allocator: std.mem.Allocator) TokenBurnTransaction {
+    return TokenBurnTransaction.init(allocator);
+}
+
+pub fn tokenWipeTransaction(allocator: std.mem.Allocator) TokenWipeTransaction {
+    return TokenWipeTransaction.init(allocator);
+}
+
+pub fn tokenFreezeTransaction(allocator: std.mem.Allocator) TokenFreezeTransaction {
+    return TokenFreezeTransaction.init(allocator);
+}
+
+pub fn tokenUnfreezeTransaction(allocator: std.mem.Allocator) TokenUnfreezeTransaction {
+    return TokenUnfreezeTransaction.init(allocator);
+}
+
+pub fn tokenPauseTransaction(allocator: std.mem.Allocator) TokenPauseTransaction {
+    return TokenPauseTransaction.init(allocator);
+}
+
+pub fn tokenUnpauseTransaction(allocator: std.mem.Allocator) TokenUnpauseTransaction {
+    return TokenUnpauseTransaction.init(allocator);
+}
+
+pub fn tokenGrantKycTransaction(allocator: std.mem.Allocator) TokenGrantKycTransaction {
+    return TokenGrantKycTransaction.init(allocator);
+}
+
+pub fn tokenRevokeKycTransaction(allocator: std.mem.Allocator) TokenRevokeKycTransaction {
+    return TokenRevokeKycTransaction.init(allocator);
+}
+
+pub fn tokenFeeScheduleUpdateTransaction(allocator: std.mem.Allocator) TokenFeeScheduleUpdateTransaction {
+    return TokenFeeScheduleUpdateTransaction.init(allocator);
+}
+
+pub fn tokenAirdropTransaction(allocator: std.mem.Allocator) TokenAirdropTransaction {
+    return TokenAirdropTransaction.init(allocator);
+}
+
+pub fn tokenCancelAirdropTransaction(allocator: std.mem.Allocator) TokenCancelAirdropTransaction {
+    return TokenCancelAirdropTransaction.init(allocator);
+}
+
+pub fn tokenClaimAirdropTransaction(allocator: std.mem.Allocator) TokenClaimAirdropTransaction {
+    return TokenClaimAirdropTransaction.init(allocator);
+}
+
+pub fn tokenRejectTransaction(allocator: std.mem.Allocator) TokenRejectTransaction {
+    return TokenRejectTransaction.init(allocator);
+}
+
+// File operations constructors
+pub fn fileCreateTransaction(allocator: std.mem.Allocator) FileCreateTransaction {
+    return FileCreateTransaction.init(allocator);
+}
+
+pub fn fileUpdateTransaction(allocator: std.mem.Allocator) FileUpdateTransaction {
+    return FileUpdateTransaction.init(allocator);
+}
+
+pub fn fileDeleteTransaction(allocator: std.mem.Allocator) FileDeleteTransaction {
+    return FileDeleteTransaction.init(allocator);
+}
+
+pub fn fileAppendTransaction(allocator: std.mem.Allocator) FileAppendTransaction {
+    return FileAppendTransaction.init(allocator);
+}
+
+// Topic operations constructors
+pub fn topicCreateTransaction(allocator: std.mem.Allocator) !*TopicCreateTransaction {
+    return TopicCreateTransaction.init(allocator);
+}
+
+pub fn topicUpdateTransaction(allocator: std.mem.Allocator) !*TopicUpdateTransaction {
+    return TopicUpdateTransaction.init(allocator);
+}
+
+pub fn topicDeleteTransaction(allocator: std.mem.Allocator) !*TopicDeleteTransaction {
+    return TopicDeleteTransaction.init(allocator);
+}
+
+pub fn topicMessageSubmitTransaction(allocator: std.mem.Allocator) !*TopicMessageSubmitTransaction {
+    return TopicMessageSubmitTransaction.init(allocator);
+}
+
+// Contract operations constructors
+pub fn contractCreateTransaction(allocator: std.mem.Allocator) ContractCreateTransaction {
+    return ContractCreateTransaction.init(allocator);
+}
+
+pub fn contractUpdateTransaction(allocator: std.mem.Allocator) ContractUpdateTransaction {
+    return ContractUpdateTransaction.init(allocator);
+}
+
+pub fn contractDeleteTransaction(allocator: std.mem.Allocator) ContractDeleteTransaction {
+    return ContractDeleteTransaction.init(allocator);
+}
+
+pub fn contractExecuteTransaction(allocator: std.mem.Allocator) ContractExecuteTransaction {
+    return ContractExecuteTransaction.init(allocator);
+}
+
+// Schedule operations constructors
+pub fn scheduleCreateTransaction(allocator: std.mem.Allocator) ScheduleCreateTransaction {
+    return ScheduleCreateTransaction.init(allocator);
+}
+
+pub fn scheduleDeleteTransaction(allocator: std.mem.Allocator) ScheduleDeleteTransaction {
+    return ScheduleDeleteTransaction.init(allocator);
+}
+
+pub fn scheduleSignTransaction(allocator: std.mem.Allocator) ScheduleSignTransaction {
+    return ScheduleSignTransaction.init(allocator);
+}
+
+// System operations constructors
+pub fn systemDeleteTransaction(allocator: std.mem.Allocator) SystemDeleteTransaction {
+    return SystemDeleteTransaction.init(allocator);
+}
+
+pub fn systemUndeleteTransaction(allocator: std.mem.Allocator) SystemUndeleteTransaction {
+    return SystemUndeleteTransaction.init(allocator);
+}
+
+// Freeze operations constructors
+pub fn freezeTransaction(allocator: std.mem.Allocator) FreezeTransaction {
+    return FreezeTransaction.init(allocator);
+}
+
+// Node operations constructors
+pub fn nodeCreateTransaction(allocator: std.mem.Allocator) NodeCreateTransaction {
+    return NodeCreateTransaction.init(allocator);
+}
+
+pub fn nodeUpdateTransaction(allocator: std.mem.Allocator) NodeUpdateTransaction {
+    return NodeUpdateTransaction.init(allocator);
+}
+
+pub fn nodeDeleteTransaction(allocator: std.mem.Allocator) NodeDeleteTransaction {
+    return NodeDeleteTransaction.init(allocator);
+}
+
+// Ethereum operations constructors
+pub fn ethereumTransaction(allocator: std.mem.Allocator) EthereumTransaction {
+    return EthereumTransaction.init(allocator);
+}
+
+// Batch operations constructors
+pub fn batchTransaction(allocator: std.mem.Allocator) BatchTransaction {
+    return BatchTransaction.init(allocator);
+}
+
+// PRNG operations constructors
+pub fn prngTransaction(allocator: std.mem.Allocator) PrngTransaction {
+    return PrngTransaction.init(allocator);
+}
+
+// Live Hash operations constructors
+pub fn liveHashAddTransaction(allocator: std.mem.Allocator) LiveHashAddTransaction {
+    return LiveHashAddTransaction.init(allocator);
+}
+
+pub fn liveHashDeleteTransaction(allocator: std.mem.Allocator) LiveHashDeleteTransaction {
+    return LiveHashDeleteTransaction.init(allocator);
+}
+
+// Query Constructors
+// These provide the expected interface for all query operations
+
+// Account query constructors
+pub fn accountBalanceQuery(allocator: std.mem.Allocator) AccountBalanceQuery {
+    return AccountBalanceQuery.init(allocator);
+}
+
+pub fn accountInfoQuery(allocator: std.mem.Allocator) AccountInfoQuery {
+    return AccountInfoQuery.init(allocator);
+}
+
+pub fn accountRecordsQuery(allocator: std.mem.Allocator) AccountRecordsQuery {
+    return AccountRecordsQuery.init(allocator);
+}
+
+pub fn accountStakersQuery(allocator: std.mem.Allocator) AccountStakersQuery {
+    return AccountStakersQuery.init(allocator);
+}
+
+// Token query constructors
+pub fn tokenInfoQuery(allocator: std.mem.Allocator) TokenInfoQuery {
+    return TokenInfoQuery.init(allocator);
+}
+
+pub fn tokenBalanceQuery(allocator: std.mem.Allocator) TokenBalanceQuery {
+    return TokenBalanceQuery.init(allocator);
+}
+
+pub fn tokenNftInfoQuery(allocator: std.mem.Allocator) TokenNftInfoQuery {
+    return TokenNftInfoQuery.init(allocator);
+}
+
+pub fn tokenNftInfosQuery(allocator: std.mem.Allocator) TokenNftInfosQuery {
+    return TokenNftInfosQuery.init(allocator);
+}
+
+pub fn tokenGetAccountNftInfosQuery(allocator: std.mem.Allocator) TokenGetAccountNftInfosQuery {
+    return TokenGetAccountNftInfosQuery.init(allocator);
+}
+
+// Contract query constructors
+pub fn contractInfoQuery(allocator: std.mem.Allocator) ContractInfoQuery {
+    return ContractInfoQuery.init(allocator);
+}
+
+pub fn contractBytecodeQuery(allocator: std.mem.Allocator) ContractBytecodeQuery {
+    return ContractBytecodeQuery.init(allocator);
+}
+
+pub fn contractCallQuery(allocator: std.mem.Allocator) ContractCallQuery {
+    return ContractCallQuery.init(allocator);
+}
+
+// File query constructors
+pub fn fileInfoQuery(allocator: std.mem.Allocator) FileInfoQuery {
+    return FileInfoQuery.init(allocator);
+}
+
+pub fn fileContentsQuery(allocator: std.mem.Allocator) FileContentsQuery {
+    return FileContentsQuery.init(allocator);
+}
+
+// Topic query constructors
+pub fn topicInfoQuery(allocator: std.mem.Allocator) TopicInfoQuery {
+    return TopicInfoQuery.init(allocator);
+}
+
+pub fn topicMessageQuery(allocator: std.mem.Allocator) TopicMessageQuery {
+    return TopicMessageQuery.init(allocator);
+}
+
+// Transaction receipt and record query constructors
+pub fn transactionReceiptQuery(allocator: std.mem.Allocator) TransactionReceiptQuery {
+    return TransactionReceiptQuery.init(allocator);
+}
+
+pub fn transactionRecordQuery(allocator: std.mem.Allocator) TransactionRecordQuery {
+    return TransactionRecordQuery.init(allocator);
+}
+
+// Schedule query constructors
+pub fn scheduleInfoQuery(allocator: std.mem.Allocator) ScheduleInfoQuery {
+    return ScheduleInfoQuery.init(allocator);
+}
+
+// Network query constructors
+pub fn networkVersionInfoQuery(allocator: std.mem.Allocator) NetworkVersionInfoQuery {
+    return NetworkVersionInfoQuery.init(allocator);
+}
+
+pub fn addressBookQuery(allocator: std.mem.Allocator) AddressBookQuery {
+    return AddressBookQuery.init(allocator);
+}
+
+pub fn networkGetExecutionTimeQuery(allocator: std.mem.Allocator) NetworkGetExecutionTimeQuery {
+    return NetworkGetExecutionTimeQuery.init(allocator);
+}
+
+// Live hash query constructors
+pub fn liveHashQuery(allocator: std.mem.Allocator) LiveHashQuery {
+    return LiveHashQuery.init(allocator);
+}
+
+// Mirror node query constructors
+pub fn mirrorNodeContractCallQuery(allocator: std.mem.Allocator) MirrorNodeContractCallQuery {
+    return MirrorNodeContractCallQuery.init(allocator);
+}
+
+pub fn mirrorNodeContractEstimateGasQuery(allocator: std.mem.Allocator) MirrorNodeContractEstimateGasQuery {
+    return MirrorNodeContractEstimateGasQuery.init(allocator);
+}
+
+test "basic initialization" {
     const testing = std.testing;
-    
+
     // Test that we can create basic types
     const account = AccountId.init(0, 0, 3);
     try testing.expectEqual(@as(u64, 0), account.shard);
     try testing.expectEqual(@as(u64, 0), account.realm);
     try testing.expectEqual(@as(u64, 3), account.account);
-    
+
     // Test Hbar creation
     const amount = try Hbar.from(100);
     try testing.expectEqual(@as(i64, 10_000_000_000), amount.toTinybars());
-    
+
     // Test TransactionId generation
     const tx_id = TransactionId.generate(account);
     try testing.expect(tx_id.isValid());
     try testing.expect(tx_id.account_id.equals(account));
 }
 
-test "Hedera SDK error handling" {
+test "error handling" {
     const testing = std.testing;
-    
+
     // Test error conversion
     const err = StatusCode.fromCode(7);
     try testing.expectEqual(HederaError.InvalidSignature, err);
-    
+
     // Test error description
     const desc = StatusCode.getDescription(HederaError.InsufficientTxFee);
     try testing.expect(desc.len > 0);
 }
 
-test "Hedera SDK cryptography" {
+test "cryptography" {
     const testing = std.testing;
-    
+
     // Test ED25519 key generation
     const ed_key = try Ed25519PrivateKey.generate();
     const pub_key = ed_key.getPublicKey();
-    
+
     // Test signing
     const message = "Hello Hedera";
     const signature = try ed_key.sign(message);
     try testing.expectEqual(@as(usize, 64), signature.len);
-    
+
     // Test verification
     const valid = pub_key.verify(message, &signature);
     try testing.expect(valid);
