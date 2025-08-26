@@ -191,14 +191,14 @@ pub const TCKServer = struct {
             .deleteNode => try node_service.deleteNode(self.allocator, self.client, request.params),
             .getAccountInfo => try query_service.getAccountInfo(self.allocator, self.client, request.params),
             .getAccountBalance => try query_service.getAccountBalance(self.allocator, self.client, request.params),
-            .getTokenInfo => std.json.Value{ .object = try utils.createErrorMap(self.allocator, "Not implemented") },
+            .getTokenInfo => try query_service.getTokenInfo(self.allocator, self.client, request.params),
             .getTokenBalance => try query_service.getTokenBalance(self.allocator, self.client, request.params),
             .getFileInfo => try query_service.getFileInfo(self.allocator, self.client, request.params),
             .getFileContents => try query_service.getFileContents(self.allocator, self.client, request.params),
             .getTopicInfo => try query_service.getTopicInfo(self.allocator, self.client, request.params),
             .getContractInfo => try query_service.getContractInfo(self.allocator, self.client, request.params),
-            .getTransactionRecord => std.json.Value{ .object = try utils.createErrorMap(self.allocator, "Not implemented") },
-            .getTransactionReceipt => std.json.Value{ .object = try utils.createErrorMap(self.allocator, "Not implemented") },
+            .getTransactionRecord => try query_service.getTransactionRecord(self.allocator, self.client, request.params),
+            .getTransactionReceipt => try query_service.getTransactionReceipt(self.allocator, self.client, request.params),
         };
         return json_rpc.Response.success(self.allocator, result, request.id);
     }

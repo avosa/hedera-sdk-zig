@@ -8,6 +8,7 @@ const TransactionResponse = @import("../transaction/transaction_response.zig").T
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/writer.zig").ProtoWriter;
+const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
 const errors = @import("../core/errors.zig");
 const HederaError = errors.HederaError;
   
@@ -97,6 +98,109 @@ pub const TokenTransfer = struct {
         };
     }
     
+    pub fn fromProtobuf(allocator: std.mem.Allocator, data: []const u8) !TokenTransfer {
+        var reader = ProtoReader.init(data);
+        var token_id: ?TokenId = null;
+        var transfers = std.ArrayList(AccountAmount).init(allocator);
+        var expected_decimals: ?u32 = null;
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            switch (tag.field_number) {
+                1 => {
+                    const token_bytes = try reader.readBytes();
+                    var token_reader = ProtoReader.init(token_bytes);
+                    var shard: u64 = 0;
+                    var realm: u64 = 0;
+                    var num: u64 = 0;
+                    
+                    while (token_reader.hasMore()) {
+                        const token_tag = try token_reader.readTag();
+                        switch (token_tag.field_number) {
+                            1 => shard = @intCast(try token_reader.readInt64()),
+                            2 => realm = @intCast(try token_reader.readInt64()),
+                            3 => num = @intCast(try token_reader.readInt64()),
+                            else => try token_reader.skipField(token_tag.wire_type),
+                        }
+                    }
+                    
+                    token_id = TokenId{
+                        .entity = .{
+                            .shard = shard,
+                            .realm = realm,
+                            .num = num,
+                        },
+                    };
+                },
+                2 => {
+                    const transfer_bytes = try reader.readBytes();
+                    var transfer_reader = ProtoReader.init(transfer_bytes);
+                    
+                    while (transfer_reader.hasMore()) {
+                        const transfer_tag = try transfer_reader.readTag();
+                        switch (transfer_tag.field_number) {
+                            1 => {
+                                const account_bytes = try transfer_reader.readBytes();
+                                var account_reader = ProtoReader.init(account_bytes);
+                                var account_shard: u64 = 0;
+                                var account_realm: u64 = 0;
+                                var account_num: u64 = 0;
+                                
+                                while (account_reader.hasMore()) {
+                                    const account_tag = try account_reader.readTag();
+                                    switch (account_tag.field_number) {
+                                        1 => account_shard = @intCast(try account_reader.readInt64()),
+                                        2 => account_realm = @intCast(try account_reader.readInt64()),
+                                        3 => account_num = @intCast(try account_reader.readInt64()),
+                                        else => try account_reader.skipField(account_tag.wire_type),
+                                    }
+                                }
+                                
+                                const amount = try transfer_reader.readInt64();
+                                try transfers.append(AccountAmount{
+                                    .account_id = AccountId{
+                                        .shard = account_shard,
+                                        .realm = account_realm,
+                                        .account = account_num,
+                                        .alias_key = null,
+                                        .alias_evm_address = null,
+                                        .checksum = null,
+                                    },
+                                    .amount = amount,
+                                    .is_approved = false,
+                                });
+                            },
+                            2 => {
+                                const amount = try transfer_reader.readInt64();
+                                if (transfers.items.len > 0) {
+                                    transfers.items[transfers.items.len - 1].amount = amount;
+                                }
+                            },
+                            else => try transfer_reader.skipField(transfer_tag.wire_type),
+                        }
+                    }
+                },
+                3 => expected_decimals = @intCast(try reader.readUint32()),
+                else => try reader.skipField(tag.wire_type),
+            }
+        }
+        
+        const first_transfer = if (transfers.items.len > 0) transfers.items[0] else AccountAmount{
+            .account_id = AccountId.init(0, 0, 0),
+            .amount = 0,
+            .is_approved = false,
+        };
+        
+        return TokenTransfer{
+            .token_id = token_id orelse TokenId.init(0, 0, 0),
+            .account_id = first_transfer.account_id,
+            .amount = first_transfer.amount,
+            .is_approved = false,
+            .expected_decimals = expected_decimals,
+            .transfers = transfers,
+        };
+    }
+    
     pub fn deinit(self: *TokenTransfer) void {
         self.transfers.deinit();
     }
@@ -167,6 +271,40 @@ pub const NftTransfer = struct {
             .receiver_account_id = receiver,
             .is_approved = true,
         };
+    }
+    
+    pub fn fromProtobuf(allocator: std.mem.Allocator, data: []const u8) !NftTransfer {
+        var reader = ProtoReader.init(data);
+        var transfer = NftTransfer{
+            .nft_id = NftId.init(TokenId.init(0, 0, 0), 0),
+            .sender_account_id = AccountId.init(0, 0, 0),
+            .receiver_account_id = AccountId.init(0, 0, 0),
+            .is_approved = false,
+        };
+        
+        while (reader.hasMore()) {
+            const tag = try reader.readTag();
+            switch (tag.field_number) {
+                1 => {
+                    const sender_bytes = try reader.readBytes();
+                    transfer.sender_account_id = try AccountId.fromProtobuf(allocator, sender_bytes);
+                },
+                2 => {
+                    const receiver_bytes = try reader.readBytes();
+                    transfer.receiver_account_id = try AccountId.fromProtobuf(allocator, receiver_bytes);
+                },
+                3 => {
+                    const token_bytes = try reader.readBytes();
+                    const token_id = try TokenId.fromProtobuf(allocator, token_bytes);
+                    transfer.nft_id.token_id = token_id;
+                },
+                4 => transfer.nft_id.serial_number = @intCast(try reader.readInt64()),
+                5 => transfer.is_approved = try reader.readBool(),
+                else => try reader.skipField(tag.wire_type),
+            }
+        }
+        
+        return transfer;
     }
     
     pub fn toProtobuf(self: *const NftTransfer, allocator: std.mem.Allocator) ![]u8 {

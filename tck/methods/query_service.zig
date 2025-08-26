@@ -90,9 +90,7 @@ pub fn getTokenInfo(allocator: std.mem.Allocator, client: ?*hedera.Client, param
     try result.put("symbol", json.Value{ .string = info.symbol });
     try result.put("decimals", json.Value{ .integer = @intCast(info.decimals) });
     try result.put("totalSupply", json.Value{ .integer = @intCast(info.total_supply) });
-    if (info.treasury_account_id) |treasury| {
-        try result.put("treasuryAccountId", json.Value{ .string = try treasury.toString(allocator) });
-    }
+    try result.put("treasuryAccountId", json.Value{ .string = try info.treasury_account_id.toString(allocator) });
     if (info.admin_key) |key| {
         try result.put("adminKey", json.Value{ .string = try key.toString(allocator) });
     }
@@ -123,14 +121,12 @@ pub fn getTokenInfo(allocator: std.mem.Allocator, client: ?*hedera.Client, param
         try result.put("memo", json.Value{ .string = info.memo });
     }
     try result.put("deleted", json.Value{ .bool = info.deleted });
-    try result.put("paused", json.Value{ .bool = info.pause_status });
+    try result.put("paused", json.Value{ .bool = info.pause_status == .paused });
     if (info.auto_renew_account) |renew_acc| {
         try result.put("autoRenewAccount", json.Value{ .string = try renew_acc.toString(allocator) });
     }
     try result.put("autoRenewPeriod", json.Value{ .integer = @intCast(info.auto_renew_period.seconds) });
-    if (info.expiry) |expiry| {
-        try result.put("expirationTime", json.Value{ .integer = @intCast(expiry.seconds) });
-    }
+    try result.put("expirationTime", json.Value{ .integer = @intCast(info.expiry.seconds) });
     return json.Value{ .object = result };
 }
 pub fn getTokenBalance(allocator: std.mem.Allocator, client: ?*hedera.Client, params: ?json.Value) !json.Value {
@@ -276,32 +272,24 @@ pub fn getTransactionRecord(allocator: std.mem.Allocator, client: ?*hedera.Clien
     var record = try query.execute(client.?);
     defer record.deinit();
     var result = std.json.ObjectMap.init(allocator);
-    if (record.transaction_id) |tid| {
-        try result.put("transactionId", json.Value{ .string = try tid.toString(allocator) });
-    }
-    if (record.receipt) |receipt| {
-        try result.put("status", json.Value{ .string = @tagName(receipt.status) });
-    }
-    if (record.transaction_hash) |hash| {
-        const encoded = try allocator.alloc(u8, std.base64.standard.Encoder.calcSize(hash.len));
-        _ = std.base64.standard.Encoder.encode(encoded, hash);
+    try result.put("transactionId", json.Value{ .string = try record.transaction_id.toString(allocator) });
+    try result.put("status", json.Value{ .string = @tagName(record.receipt.status) });
+    if (record.transaction_hash.len > 0) {
+        const encoded = try allocator.alloc(u8, std.base64.standard.Encoder.calcSize(record.transaction_hash.len));
+        _ = std.base64.standard.Encoder.encode(encoded, record.transaction_hash);
         try result.put("transactionHash", json.Value{ .string = encoded });
     }
-    if (record.transaction_fee) |fee| {
-        try result.put("transactionFee", json.Value{ .integer = @intCast(fee) });
+    try result.put("transactionFee", json.Value{ .integer = @intCast(record.transaction_fee.toTinybars()) });
+    try result.put("consensusTimestamp", json.Value{ .integer = @intCast(record.consensus_timestamp.seconds) });
+    if (record.transaction_memo.len > 0) {
+        try result.put("memo", json.Value{ .string = record.transaction_memo });
     }
-    if (record.consensus_timestamp) |timestamp| {
-        try result.put("consensusTimestamp", json.Value{ .integer = @intCast(timestamp.seconds) });
-    }
-    if (record.memo) |memo| {
-        try result.put("memo", json.Value{ .string = memo });
-    }
-    if (record.transfers) |transfers| {
+    if (record.transfers.items.len > 0) {
         var transfers_array = std.json.Array.init(allocator);
-        for (transfers) |transfer| {
+        for (record.transfers.items) |transfer| {
             var transfer_map = std.json.ObjectMap.init(allocator);
             try transfer_map.put("accountId", json.Value{ .string = try transfer.account_id.toString(allocator) });
-            try transfer_map.put("amount", json.Value{ .integer = @intCast(transfer.amount) });
+            try transfer_map.put("amount", json.Value{ .integer = @intCast(transfer.amount.toTinybars()) });
             try transfers_array.append(json.Value{ .object = transfer_map });
         }
         try result.put("transfers", json.Value{ .array = transfers_array });
@@ -340,28 +328,28 @@ pub fn getTransactionReceipt(allocator: std.mem.Allocator, client: ?*hedera.Clie
     if (receipt.schedule_id) |sid| {
         try result.put("scheduleId", json.Value{ .string = try sid.toString(allocator) });
     }
-    if (receipt.topic_sequence_number) |seq| {
-        try result.put("topicSequenceNumber", json.Value{ .integer = @intCast(seq) });
+    if (receipt.topic_sequence_number > 0) {
+        try result.put("topicSequenceNumber", json.Value{ .integer = @intCast(receipt.topic_sequence_number) });
     }
-    if (receipt.topic_running_hash) |hash| {
-        const encoded = try allocator.alloc(u8, std.base64.standard.Encoder.calcSize(hash.len));
-        _ = std.base64.standard.Encoder.encode(encoded, hash);
+    if (receipt.topic_running_hash.len > 0) {
+        const encoded = try allocator.alloc(u8, std.base64.standard.Encoder.calcSize(receipt.topic_running_hash.len));
+        _ = std.base64.standard.Encoder.encode(encoded, receipt.topic_running_hash);
         try result.put("topicRunningHash", json.Value{ .string = encoded });
     }
-    if (receipt.serials) |serials| {
+    if (receipt.serial_numbers.len > 0) {
         var serials_array = std.json.Array.init(allocator);
-        for (serials) |serial| {
+        for (receipt.serial_numbers) |serial| {
             try serials_array.append(json.Value{ .integer = @intCast(serial) });
         }
         try result.put("serials", json.Value{ .array = serials_array });
     }
-    if (receipt.total_supply) |supply| {
-        try result.put("totalSupply", json.Value{ .integer = @intCast(supply) });
+    if (receipt.total_supply > 0) {
+        try result.put("totalSupply", json.Value{ .integer = @intCast(receipt.total_supply) });
     }
     if (receipt.exchange_rate) |rate| {
         var rate_map = std.json.ObjectMap.init(allocator);
-        try rate_map.put("hbars", json.Value{ .integer = @intCast(rate.hbars) });
-        try rate_map.put("cents", json.Value{ .integer = @intCast(rate.cents) });
+        try rate_map.put("hbars", json.Value{ .integer = @intCast(rate.hbar_equivalent) });
+        try rate_map.put("cents", json.Value{ .integer = @intCast(rate.cent_equivalent) });
         try result.put("exchangeRate", json.Value{ .object = rate_map });
     }
     return json.Value{ .object = result };

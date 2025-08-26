@@ -281,7 +281,12 @@ pub const TransactionReceiptQuery = struct {
                                         1 => {
                                             const current_bytes = try rate_reader.readMessage();
                                             var current_reader = ProtoReader.init(current_bytes);
-                                            receipt.exchange_rate = try ExchangeRate.decode(&current_reader);
+                                            const local_rate = try ExchangeRate.decode(&current_reader);
+                                            receipt.exchange_rate = @import("../core/exchange_rate.zig").ExchangeRate{
+                                                .cent_equivalent = local_rate.cents,
+                                                .hbar_equivalent = local_rate.hbars,
+                                                .expiration_time = null,
+                                            };
                                         },
                                         else => try rate_reader.skipField(rate_tag.wire_type),
                                     }
