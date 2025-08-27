@@ -13,14 +13,14 @@ pub const TokenAirdropTransaction = struct {
     base: Transaction,
     token_transfers: std.ArrayList(TokenTransfer),
     nft_transfers: std.ArrayList(NftTransfer),
-    
+
     const TokenTransfer = struct {
         token_id: TokenId,
         account_id: AccountId,
         amount: i64,
         is_approval: bool = false,
     };
-    
+
     const NftTransfer = struct {
         token_id: TokenId,
         sender: AccountId,
@@ -28,7 +28,7 @@ pub const TokenAirdropTransaction = struct {
         serial: i64,
         is_approval: bool = false,
     };
-    
+
     pub fn init(allocator: std.mem.Allocator) TokenAirdropTransaction {
         return TokenAirdropTransaction{
             .base = Transaction.init(allocator),
@@ -36,13 +36,13 @@ pub const TokenAirdropTransaction = struct {
             .nft_transfers = std.ArrayList(NftTransfer).init(allocator),
         };
     }
-    
+
     pub fn deinit(self: *TokenAirdropTransaction) void {
         self.base.deinit();
         self.token_transfers.deinit();
         self.nft_transfers.deinit();
     }
-    
+
     // Add a token transfer to the airdrop
     pub fn addTokenTransfer(self: *TokenAirdropTransaction, token_id: TokenId, account_id: AccountId, amount: i64) !void {
         try self.token_transfers.append(TokenTransfer{
@@ -51,7 +51,7 @@ pub const TokenAirdropTransaction = struct {
             .amount = amount,
         });
     }
-    
+
     // Add an approved token transfer
     pub fn addApprovedTokenTransfer(self: *TokenAirdropTransaction, token_id: TokenId, account_id: AccountId, amount: i64) !void {
         try self.token_transfers.append(TokenTransfer{
@@ -61,17 +61,17 @@ pub const TokenAirdropTransaction = struct {
             .is_approval = true,
         });
     }
-    
+
     // Add an NFT transfer to the airdrop
     pub fn addNftTransfer(self: *TokenAirdropTransaction, nft_id: NftId, receiver: AccountId) !void {
         try self.nft_transfers.append(NftTransfer{
             .token_id = nft_id.token_id,
             .sender = try AccountId.fromString(self.base.allocator, "0.0.0"), // Treasury
             .receiver = receiver,
-            .serial = nft_id.serial_number,
+            .serial = @as(i64, @intCast(nft_id.serial_number)),
         });
     }
-    
+
     // Add an approved NFT transfer
     pub fn addApprovedNftTransfer(self: *TokenAirdropTransaction, token_id: TokenId, sender: AccountId, receiver: AccountId, serial: i64) !void {
         try self.nft_transfers.append(NftTransfer{
@@ -82,34 +82,34 @@ pub const TokenAirdropTransaction = struct {
             .is_approval = true,
         });
     }
-    
+
     // Freeze the transaction
     pub fn freezeWith(self: *TokenAirdropTransaction, client: *Client) !*Transaction {
         return try self.base.freezeWith(client);
     }
-    
+
     // Execute the transaction
     pub fn execute(self: *TokenAirdropTransaction, client: *Client) !TransactionResponse {
         return try self.base.execute(client);
     }
-    
+
     // Build transaction body
     pub fn buildTransactionBody(self: *TokenAirdropTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
         defer writer.deinit();
-        
+
         // Write common transaction fields
         try self.writeCommonFields(&writer);
-        
+
         // tokenAirdrop = 56 (oneof data)
         var airdrop_writer = ProtoWriter.init(self.base.allocator);
         defer airdrop_writer.deinit();
-        
+
         // tokenTransfers = 1 (repeated)
         for (self.token_transfers.items) |transfer| {
             var transfer_writer = ProtoWriter.init(self.base.allocator);
             defer transfer_writer.deinit();
-            
+
             // token = 1
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
@@ -119,11 +119,11 @@ pub const TokenAirdropTransaction = struct {
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try transfer_writer.writeMessage(1, token_bytes);
-            
+
             // transfers = 2
             var account_writer = ProtoWriter.init(self.base.allocator);
             defer account_writer.deinit();
-            
+
             // accountID = 1
             var acc_id_writer = ProtoWriter.init(self.base.allocator);
             defer acc_id_writer.deinit();
@@ -133,29 +133,29 @@ pub const TokenAirdropTransaction = struct {
             const acc_bytes = try acc_id_writer.toOwnedSlice();
             defer self.base.allocator.free(acc_bytes);
             try account_writer.writeMessage(1, acc_bytes);
-            
+
             // amount = 2
             try account_writer.writeInt64(2, transfer.amount);
-            
+
             // is_approval = 3
             if (transfer.is_approval) {
                 try account_writer.writeBool(3, true);
             }
-            
+
             const account_transfer_bytes = try account_writer.toOwnedSlice();
             defer self.base.allocator.free(account_transfer_bytes);
             try transfer_writer.writeMessage(2, account_transfer_bytes);
-            
+
             const transfer_bytes = try transfer_writer.toOwnedSlice();
             defer self.base.allocator.free(transfer_bytes);
             try airdrop_writer.writeMessage(1, transfer_bytes);
         }
-        
+
         // nftTransfers = 2 (repeated)
         for (self.nft_transfers.items) |nft| {
             var nft_writer = ProtoWriter.init(self.base.allocator);
             defer nft_writer.deinit();
-            
+
             // token = 1
             var token_writer = ProtoWriter.init(self.base.allocator);
             defer token_writer.deinit();
@@ -165,7 +165,7 @@ pub const TokenAirdropTransaction = struct {
             const token_bytes = try token_writer.toOwnedSlice();
             defer self.base.allocator.free(token_bytes);
             try nft_writer.writeMessage(1, token_bytes);
-            
+
             // sender = 2
             var sender_writer = ProtoWriter.init(self.base.allocator);
             defer sender_writer.deinit();
@@ -175,7 +175,7 @@ pub const TokenAirdropTransaction = struct {
             const sender_bytes = try sender_writer.toOwnedSlice();
             defer self.base.allocator.free(sender_bytes);
             try nft_writer.writeMessage(2, sender_bytes);
-            
+
             // receiver = 3
             var receiver_writer = ProtoWriter.init(self.base.allocator);
             defer receiver_writer.deinit();
@@ -185,31 +185,29 @@ pub const TokenAirdropTransaction = struct {
             const receiver_bytes = try receiver_writer.toOwnedSlice();
             defer self.base.allocator.free(receiver_bytes);
             try nft_writer.writeMessage(3, receiver_bytes);
-            
+
             // serialNumber = 4
             try nft_writer.writeInt64(4, nft.serial);
-            
+
             // is_approval = 5
             if (nft.is_approval) {
                 try nft_writer.writeBool(5, true);
             }
-            
+
             const nft_bytes = try nft_writer.toOwnedSlice();
             defer self.base.allocator.free(nft_bytes);
             try airdrop_writer.writeMessage(2, nft_bytes);
         }
-        
+
         const airdrop_bytes = try airdrop_writer.toOwnedSlice();
         defer self.base.allocator.free(airdrop_bytes);
         try writer.writeMessage(56, airdrop_bytes);
-        
+
         return writer.toOwnedSlice();
     }
-    
+
     fn writeCommonFields(self: *TokenAirdropTransaction, writer: *ProtoWriter) !void {
         // Write standard transaction fields
         try self.base.writeCommonFields(writer);
     }
 };
-
-// Constructor function matching the pattern used by other transactions
