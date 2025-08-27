@@ -634,7 +634,7 @@ pub fn topicDeleteTransaction(allocator: std.mem.Allocator) !*TopicDeleteTransac
     return TopicDeleteTransaction.init(allocator);
 }
 
-pub fn topicMessageSubmitTransaction(allocator: std.mem.Allocator) !*TopicMessageSubmitTransaction {
+pub fn topicMessageSubmitTransaction(allocator: std.mem.Allocator) TopicMessageSubmitTransaction {
     return TopicMessageSubmitTransaction.init(allocator);
 }
 
