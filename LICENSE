@@ -186,7 +186,7 @@
       same "printed page" as the copyright notice for easier
       identification within third-party archives.
 
-   Copyright 2024 Hedera SDK Zig Contributors
+   Copyright 2025 Hedera SDK Zig Contributors
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -199,3 +199,16 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+
+-------------------------------------------------------------------------------
+
+NOTICE
+
+This project is licensed under the Apache License, Version 2.0.
+
+It is an independent, community-driven SDK for Hedera Hashgraph,
+created by contributors to the "hedera-sdk-zig" repository.
+
+"Hedera" and related marks are trademarks of Hedera Hashgraph, LLC.
+This project is not affiliated with, endorsed, or sponsored by
+Hedera Hashgraph, LLC.
