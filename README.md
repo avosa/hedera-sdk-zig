@@ -1,6 +1,8 @@
 # Hedera SDK for Zig
 
-This is Hedera SDK implementation in Zig. This project is under active development and continues to evolve. It is being built with reference to the [Hedera Technology Compatibility Kit (TCK)](https://github.com/hiero-ledger/hiero-sdk-tck) to help ensure consistency with other official SDKs. Use with care in real-world applications.
+**Disclaimer:** Hedera SDK for Zig is an independent, community-created SDK. It is **not affiliated with, endorsed, or officially maintained by Hedera Hashgraph, LLC**. Use this library at your own risk, and carefully review its behavior before using in production environments.
+
+This project brings Hedera SDK functionality to the Zig programming language. It is under active development and continues to evolve. The SDK is being built with reference to the [Hedera Technology Compatibility Kit (TCK)](https://github.com/hiero-ledger/hiero-sdk-tck) to help ensure consistency with other SDKs. Use with care in real-world applications.
 
 ## Current Features
 
@@ -19,7 +21,7 @@ Run this command in your project directory:
 
 ```bash
 zig fetch --save https://github.com/avosa/hedera-sdk-zig/archive/refs/heads/main.tar.gz
-```
+````
 
 This will automatically add the dependency to your `build.zig.zon` with the correct hash.
 
@@ -48,7 +50,7 @@ exe.root_module.addImport("hedera", hedera.module("hedera"));
 
 **TODO**
 
-__For now:__
+**For now:**
 
 ```sh
 zig build test --summary all
@@ -64,15 +66,15 @@ Apache License 2.0
 
 ## Acknowledgments
 
-Built with reference to Hedera's official [JavaScript](https://github.com/hiero-ledger/hiero-sdk-js) , [Swift](https://github.com/hiero-ledger/hiero-sdk-swift), and [Go](https://github.com/hiero-ledger/hiero-sdk-go) SDKs to help guide compatibility and implementation.
+Built with reference to Hedera's official [JavaScript](https://github.com/hiero-ledger/hiero-sdk-js), [Swift](https://github.com/hiero-ledger/hiero-sdk-swift), and [Go](https://github.com/hiero-ledger/hiero-sdk-go) SDKs to help guide compatibility and implementation.
 
 ## Support
 
 For issues, feature requests, or questions:
 
 * Open an issue on GitHub
-* Contact Hedera support for network-related queries
+* Contact Hedera support for network-related queries about the Hedera network (not the SDK itself)
 
 ---
 
-**Note**: This SDK brings Hedera to Zig for the first time. It is under active development and evolving quickly. While compatibility with the [Hedera Technology Compatibility Kit](https://github.com/hiero-ledger/hiero-sdk-tck) is a core goal, please use it thoughtfully and validate thoroughly in your environment before relying on it for critical workloads.
+**Note**: Hedera SDK for Zig brings Hedera to the Zig language for the first time. It is under active development and evolving quickly. While compatibility with the [Hedera Technology Compatibility Kit](https://github.com/hiero-ledger/hiero-sdk-tck) is a core goal, please use it thoughtfully and validate thoroughly before relying on it for critical workloads.
