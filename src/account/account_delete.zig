@@ -6,6 +6,8 @@ const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const errors = @import("../core/errors.zig");
+const Duration = @import("../core/duration.zig").Duration;
+const Hbar = @import("../core/hbar.zig").Hbar;
 
 // AccountDeleteTransaction marks an account as deleted, moving all its current hbars to another account.
 // It will remain in the ledger, marked as deleted, until it expires. Transfers into a deleted account fail.
@@ -59,6 +61,41 @@ pub const AccountDeleteTransaction = struct {
         return AccountId{};
     }
 
+    pub fn setTransactionId(self: *AccountDeleteTransaction, transaction_id: TransactionId) !*AccountDeleteTransaction {
+        _ = try self.base.setTransactionId(transaction_id);
+        return self;
+    }
+    
+    pub fn setTransactionMemo(self: *AccountDeleteTransaction, memo: []const u8) !*AccountDeleteTransaction {
+        _ = try self.base.setTransactionMemo(memo);
+        return self;
+    }
+    
+    pub fn setMaxTransactionFee(self: *AccountDeleteTransaction, fee: Hbar) !*AccountDeleteTransaction {
+        _ = try self.base.setMaxTransactionFee(fee);
+        return self;
+    }
+    
+    pub fn setTransactionValidDuration(self: *AccountDeleteTransaction, duration: Duration) !*AccountDeleteTransaction {
+        _ = try self.base.setTransactionValidDuration(duration);
+        return self;
+    }
+    
+    pub fn setNodeAccountIds(self: *AccountDeleteTransaction, nodes: []const AccountId) !*AccountDeleteTransaction {
+        _ = try self.base.setNodeAccountIds(nodes);
+        return self;
+    }
+    
+    pub fn setGrpcDeadline(self: *AccountDeleteTransaction, deadline: Duration) !*AccountDeleteTransaction {
+        _ = try self.base.setGrpcDeadline(deadline);
+        return self;
+    }
+    
+    pub fn setRegenerateTransactionId(self: *AccountDeleteTransaction, regenerate: bool) !*AccountDeleteTransaction {
+        _ = try self.base.setRegenerateTransactionId(regenerate);
+        return self;
+    }
+    
     // Execute the transaction
     pub fn freezeWith(self: *AccountDeleteTransaction, client: ?*Client) !*Transaction {
         return try self.base.freezeWith(client);

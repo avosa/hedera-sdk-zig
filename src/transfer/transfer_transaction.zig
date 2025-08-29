@@ -8,6 +8,7 @@ const TransactionResponse = @import("../transaction/transaction_response.zig").T
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/writer.zig").ProtoWriter;
+const Duration = @import("../core/duration.zig").Duration;
 const ProtoReader = @import("../protobuf/encoding.zig").ProtoReader;
 const errors = @import("../core/errors.zig");
 const HederaError = errors.HederaError;
@@ -529,10 +530,33 @@ pub const TransferTransaction = struct {
         return self;
     }
     
-    // Freeze with client
-    // Set transaction memo
     pub fn setTransactionMemo(self: *TransferTransaction, memo: []const u8) !*TransferTransaction {
         _ = try self.base.setTransactionMemo(memo);
+        return self;
+    }
+    
+    pub fn setMaxTransactionFee(self: *TransferTransaction, fee: Hbar) !*TransferTransaction {
+        _ = try self.base.setMaxTransactionFee(fee);
+        return self;
+    }
+    
+    pub fn setTransactionValidDuration(self: *TransferTransaction, duration: Duration) !*TransferTransaction {
+        _ = try self.base.setTransactionValidDuration(duration);
+        return self;
+    }
+    
+    pub fn setNodeAccountIds(self: *TransferTransaction, nodes: []const AccountId) !*TransferTransaction {
+        _ = try self.base.setNodeAccountIds(nodes);
+        return self;
+    }
+    
+    pub fn setGrpcDeadline(self: *TransferTransaction, deadline: Duration) !*TransferTransaction {
+        _ = try self.base.setGrpcDeadline(deadline);
+        return self;
+    }
+    
+    pub fn setRegenerateTransactionId(self: *TransferTransaction, regenerate: bool) !*TransferTransaction {
+        _ = try self.base.setRegenerateTransactionId(regenerate);
         return self;
     }
     

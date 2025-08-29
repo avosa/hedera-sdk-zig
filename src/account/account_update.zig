@@ -10,6 +10,7 @@ const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const Duration = @import("../core/duration.zig").Duration;
 const Timestamp = @import("../core/timestamp.zig").Timestamp;
+const Hbar = @import("../core/hbar.zig").Hbar;
 
 // AccountUpdateTransaction updates an existing account
 pub const AccountUpdateTransaction = struct {
@@ -195,6 +196,41 @@ pub const AccountUpdateTransaction = struct {
     pub fn clearStakedNodeID(self: *AccountUpdateTransaction) HederaError!*AccountUpdateTransaction {
         if (self.base.frozen) return error.TransactionFrozen;
         self.staked_node_id = -1;
+        return self;
+    }
+    
+    pub fn setTransactionId(self: *AccountUpdateTransaction, transaction_id: TransactionId) !*AccountUpdateTransaction {
+        _ = try self.base.setTransactionId(transaction_id);
+        return self;
+    }
+    
+    pub fn setTransactionMemo(self: *AccountUpdateTransaction, memo: []const u8) !*AccountUpdateTransaction {
+        _ = try self.base.setTransactionMemo(memo);
+        return self;
+    }
+    
+    pub fn setMaxTransactionFee(self: *AccountUpdateTransaction, fee: Hbar) !*AccountUpdateTransaction {
+        _ = try self.base.setMaxTransactionFee(fee);
+        return self;
+    }
+    
+    pub fn setTransactionValidDuration(self: *AccountUpdateTransaction, duration: Duration) !*AccountUpdateTransaction {
+        _ = try self.base.setTransactionValidDuration(duration);
+        return self;
+    }
+    
+    pub fn setNodeAccountIds(self: *AccountUpdateTransaction, nodes: []const AccountId) !*AccountUpdateTransaction {
+        _ = try self.base.setNodeAccountIds(nodes);
+        return self;
+    }
+    
+    pub fn setGrpcDeadline(self: *AccountUpdateTransaction, deadline: Duration) !*AccountUpdateTransaction {
+        _ = try self.base.setGrpcDeadline(deadline);
+        return self;
+    }
+    
+    pub fn setRegenerateTransactionId(self: *AccountUpdateTransaction, regenerate: bool) !*AccountUpdateTransaction {
+        _ = try self.base.setRegenerateTransactionId(regenerate);
         return self;
     }
     

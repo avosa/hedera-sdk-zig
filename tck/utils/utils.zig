@@ -1,6 +1,7 @@
 const std = @import("std");
 const hedera = @import("hedera");
 const json = std.json;
+
 pub fn parseAccountId(allocator: std.mem.Allocator, id_str: []const u8) !hedera.AccountId {
     return try hedera.AccountId.fromString(allocator, id_str);
 }
@@ -172,3 +173,98 @@ pub fn getOptionalBoolParam(value: json.Value, key: []const u8) !?bool {
     }
     return null;
 }
+
+// Apply common transaction parameters to any transaction
+pub fn applyCommonTransactionParams(tx: anytype, params: json.Value, allocator: std.mem.Allocator) !void {
+    // Set transaction ID if provided
+    if (getString(params, "transactionId")) |tx_id_str| {
+        const tx_id = try parseTransactionId(allocator, tx_id_str);
+        _ = tx.setTransactionId(tx_id) catch |err| {
+            std.log.warn("Failed to set transaction ID: {}", .{err});
+        };
+    }
+    
+    // Set transaction memo if provided
+    if (getString(params, "transactionMemo")) |memo| {
+        _ = tx.setTransactionMemo(memo) catch |err| {
+            std.log.warn("Failed to set transaction memo: {}", .{err});
+        };
+    }
+    
+    // Set max transaction fee if provided
+    if (getString(params, "maxTransactionFee")) |fee_str| {
+        const fee = try parseHbar(fee_str);
+        _ = tx.setMaxTransactionFee(fee) catch |err| {
+            std.log.warn("Failed to set max transaction fee: {}", .{err});
+        };
+    }
+    
+    // Set transaction valid duration if provided
+    if (getString(params, "transactionValidDuration")) |duration_str| {
+        const duration = try parseDuration(duration_str);
+        _ = tx.setTransactionValidDuration(duration) catch |err| {
+            std.log.warn("Failed to set transaction valid duration: {}", .{err});
+        };
+    }
+    
+    // Set node account IDs if provided
+    if (params.object.get("nodeAccountIds")) |node_ids_value| {
+        if (node_ids_value == .array) {
+            var node_ids = std.ArrayList(hedera.AccountId).init(allocator);
+            defer node_ids.deinit();
+            
+            for (node_ids_value.array.items) |node_id_value| {
+                if (node_id_value == .string) {
+                    const node_id = try parseAccountId(allocator, node_id_value.string);
+                    try node_ids.append(node_id);
+                }
+            }
+            
+            if (node_ids.items.len > 0) {
+                _ = tx.setNodeAccountIds(node_ids.items) catch |err| {
+                    std.log.warn("Failed to set node account IDs: {}", .{err});
+                };
+            }
+        }
+    }
+    
+    // Set gRPC deadline if provided
+    if (getString(params, "grpcDeadline")) |deadline_str| {
+        const deadline = try parseDuration(deadline_str);
+        _ = tx.setGrpcDeadline(deadline) catch |err| {
+            std.log.warn("Failed to set gRPC deadline: {}", .{err});
+        };
+    }
+    
+    // Set regenerate transaction ID if provided
+    if (getBool(params, "regenerateTransactionId")) |regenerate| {
+        _ = tx.setRegenerateTransactionId(regenerate) catch |err| {
+            std.log.warn("Failed to set regenerate transaction ID: {}", .{err});
+        };
+    }
+}
+
+pub fn parseTransactionId(allocator: std.mem.Allocator, tx_id_str: []const u8) !hedera.TransactionId {
+    // Parse format: "0.0.123@1234567890.123456789"
+    var parts = std.mem.splitScalar(u8, tx_id_str, '@');
+    const account_str = parts.next() orelse return error.InvalidTransactionId;
+    const timestamp_str = parts.next() orelse return error.InvalidTransactionId;
+    
+    const account_id = try parseAccountId(allocator, account_str);
+    
+    // Parse timestamp directly
+    var time_parts = std.mem.splitScalar(u8, timestamp_str, '.');
+    const seconds_str = time_parts.next() orelse return error.InvalidTimestamp;
+    const nanos_str = time_parts.next() orelse "0";
+    
+    const seconds = try std.fmt.parseInt(i64, seconds_str, 10);
+    const nanos = try std.fmt.parseInt(i32, nanos_str, 10);
+    
+    // Use the generate function and then modify the timestamp
+    var tx_id = hedera.TransactionId.generate(account_id);
+    tx_id.valid_start.seconds = seconds;
+    tx_id.valid_start.nanos = nanos;
+    
+    return tx_id;
+}
+

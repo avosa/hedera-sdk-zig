@@ -4,6 +4,7 @@
 const std = @import("std");
 const Transaction = @import("../transaction/transaction.zig").Transaction;
 const TransactionResponse = @import("../transaction/transaction.zig").TransactionResponse;
+const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const ProtoWriter = @import("../protobuf/writer.zig").ProtoWriter;
 const AccountId = @import("../core/id.zig").AccountId;
 const Key = @import("../crypto/key.zig").Key;
@@ -399,6 +400,41 @@ pub const AccountCreateTransaction = struct {
             return HederaError.KeyRequired;
         }
         self.base.frozen = true;
+        return self;
+    }
+    
+    pub fn setTransactionId(self: *Self, transaction_id: TransactionId) !*Self {
+        _ = try self.base.setTransactionId(transaction_id);
+        return self;
+    }
+    
+    pub fn setTransactionMemo(self: *Self, memo: []const u8) !*Self {
+        _ = try self.base.setTransactionMemo(memo);
+        return self;
+    }
+    
+    pub fn setMaxTransactionFee(self: *Self, fee: Hbar) !*Self {
+        _ = try self.base.setMaxTransactionFee(fee);
+        return self;
+    }
+    
+    pub fn setTransactionValidDuration(self: *Self, duration: Duration) !*Self {
+        _ = try self.base.setTransactionValidDuration(duration);
+        return self;
+    }
+    
+    pub fn setNodeAccountIds(self: *Self, nodes: []const AccountId) !*Self {
+        _ = try self.base.setNodeAccountIds(nodes);
+        return self;
+    }
+    
+    pub fn setGrpcDeadline(self: *Self, deadline: Duration) !*Self {
+        _ = try self.base.setGrpcDeadline(deadline);
+        return self;
+    }
+    
+    pub fn setRegenerateTransactionId(self: *Self, regenerate: bool) !*Self {
+        _ = try self.base.setRegenerateTransactionId(regenerate);
         return self;
     }
     
