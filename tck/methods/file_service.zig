@@ -29,6 +29,23 @@ pub fn createFile(allocator: std.mem.Allocator, client: ?*hedera.Client, params:
     if (utils.getString(p, "memo")) |memo| {
         _ = try tx.setMemo(memo);
     }
+    
+    // Apply common transaction parameters
+    if (utils.getString(p, "transactionMemo")) |trans_memo| {
+        _ = tx.setTransactionMemo(trans_memo) catch {};
+    }
+    if (utils.getString(p, "maxTransactionFee")) |fee_str| {
+        const fee = utils.parseHbar(fee_str) catch hedera.Hbar.zero();
+        _ = tx.setMaxTransactionFee(fee) catch {};
+    }
+    if (utils.getString(p, "grpcDeadline")) |deadline_str| {
+        const deadline = utils.parseDuration(deadline_str) catch hedera.Duration.fromSeconds(30);
+        _ = tx.setGrpcDeadline(deadline) catch {};
+    }
+    if (utils.getBool(p, "regenerateTransactionId")) |regenerate| {
+        _ = tx.setRegenerateTransactionId(regenerate) catch {};
+    }
+    
     _ = try tx.freezeWith(c);
     var tx_response = try tx.execute(c);
     const receipt = try tx_response.getReceipt(c);

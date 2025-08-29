@@ -314,6 +314,3 @@ pub const TopicCreateTransaction = struct {
     }
 };
 
-// NewTopicCreateTransaction creates a TopicCreateTransaction
-
-// JavaScript naming convention (no "new" prefix)

@@ -25,6 +25,8 @@ pub const Transaction = struct {
     transaction_memo: []const u8 = "",
     max_transaction_fee: ?Hbar = null,
     transaction_valid_duration: Duration = Duration.fromSeconds(120),
+    grpc_deadline: ?i64 = null,
+    regenerate_transaction_id: ?bool = null,
     
     // Signatures
     signatures: std.ArrayList(SignaturePair),
@@ -71,14 +73,12 @@ pub const Transaction = struct {
         self.signatures.deinit();
     }
     
-    // Set transaction memo
     pub fn setTransactionMemo(self: *Self, memo: []const u8) !*Self {
         if (self.frozen) return error.TransactionFrozen;
         self.transaction_memo = memo;
         return self;
     }
     
-    // Set transaction ID
     pub fn setTransactionId(self: *Self, transaction_id: TransactionId) !*Self {
         if (self.frozen) return error.TransactionFrozen;
         self.transaction_id = transaction_id;
@@ -90,27 +90,36 @@ pub const Transaction = struct {
         return self.transaction_id orelse return error.TransactionIdNotSet;
     }
     
-    // Set max transaction fee
     pub fn setMaxTransactionFee(self: *Self, fee: Hbar) !*Self {
         if (self.frozen) return error.TransactionFrozen;
         self.max_transaction_fee = fee;
         return self;
     }
     
-    // Set transaction valid duration
     pub fn setTransactionValidDuration(self: *Self, duration: Duration) !*Self {
         if (self.frozen) return error.TransactionFrozen;
         self.transaction_valid_duration = duration;
         return self;
     }
     
-    // Set node account IDs
     pub fn setNodeAccountIds(self: *Self, nodes: []const AccountId) !*Self {
         if (self.frozen) return error.TransactionFrozen;
         self.node_account_ids.clearRetainingCapacity();
         for (nodes) |node| {
             try self.node_account_ids.append(node);
         }
+        return self;
+    }
+    
+    pub fn setGrpcDeadline(self: *Self, deadline: Duration) !*Self {
+        if (self.frozen) return error.TransactionFrozen;
+        self.grpc_deadline = deadline.toNanoseconds();
+        return self;
+    }
+    
+    pub fn setRegenerateTransactionId(self: *Self, regenerate: bool) !*Self {
+        if (self.frozen) return error.TransactionFrozen;
+        self.regenerate_transaction_id = regenerate;
         return self;
     }
     

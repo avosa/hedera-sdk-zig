@@ -10,14 +10,13 @@ const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const Timestamp = @import("../core/timestamp.zig").Timestamp;
+const Duration = @import("../core/duration.zig").Duration;
+const Hbar = @import("../core/hbar.zig").Hbar;
+const AccountId = @import("../core/id.zig").AccountId;
 
 // Maximum file size in bytes
 pub const MAX_FILE_SIZE: usize = 1024 * 1024; // 1MB
 pub const MAX_CHUNK_SIZE: usize = 4096; // 4KB per chunk
-
-// Factory function for creating a new FileCreateTransaction
-
-// JavaScript naming convention (no "new" prefix)
 
 // FileCreateTransaction creates a new file in the Hedera network
 pub const FileCreateTransaction = struct {
@@ -113,6 +112,41 @@ pub const FileCreateTransaction = struct {
     // Set file memo (alias)
     pub fn setFileMemo(self: *FileCreateTransaction, memo: []const u8) !*FileCreateTransaction {
         return self.setMemo(memo);
+    }
+    
+    pub fn setTransactionId(self: *FileCreateTransaction, transaction_id: TransactionId) !*FileCreateTransaction {
+        _ = try self.base.setTransactionId(transaction_id);
+        return self;
+    }
+    
+    pub fn setTransactionMemo(self: *FileCreateTransaction, memo: []const u8) !*FileCreateTransaction {
+        _ = try self.base.setTransactionMemo(memo);
+        return self;
+    }
+    
+    pub fn setMaxTransactionFee(self: *FileCreateTransaction, fee: Hbar) !*FileCreateTransaction {
+        _ = try self.base.setMaxTransactionFee(fee);
+        return self;
+    }
+    
+    pub fn setTransactionValidDuration(self: *FileCreateTransaction, duration: Duration) !*FileCreateTransaction {
+        _ = try self.base.setTransactionValidDuration(duration);
+        return self;
+    }
+    
+    pub fn setNodeAccountIds(self: *FileCreateTransaction, nodes: []const AccountId) !*FileCreateTransaction {
+        _ = try self.base.setNodeAccountIds(nodes);
+        return self;
+    }
+    
+    pub fn setGrpcDeadline(self: *FileCreateTransaction, deadline: Duration) !*FileCreateTransaction {
+        _ = try self.base.setGrpcDeadline(deadline);
+        return self;
+    }
+    
+    pub fn setRegenerateTransactionId(self: *FileCreateTransaction, regenerate: bool) !*FileCreateTransaction {
+        _ = try self.base.setRegenerateTransactionId(regenerate);
+        return self;
     }
     
     // Freeze the transaction with a client

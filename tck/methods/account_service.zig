@@ -51,6 +51,24 @@ pub fn createAccount(allocator: std.mem.Allocator, client: ?*hedera.Client, para
     if (utils.getString(p, "alias")) |alias_str| {
         _ = try tx.setAlias(alias_str);
     }
+    
+    // Apply common transaction parameters
+    // Handle each parameter individually since not all transactions support all methods
+    if (utils.getString(p, "transactionMemo")) |memo| {
+        _ = tx.setTransactionMemo(memo) catch {};
+    }
+    if (utils.getString(p, "maxTransactionFee")) |fee_str| {
+        const fee = utils.parseHbar(fee_str) catch hedera.Hbar.zero();
+        _ = tx.setMaxTransactionFee(fee) catch {};
+    }
+    if (utils.getString(p, "grpcDeadline")) |deadline_str| {
+        const deadline = utils.parseDuration(deadline_str) catch hedera.Duration.fromSeconds(30);
+        _ = tx.setGrpcDeadline(deadline) catch {};
+    }
+    if (utils.getBool(p, "regenerateTransactionId")) |regenerate| {
+        _ = tx.setRegenerateTransactionId(regenerate) catch {};
+    }
+    
     _ = try tx.freezeWith(c);
     var tx_response = try tx.execute(c);
     const receipt = try tx_response.getReceipt(c);
@@ -104,6 +122,23 @@ pub fn updateAccount(allocator: std.mem.Allocator, client: ?*hedera.Client, para
         const duration = try utils.parseDuration(period_str);
         _ = try tx.setAutoRenewPeriod(duration);
     }
+    
+    // Apply common transaction parameters
+    if (utils.getString(p, "transactionMemo")) |memo| {
+        _ = tx.setTransactionMemo(memo) catch {};
+    }
+    if (utils.getString(p, "maxTransactionFee")) |fee_str| {
+        const fee = utils.parseHbar(fee_str) catch hedera.Hbar.zero();
+        _ = tx.setMaxTransactionFee(fee) catch {};
+    }
+    if (utils.getString(p, "grpcDeadline")) |deadline_str| {
+        const deadline = utils.parseDuration(deadline_str) catch hedera.Duration.fromSeconds(30);
+        _ = tx.setGrpcDeadline(deadline) catch {};
+    }
+    if (utils.getBool(p, "regenerateTransactionId")) |regenerate| {
+        _ = tx.setRegenerateTransactionId(regenerate) catch {};
+    }
+    
     _ = try tx.freezeWith(c);
     var tx_response = try tx.execute(c);
     _ = try tx_response.getReceipt(c);
@@ -120,6 +155,23 @@ pub fn deleteAccount(allocator: std.mem.Allocator, client: ?*hedera.Client, para
     defer tx.deinit();
     _ = try tx.setAccountId(account_id);
     _ = try tx.setTransferAccountId(transfer_id);
+    
+    // Apply common transaction parameters
+    if (utils.getString(p, "transactionMemo")) |memo| {
+        _ = tx.setTransactionMemo(memo) catch {};
+    }
+    if (utils.getString(p, "maxTransactionFee")) |fee_str| {
+        const fee = utils.parseHbar(fee_str) catch hedera.Hbar.zero();
+        _ = tx.setMaxTransactionFee(fee) catch {};
+    }
+    if (utils.getString(p, "grpcDeadline")) |deadline_str| {
+        const deadline = utils.parseDuration(deadline_str) catch hedera.Duration.fromSeconds(30);
+        _ = tx.setGrpcDeadline(deadline) catch {};
+    }
+    if (utils.getBool(p, "regenerateTransactionId")) |regenerate| {
+        _ = tx.setRegenerateTransactionId(regenerate) catch {};
+    }
+    
     _ = try tx.freezeWith(c);
     var tx_response = try tx.execute(c);
     _ = try tx_response.getReceipt(c);

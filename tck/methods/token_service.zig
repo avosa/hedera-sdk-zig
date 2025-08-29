@@ -81,6 +81,23 @@ pub fn createToken(allocator: std.mem.Allocator, client: ?*hedera.Client, params
     if (utils.getInt(p, "maxSupply")) |max_supply| {
         _ = try tx.setMaxSupply(max_supply);
     }
+    
+    // Apply common transaction parameters
+    if (utils.getString(p, "transactionMemo")) |memo| {
+        _ = tx.setTransactionMemo(memo) catch {};
+    }
+    if (utils.getString(p, "maxTransactionFee")) |fee_str| {
+        const fee = utils.parseHbar(fee_str) catch hedera.Hbar.zero();
+        _ = tx.setMaxTransactionFee(fee) catch {};
+    }
+    if (utils.getString(p, "grpcDeadline")) |deadline_str| {
+        const deadline = utils.parseDuration(deadline_str) catch hedera.Duration.fromSeconds(30);
+        _ = tx.setGrpcDeadline(deadline) catch {};
+    }
+    if (utils.getBool(p, "regenerateTransactionId")) |regenerate| {
+        _ = tx.setRegenerateTransactionId(regenerate) catch {};
+    }
+    
     _ = try tx.base.freezeWith(c);
     var tx_response = try tx.execute(c);
     const receipt = try tx_response.getReceipt(c);

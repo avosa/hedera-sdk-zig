@@ -176,6 +176,3 @@ pub const ScheduleCreateTransaction = struct {
     }
 };
 
-
-
-// JavaScript naming convention (no "new" prefix)

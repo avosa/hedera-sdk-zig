@@ -7,6 +7,7 @@ const Duration = @import("../core/duration.zig").Duration;
 const Timestamp = @import("../core/timestamp.zig").Timestamp;
 const Transaction = @import("../transaction/transaction.zig").Transaction;
 const TransactionResponse = @import("../transaction/transaction.zig").TransactionResponse;
+const TransactionId = @import("../core/transaction_id.zig").TransactionId;
 const Client = @import("../network/client.zig").Client;
 const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
 const HederaError = @import("../core/errors.zig").HederaError;
@@ -646,6 +647,41 @@ pub const TokenCreateTransaction = struct {
     // Get metadata key
     pub fn getMetadataKey(self: *TokenCreateTransaction) ?Key {
         return self.metadata_key;
+    }
+    
+    pub fn setTransactionId(self: *TokenCreateTransaction, transaction_id: TransactionId) !*TokenCreateTransaction {
+        _ = try self.base.setTransactionId(transaction_id);
+        return self;
+    }
+    
+    pub fn setTransactionMemo(self: *TokenCreateTransaction, memo: []const u8) !*TokenCreateTransaction {
+        _ = try self.base.setTransactionMemo(memo);
+        return self;
+    }
+    
+    pub fn setMaxTransactionFee(self: *TokenCreateTransaction, fee: Hbar) !*TokenCreateTransaction {
+        _ = try self.base.setMaxTransactionFee(fee);
+        return self;
+    }
+    
+    pub fn setTransactionValidDuration(self: *TokenCreateTransaction, duration: Duration) !*TokenCreateTransaction {
+        _ = try self.base.setTransactionValidDuration(duration);
+        return self;
+    }
+    
+    pub fn setNodeAccountIds(self: *TokenCreateTransaction, nodes: []const AccountId) !*TokenCreateTransaction {
+        _ = try self.base.setNodeAccountIds(nodes);
+        return self;
+    }
+    
+    pub fn setGrpcDeadline(self: *TokenCreateTransaction, deadline: Duration) !*TokenCreateTransaction {
+        _ = try self.base.setGrpcDeadline(deadline);
+        return self;
+    }
+    
+    pub fn setRegenerateTransactionId(self: *TokenCreateTransaction, regenerate: bool) !*TokenCreateTransaction {
+        _ = try self.base.setRegenerateTransactionId(regenerate);
+        return self;
     }
     
     // Freeze the transaction with a client
