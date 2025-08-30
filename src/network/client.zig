@@ -53,10 +53,13 @@ const ConnectionPool = struct {
     }
     
     pub fn deinit(self: *ConnectionPool) void {
-        var iter = self.connections.iterator();
-        while (iter.next()) |entry| {
-            entry.value_ptr.*.deinit();
-            self.allocator.destroy(entry.value_ptr.*);
+        // Check if connections is valid before iterating
+        if (self.connections.count() > 0) {
+            var iter = self.connections.iterator();
+            while (iter.next()) |entry| {
+                entry.value_ptr.*.deinit();
+                self.allocator.destroy(entry.value_ptr.*);
+            }
         }
         self.connections.deinit();
     }
