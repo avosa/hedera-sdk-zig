@@ -53,34 +53,47 @@ const std = @import("std");
 const hedera = @import("hedera");
 
 pub fn main() !void {
+    // Allocator Setup
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    // Read credentials from environment
-    const env = std.process.getEnvMap(allocator) catch |e| {
-        std.log.err("failed to read env: {}", .{e});
-        return e;
+    // Environment Variables
+    const env_map = std.process.getEnvMap(allocator) catch |err| {
+        std.log.err("Failed to read environment variables: {}", .{err});
+        return err;
     };
-    defer env.deinit();
+    defer env_map.deinit();
 
-    const operator_id_str = env.get("HEDERA_OPERATOR_ID") orelse return error.MissingEnvVar;
-    const operator_key_str = env.get("HEDERA_OPERATOR_KEY") orelse return error.MissingEnvVar;
+    const operator_id_str = env_map.get("HEDERA_OPERATOR_ID") orelse {
+        std.log.err("Missing environment variable: HEDERA_OPERATOR_ID", .{});
+        return error.MissingEnvVar;
+    };
 
+    const operator_key_str = env_map.get("HEDERA_OPERATOR_KEY") orelse {
+        std.log.err("Missing environment variable: HEDERA_OPERATOR_KEY", .{});
+        return error.MissingEnvVar;
+    };
+
+    // Client Setup
     var client = try hedera.Client.forTestnet(allocator);
     defer client.deinit();
 
-    const operator_id = try hedera.AccountId.fromString(operator_id_str);
-    const operator_key = try hedera.PrivateKey.fromString(operator_key_str);
-    try client.setOperator(operator_id, operator_key);
+    const operator_account_id: hedera.AccountId = try hedera.AccountId.fromString(operator_id_str);
+    const operator_private_key: hedera.PrivateKey = try hedera.PrivateKey.fromString(operator_key_str);
 
-    var q = hedera.AccountBalanceQuery.init(allocator);
-    defer q.deinit();
+    try client.setOperator(operator_account_id, operator_private_key);
 
-    try q.setAccountId(operator_id);
+    // Account Balance Query
+    var balance_query = hedera.AccountBalanceQuery.init(allocator);
+    defer balance_query.deinit();
 
-    const resp = try q.execute(&client);
-    std.log.info("HBAR tinybars: {}", .{resp.hbars().asTinybars()});
+    _ = try balance_query.setAccountId(operator_account_id);
+
+    const balance_response = try balance_query.execute(&client);
+    const tinybars: i64 = balance_response.hbars().asTinybars();
+
+    std.log.info("Operator account {} balance: {d} tinybars", .{ operator_id_str, tinybars });
 }
 ```
 
