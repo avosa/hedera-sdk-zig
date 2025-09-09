@@ -84,7 +84,7 @@ pub fn main() !void {
 }
 ```
 
-For end-to-end, runnable samples covering accounts, tokens, contracts, HCS, files, mirror queries, and cryptography, see **`/examples/README.md`**. Contains a catalog of runnable samples, setup instructions, and common execution patterns.
+For end-to-end, runnable samples covering accounts, tokens, contracts, HCS, files, mirror queries, and cryptography, see [/examples/README.md](/examples/README.md). It contains a catalog of runnable samples, setup instructions, and common execution patterns.
 
 ## Breaking Changes
 
