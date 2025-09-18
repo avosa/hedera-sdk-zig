@@ -12,8 +12,6 @@ Please be aware of the following:
 - Future updates may introduce breaking changes as development progresses.  
 - If you encounter errors or unexpected behavior, please open an issue — your feedback is invaluable in improving the SDK.  
 
----
-
 ## Overview
 
 This project brings **Hedera SDK functionality** to the **Zig programming language**.  
