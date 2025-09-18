@@ -1,10 +1,25 @@
 # Hedera SDK for Zig
 
-**Disclaimer:** Hedera SDK for Zig is an independent, community-created SDK. It is **not affiliated with, endorsed, or officially maintained by Hedera Hashgraph, LLC**. Use this library at your own risk and review its behavior carefully before relying on it in production.
+## ⚠️ Disclaimer: Software Under Development ⚠️  
+
+Hedera SDK for Zig is an **independent, community-created SDK**. It is **not affiliated with, endorsed, or officially maintained by Hedera Hashgraph, LLC**.  
+
+Please be aware of the following:
+
+- The SDK is **not fully tested** and may contain bugs or incomplete functionality.  
+- The SDK has **not been audited for security** or correctness; **Use in production with caution** — carefully review, test, and monitor before integrating into critical systems. 🚧  
+- Additional features, optimizations, and improvements are planned for future releases.  
+- Future updates may introduce breaking changes as development progresses.  
+- If you encounter errors or unexpected behavior, please open an issue — your feedback is invaluable in improving the SDK.  
+
+---
 
 ## Overview
 
-This project brings Hedera SDK functionality to the Zig programming language. It is under active development and continues to evolve. The SDK is being built with reference to the [Hedera Technology Compatibility Kit (TCK)](https://github.com/hiero-ledger/hiero-sdk-tck) to help ensure consistency with other SDKs. Expect rapid iteration.
+This project brings **Hedera SDK functionality** to the **Zig programming language**.  
+It is being built with reference to the [Hedera Technology Compatibility Kit (TCK)](https://github.com/hiero-ledger/hiero-sdk-tck) to help ensure consistency with other SDKs.  
+
+Expect **rapid iteration** as the project evolves. 
 
 ## Status and Focus
 
@@ -99,9 +114,6 @@ pub fn main() !void {
 
 For end-to-end, runnable samples covering accounts, tokens, contracts, HCS, files, mirror queries, and cryptography, see [examples/README.md](/examples/README.md). It contains a catalog of runnable samples, setup instructions, and common execution patterns.
 
-## Breaking Changes
-
-This project is moving quickly, and the SDK surface may change as new features are introduced or improved. Expect breaking changes between releases until the SDK stabilizes. Please check release notes and update your code accordingly when upgrading.
 
 ## Contributing
 
