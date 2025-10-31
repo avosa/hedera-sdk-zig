@@ -4,7 +4,8 @@ This directory contains runnable examples demonstrating major SDK capabilities a
 
 ## Prerequisites
 
-* Zig compiler 0.14.1 or later
+* Zig compiler 0.14.1(preferred) or later - Use [zigup](https://github.com/marler8997/zigup) to manage zig version eg `zigup 0.14.1`
+  
 * Hedera testnet account funded with HBAR
 * Environment variables:
 
