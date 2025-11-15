@@ -187,11 +187,12 @@ pub const MirrorNodeContractQuery = struct {
         defer http_client.deinit();
 
         const uri = try std.Uri.parse(url.items);
-        var headers = std.http.Headers{ .allocator = self.allocator };
-        defer headers.deinit();
-        try headers.append("Content-Type", "application/json");
-
-        var req = try http_client.request(.POST, uri, headers, .{});
+        var req = try http_client.open(.POST, uri, .{
+            .server_header_buffer = try self.allocator.alloc(u8, 16 * 1024),
+            .extra_headers = &.{
+                .{ .name = "Content-Type", .value = "application/json" },
+            },
+        });
         defer req.deinit();
 
         req.transfer_encoding = .chunked;

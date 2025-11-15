@@ -104,11 +104,11 @@ pub fn main() !void {
     
     std.log.info("✓ Private key derived from mnemonic", .{});
     
-    // Derive specific account key (using derivation path)
-    var account_key = try derived_key.derive("m/44'/3030'/0'/0'/0'", allocator);
+    // Derive specific account key (using index)
+    var account_key = try derived_key.derive(0);
     defer account_key.deinit();
-    
-    std.log.info("✓ Account-specific key derived", .{});
+
+    std.log.info("✓ Account-specific key derived at index 0", .{});
 
     // Example 5: Key Validation and Error Handling
     std.log.info("\n5. Key Validation and Error Handling...", .{});
@@ -173,7 +173,7 @@ pub fn main() !void {
     
     try threshold_key.addKey(hedera.Key.fromPublicKey(additional_key.getPublicKey()));
     
-    std.log.info("✓ Threshold key created: {}/{} required", .{ threshold_key.threshold, threshold_key.keys.items.len });
+    std.log.info("✓ Threshold key created: {}/{} required", .{ threshold_key.threshold, threshold_key.keys.keys.items.len });
 
     // Example 8: Performance Benchmarking
     std.log.info("\n8. Performance Benchmarking...", .{});
@@ -223,17 +223,18 @@ pub fn main() !void {
     const test_private_hex = "302e020100300506032b657004220420db484b828e64b2d8f12ce3c0a0e93a0b8cce7af1bb8f39c97732394482538e10";
     const test_message = "test message";
     
-    if (hedera.PrivateKey.fromString(allocator, test_private_hex)) |test_key| {
+    if (hedera.PrivateKey.fromString(allocator, test_private_hex)) |test_key_const| {
+        var test_key = test_key_const;
         defer test_key.deinit();
-        
+
         const test_signature = try test_key.sign(test_message);
         defer allocator.free(test_signature);
-        
+
         const test_public = test_key.getPublicKey();
         const signature_valid = try test_public.verify(test_message, test_signature);
-        
+
         std.log.info("✓ Test vector validation: {}", .{signature_valid});
-        
+
     } else |err| {
         std.log.warn("Test vector validation failed: {}", .{err});
     }

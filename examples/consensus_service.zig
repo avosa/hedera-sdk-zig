@@ -22,26 +22,26 @@ pub fn main() !void {
 
     const operator_id = try hedera.AccountId.fromString(allocator, operator_id_str);
     const operator_key = try hedera.PrivateKey.fromString(allocator, operator_key_str);
-    
+
     const operator_key_converted = try operator_key.toOperatorKey();
-    client.setOperator(operator_id, operator_key_converted);
+    _ = try client.setOperator(operator_id, operator_key_converted);
 
     std.log.info("Consensus Service (HCS) Example", .{});
     std.log.info("==============================", .{});
 
     // Example 1: Create a new topic
     std.log.info("\n1. Creating new topic...", .{});
-    
-    var topic_create_tx = hedera.TopicCreateTransaction.init(allocator);
+
+    var topic_create_tx = try hedera.TopicCreateTransaction.init(allocator);
     defer topic_create_tx.deinit();
-    
-    try topic_create_tx.setTopicMemo("Created by Hedera Zig SDK example");
-    try topic_create_tx.setAdminKey(hedera.Key.fromPublicKey(operator_key.getPublicKey()));
-    try topic_create_tx.setSubmitKey(hedera.Key.fromPublicKey(operator_key.getPublicKey()));
-    try topic_create_tx.setAutoRenewAccountId(operator_id);
-    try topic_create_tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
-    
-    const create_response = try topic_create_tx.execute(&client);
+
+    _ = try topic_create_tx.setTopicMemo("Created by Hedera Zig SDK example");
+    _ = try topic_create_tx.setAdminKey(hedera.Key.fromPublicKey(operator_key.getPublicKey()));
+    _ = try topic_create_tx.setSubmitKey(hedera.Key.fromPublicKey(operator_key.getPublicKey()));
+    _ = try topic_create_tx.setAutoRenewAccountId(operator_id);
+    _ = try topic_create_tx.setAutoRenewPeriod(hedera.Duration.fromDays(90));
+
+    var create_response = try topic_create_tx.execute(&client);
     const create_receipt = try create_response.getReceipt(&client);
     
     if (create_receipt.topic_id) |topic_id| {
@@ -53,7 +53,7 @@ pub fn main() !void {
         var topic_info_query = hedera.TopicInfoQuery.init(allocator);
         defer topic_info_query.deinit();
         
-        try topic_info_query.setTopicId(topic_id);
+        _ = try topic_info_query.setTopicId(topic_id);
         const topic_info = try topic_info_query.execute(&client);
         
         std.log.info("✓ Topic ID: {}", .{topic_info.topic_id});
@@ -77,19 +77,15 @@ pub fn main() !void {
             var message_submit_tx = hedera.TopicMessageSubmitTransaction.init(allocator);
             defer message_submit_tx.deinit();
             
-            try message_submit_tx.setTopicId(topic_id);
-            try message_submit_tx.setMessage(message);
+            _ = try message_submit_tx.setTopicId(topic_id);
+            _ = try message_submit_tx.setMessage(message);
             
-            const submit_response = try message_submit_tx.execute(&client);
+            var submit_response = try message_submit_tx.execute(&client);
             const submit_receipt = try submit_response.getReceipt(&client);
             
             std.log.info("✓ Message {} submitted with status: {}", .{ i + 1, submit_receipt.status });
-            if (submit_receipt.topic_sequence_number) |seq_num| {
-                std.log.info("  Sequence number: {}", .{seq_num});
-            }
-            if (submit_receipt.topic_running_hash) |running_hash| {
-                std.log.info("  Running hash: {} bytes", .{running_hash.len});
-            }
+            std.log.info("  Sequence number: {}", .{submit_receipt.topic_sequence_number});
+            std.log.info("  Running hash: {} bytes", .{submit_receipt.topic_running_hash.len});
             
             // Small delay between messages
             std.time.sleep(1000000000); // 1 second
@@ -127,10 +123,10 @@ pub fn main() !void {
         var large_message_tx = hedera.TopicMessageSubmitTransaction.init(allocator);
         defer large_message_tx.deinit();
         
-        try large_message_tx.setTopicId(topic_id);
-        try large_message_tx.setMessage(large_message.items);
+        _ = try large_message_tx.setTopicId(topic_id);
+        _ = try large_message_tx.setMessage(large_message.items);
         
-        const large_submit_response = try large_message_tx.execute(&client);
+        var large_submit_response = try large_message_tx.execute(&client);
         const large_submit_receipt = try large_submit_response.getReceipt(&client);
         
         std.log.info("✓ Large message submitted with status: {}", .{large_submit_receipt.status});
@@ -139,14 +135,14 @@ pub fn main() !void {
         // Example 5: Update topic
         std.log.info("\n5. Updating topic...", .{});
         
-        var topic_update_tx = hedera.TopicUpdateTransaction.init(allocator);
+        var topic_update_tx = try hedera.TopicUpdateTransaction.init(allocator);
         defer topic_update_tx.deinit();
+
+        _ = try topic_update_tx.setTopicId(topic_id);
+        _ = try topic_update_tx.setTopicMemo("Updated by Hedera Zig SDK example");
+        _ = try topic_update_tx.setAutoRenewPeriod(hedera.Duration.fromDays(120));
         
-        try topic_update_tx.setTopicId(topic_id);
-        try topic_update_tx.setTopicMemo("Updated by Hedera Zig SDK example");
-        try topic_update_tx.setAutoRenewPeriod(hedera.Duration.fromDays(120));
-        
-        const update_response = try topic_update_tx.execute(&client);
+        var update_response = try topic_update_tx.execute(&client);
         const update_receipt = try update_response.getReceipt(&client);
         
         std.log.info("✓ Topic updated with status: {}", .{update_receipt.status});
@@ -157,7 +153,7 @@ pub fn main() !void {
         var updated_info_query = hedera.TopicInfoQuery.init(allocator);
         defer updated_info_query.deinit();
         
-        try updated_info_query.setTopicId(topic_id);
+        _ = try updated_info_query.setTopicId(topic_id);
         const updated_info = try updated_info_query.execute(&client);
         
         std.log.info("✓ Updated topic memo: {s}", .{updated_info.topic_memo});
@@ -184,10 +180,10 @@ pub fn main() !void {
         var json_submit_tx = hedera.TopicMessageSubmitTransaction.init(allocator);
         defer json_submit_tx.deinit();
         
-        try json_submit_tx.setTopicId(topic_id);
-        try json_submit_tx.setMessage(json_message);
+        _ = try json_submit_tx.setTopicId(topic_id);
+        _ = try json_submit_tx.setMessage(json_message);
         
-        const json_response = try json_submit_tx.execute(&client);
+        var json_response = try json_submit_tx.execute(&client);
         const json_receipt = try json_response.getReceipt(&client);
         
         std.log.info("✓ JSON message submitted with status: {}", .{json_receipt.status});
@@ -201,10 +197,10 @@ pub fn main() !void {
         var binary_submit_tx = hedera.TopicMessageSubmitTransaction.init(allocator);
         defer binary_submit_tx.deinit();
         
-        try binary_submit_tx.setTopicId(topic_id);
-        try binary_submit_tx.setMessage(&binary_data);
+        _ = try binary_submit_tx.setTopicId(topic_id);
+        _ = try binary_submit_tx.setMessage(&binary_data);
         
-        const binary_response = try binary_submit_tx.execute(&client);
+        var binary_response = try binary_submit_tx.execute(&client);
         const binary_receipt = try binary_response.getReceipt(&client);
         
         std.log.info("✓ Binary data submitted with status: {}", .{binary_receipt.status});
@@ -216,7 +212,7 @@ pub fn main() !void {
         var final_info_query = hedera.TopicInfoQuery.init(allocator);
         defer final_info_query.deinit();
         
-        try final_info_query.setTopicId(topic_id);
+        _ = try final_info_query.setTopicId(topic_id);
         const final_info = try final_info_query.execute(&client);
         
         std.log.info("✓ Final sequence number: {}", .{final_info.sequence_number});
@@ -225,12 +221,12 @@ pub fn main() !void {
         // Example 10: Delete topic
         std.log.info("\n10. Deleting topic...", .{});
         
-        var topic_delete_tx = hedera.TopicDeleteTransaction.init(allocator);
+        var topic_delete_tx = try hedera.TopicDeleteTransaction.init(allocator);
         defer topic_delete_tx.deinit();
+
+        _ = try topic_delete_tx.setTopicId(topic_id);
         
-        try topic_delete_tx.setTopicId(topic_id);
-        
-        const delete_response = try topic_delete_tx.execute(&client);
+        var delete_response = try topic_delete_tx.execute(&client);
         const delete_receipt = try delete_response.getReceipt(&client);
         
         std.log.info("✓ Topic deleted with status: {}", .{delete_receipt.status});
