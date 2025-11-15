@@ -257,8 +257,10 @@ pub const PrivateKey = struct {
         try pem.appendSlice("-----BEGIN PRIVATE KEY-----\n");
         
         // Base64 encode with line breaks
-        const base64_encoded = try std.base64.standard.Encoder.encode(allocator, der_bytes);
+        const encoded_len = std.base64.standard.Encoder.calcSize(der_bytes.len);
+        const base64_encoded = try allocator.alloc(u8, encoded_len);
         defer allocator.free(base64_encoded);
+        _ = std.base64.standard.Encoder.encode(base64_encoded, der_bytes);
         
         var i: usize = 0;
         while (i < base64_encoded.len) : (i += 64) {

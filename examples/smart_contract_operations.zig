@@ -22,9 +22,9 @@ pub fn main() !void {
 
     const operator_id = try hedera.AccountId.fromString(allocator, operator_id_str);
     const operator_key = try hedera.PrivateKey.fromString(allocator, operator_key_str);
-    
+
     const operator_key_converted = try operator_key.toOperatorKey();
-    client.setOperator(operator_id, operator_key_converted);
+    _ = try client.setOperator(operator_id, operator_key_converted);
 
     std.log.info("Smart Contract Operations Example", .{});
     std.log.info("================================", .{});
@@ -49,16 +49,16 @@ pub fn main() !void {
     _ = try std.fmt.hexToBytes(bytecode_bytes, contract_bytecode);
     defer allocator.free(bytecode_bytes);
     
-    try contract_create_tx.setBytecode(bytecode_bytes);
-    try contract_create_tx.setGas(100000);
-    try contract_create_tx.setConstructorParameters(&[_]u8{});
-    try contract_create_tx.setContractMemo("Contract deployed by Hedera Zig SDK");
+    _ = try contract_create_tx.setBytecode(bytecode_bytes);
+    _ = try contract_create_tx.setGas(100000);
+    _ = try contract_create_tx.setConstructorParameters(&[_]u8{});
+    _ = try contract_create_tx.setContractMemo("Contract deployed by Hedera Zig SDK");
     
-    const create_response = try contract_create_tx.execute(&client);
+    var create_response = try contract_create_tx.execute(&client);
     const create_receipt = try create_response.getReceipt(&client);
     
     if (create_receipt.contract_id) |contract_id| {
-        std.log.info("✓ Smart contract deployed: {}", .{contract_id});
+        std.log.info("✓ Smart contract deployed: {s}", .{try contract_id.toString(allocator)});
         
         // Example 2: Query contract info
         std.log.info("\n2. Querying contract info...", .{});
@@ -66,11 +66,11 @@ pub fn main() !void {
         var contract_info_query = hedera.ContractInfoQuery.init(allocator);
         defer contract_info_query.deinit();
         
-        try contract_info_query.setContractId(contract_id);
+        _ = try contract_info_query.setContractId(contract_id);
         const contract_info = try contract_info_query.execute(&client);
         
-        std.log.info("✓ Contract ID: {}", .{contract_info.contract_id});
-        std.log.info("✓ Account ID: {}", .{contract_info.account_id});
+        std.log.info("✓ Contract ID: {s}", .{try contract_info.contract_id.toString(allocator)});
+        std.log.info("✓ Account ID: {s}", .{try contract_info.account_id.toString(allocator)});
         std.log.info("✓ Admin key present: {}", .{contract_info.admin_key != null});
         std.log.info("✓ Storage size: {} bytes", .{contract_info.storage});
         
@@ -80,7 +80,7 @@ pub fn main() !void {
         var bytecode_query = hedera.ContractBytecodeQuery.init(allocator);
         defer bytecode_query.deinit();
         
-        try bytecode_query.setContractId(contract_id);
+        _ = try bytecode_query.setContractId(contract_id);
         const bytecode_result = try bytecode_query.execute(&client);
         
         std.log.info("✓ Bytecode retrieved: {} bytes", .{bytecode_result.bytecode.len});
@@ -91,16 +91,12 @@ pub fn main() !void {
         var contract_execute_tx = hedera.ContractExecuteTransaction.init(allocator);
         defer contract_execute_tx.deinit();
         
-        try contract_execute_tx.setContractId(contract_id);
-        try contract_execute_tx.setGas(75000);
+        _ = try contract_execute_tx.setContractId(contract_id);
+        _ = try contract_execute_tx.setGas(75000);
         
-        var params = hedera.ContractFunctionParameters.init(allocator);
-        defer params.deinit();
+        _ = try contract_execute_tx.setFunction("increment", null);
         
-        const function_selector = try params.addFunction("increment()");
-        try contract_execute_tx.setFunction(function_selector, params.getData());
-        
-        const execute_response = try contract_execute_tx.execute(&client);
+        var execute_response = try contract_execute_tx.execute(&client);
         const execute_receipt = try execute_response.getReceipt(&client);
         
         std.log.info("✓ Increment function called with status: {}", .{execute_receipt.status});
@@ -111,29 +107,18 @@ pub fn main() !void {
         var contract_call_query = hedera.ContractCallQuery.init(allocator);
         defer contract_call_query.deinit();
         
-        try contract_call_query.setContractId(contract_id);
-        try contract_call_query.setGas(30000);
+        _ = try contract_call_query.setContractId(contract_id);
+        _ = try contract_call_query.setGas(30000);
         
-        var call_params = hedera.ContractFunctionParameters.init(allocator);
-        defer call_params.deinit();
-        
-        const get_function_selector = try call_params.addFunction("getCount()");
-        try contract_call_query.setFunction(get_function_selector, call_params.getData());
+        _ = try contract_call_query.setFunction("getCount", null);
         
         const call_result = try contract_call_query.execute(&client);
         
         std.log.info("✓ Contract call completed", .{});
-        std.log.info("✓ Gas used: {}", .{call_result.gas_used});
-        
-        if (call_result.result.len >= 32) {
-            // Decode uint256 result from ABI encoding
-            var count_value: u64 = 0;
-            var i: usize = 24; // Skip first 24 bytes (uint256 is right-padded)
-            while (i < 32) : (i += 1) {
-                count_value = (count_value << 8) | call_result.result[i];
-            }
-            std.log.info("✓ Current count value: {}", .{count_value});
-        }
+
+        // Get the count value using getUint256
+        const count_value = try call_result.getUint256(0);
+        std.log.info("✓ Current count value: {any}", .{count_value});
         
         // Example 6: Execute increment function multiple times
         std.log.info("\n6. Incrementing counter multiple times...", .{});
@@ -143,16 +128,12 @@ pub fn main() !void {
             var increment_tx = hedera.ContractExecuteTransaction.init(allocator);
             defer increment_tx.deinit();
             
-            try increment_tx.setContractId(contract_id);
-            try increment_tx.setGas(75000);
+            _ = try increment_tx.setContractId(contract_id);
+            _ = try increment_tx.setGas(75000);
             
-            var increment_params = hedera.ContractFunctionParameters.init(allocator);
-            defer increment_params.deinit();
+            _ = try increment_tx.setFunction("increment", null);
             
-            const increment_selector = try increment_params.addFunction("increment()");
-            try increment_tx.setFunction(increment_selector, increment_params.getData());
-            
-            const increment_response = try increment_tx.execute(&client);
+            var increment_response = try increment_tx.execute(&client);
             const increment_receipt = try increment_response.getReceipt(&client);
             
             std.log.info("✓ Increment #{} completed with status: {}", .{ i + 2, increment_receipt.status });
@@ -164,25 +145,15 @@ pub fn main() !void {
         var final_call_query = hedera.ContractCallQuery.init(allocator);
         defer final_call_query.deinit();
         
-        try final_call_query.setContractId(contract_id);
-        try final_call_query.setGas(30000);
+        _ = try final_call_query.setContractId(contract_id);
+        _ = try final_call_query.setGas(30000);
         
-        var final_params = hedera.ContractFunctionParameters.init(allocator);
-        defer final_params.deinit();
-        
-        const final_selector = try final_params.addFunction("getCount()");
-        try final_call_query.setFunction(final_selector, final_params.getData());
+        _ = try final_call_query.setFunction("getCount", null);
         
         const final_result = try final_call_query.execute(&client);
-        
-        if (final_result.result.len >= 32) {
-            var final_count: u64 = 0;
-            var j: usize = 24;
-            while (j < 32) : (j += 1) {
-                final_count = (final_count << 8) | final_result.result[j];
-            }
-            std.log.info("✓ Final count value: {}", .{final_count});
-        }
+
+        const final_count = try final_result.getUint256(0);
+        std.log.info("✓ Final count value: {any}", .{final_count});
         
         // Example 8: Execute decrement function
         std.log.info("\n8. Calling decrement function...", .{});
@@ -190,16 +161,12 @@ pub fn main() !void {
         var decrement_tx = hedera.ContractExecuteTransaction.init(allocator);
         defer decrement_tx.deinit();
         
-        try decrement_tx.setContractId(contract_id);
-        try decrement_tx.setGas(75000);
+        _ = try decrement_tx.setContractId(contract_id);
+        _ = try decrement_tx.setGas(75000);
         
-        var decrement_params = hedera.ContractFunctionParameters.init(allocator);
-        defer decrement_params.deinit();
+        _ = try decrement_tx.setFunction("decrement", null);
         
-        const decrement_selector = try decrement_params.addFunction("decrement()");
-        try decrement_tx.setFunction(decrement_selector, decrement_params.getData());
-        
-        const decrement_response = try decrement_tx.execute(&client);
+        var decrement_response = try decrement_tx.execute(&client);
         const decrement_receipt = try decrement_response.getReceipt(&client);
         
         std.log.info("✓ Decrement function called with status: {}", .{decrement_receipt.status});
@@ -210,25 +177,15 @@ pub fn main() !void {
         var after_decrement_query = hedera.ContractCallQuery.init(allocator);
         defer after_decrement_query.deinit();
         
-        try after_decrement_query.setContractId(contract_id);
-        try after_decrement_query.setGas(30000);
+        _ = try after_decrement_query.setContractId(contract_id);
+        _ = try after_decrement_query.setGas(30000);
         
-        var after_params = hedera.ContractFunctionParameters.init(allocator);
-        defer after_params.deinit();
-        
-        const after_selector = try after_params.addFunction("getCount()");
-        try after_decrement_query.setFunction(after_selector, after_params.getData());
-        
+        _ = try after_decrement_query.setFunction("getCount", null);
+
         const after_result = try after_decrement_query.execute(&client);
-        
-        if (after_result.result.len >= 32) {
-            var after_count: u64 = 0;
-            var k: usize = 24;
-            while (k < 32) : (k += 1) {
-                after_count = (after_count << 8) | after_result.result[k];
-            }
-            std.log.info("✓ Count after decrement: {}", .{after_count});
-        }
+
+        const after_count = try after_result.getUint256(0);
+        std.log.info("✓ Count after decrement: {any}", .{after_count});
         
         std.log.info("✓ Smart contract operations completed successfully!", .{});
         

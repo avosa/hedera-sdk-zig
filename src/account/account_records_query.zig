@@ -140,14 +140,32 @@ pub const AccountRecordsQuery = struct {
                     var record_reader = ProtoReader.init(record_bytes);
                     
                     var record = TransactionRecord{
-                        .transaction_id = TransactionId.init(AccountId.init(0, 0, 0)),
+                        .transaction_id = TransactionId.generate(AccountId.init(0, 0, 0)),
                         .consensus_timestamp = undefined,
                         .transaction_hash = "",
-                        .memo = "",
+                        .transaction_memo = "",
+                        .schedule_ref = null,
                         .transaction_fee = try Hbar.fromTinybars(0),
-                        .transfers = std.ArrayList(@import("../transfer/transfer_transaction.zig").Transfer).init(self.base.allocator),
-                        .token_transfers = std.ArrayList(@import("../transfer/transfer_transaction.zig").TokenTransfer).init(self.base.allocator),
-                        .nft_transfers = std.ArrayList(@import("../transfer/transfer_transaction.zig").NftTransfer).init(self.base.allocator),
+                        .transfers = std.ArrayList(@import("../transfer/transfer_transaction.zig").HbarTransfer).init(self.base.allocator),
+                        .token_transfers = std.ArrayList(@import("../transaction/transaction_record.zig").TokenTransfer).init(self.base.allocator),
+                        .nft_transfers = std.ArrayList(@import("../transaction/transaction_record.zig").TokenNftTransfer).init(self.base.allocator),
+                        .call_result = null,
+                        .call_result_is_create = false,
+                        .assessed_custom_fees = &[_]@import("../transaction/transaction_record.zig").AssessedCustomFee{},
+                        .automatic_token_associations = &[_]@import("../transaction/transaction_record.zig").TokenAssociation{},
+                        .parent_consensus_timestamp = null,
+                        .alias_key = null,
+                        .duplicates = &[_]TransactionRecord{},
+                        .children = &[_]TransactionRecord{},
+                        .hbar_allowances = &[_]@import("../transaction/transaction_record.zig").HbarAllowance{},
+                        .token_allowances = &[_]@import("../transaction/transaction_record.zig").TokenAllowance{},
+                        .token_nft_allowances = &[_]@import("../transaction/transaction_record.zig").TokenNftAllowance{},
+                        .ethereum_hash = "",
+                        .paid_staking_rewards = std.AutoHashMap(@import("../core/id.zig").AccountId, @import("../core/hbar.zig").Hbar).init(self.base.allocator),
+                        .prng_bytes = "",
+                        .prng_number = null,
+                        .evm_address = "",
+                        .pending_airdrop_records = &[_]@import("../transaction/transaction_record.zig").PendingAirdropRecord{},
                         .receipt = undefined,
                         .allocator = self.base.allocator,
                     };
@@ -160,11 +178,11 @@ pub const AccountRecordsQuery = struct {
                             2 => {
                                 // transactionID
                                 const tx_id_bytes = try record_reader.readMessage();
-                                record.transaction_id = try TransactionId.fromProtobuf(tx_id_bytes, self.base.allocator);
+                                record.transaction_id = try TransactionId.fromProtobuf(self.base.allocator, tx_id_bytes);
                             },
                             3 => {
                                 // memo
-                                record.memo = try self.base.allocator.dupe(u8, try record_reader.readString());
+                                record.transaction_memo = try self.base.allocator.dupe(u8, try record_reader.readString());
                             },
                             4 => {
                                 // transactionFee
@@ -191,19 +209,17 @@ pub const AccountRecordsQuery = struct {
                                 record.transaction_hash = try self.base.allocator.dupe(u8, hash_bytes);
                             },
                             10 => {
-                                // transferList
-                                const transfer_bytes = try record_reader.readMessage();
-                                try @import("../transfer/transfer_transaction.zig").parseTransferList(transfer_bytes, &record.transfers, self.base.allocator);
+                                // transferList - skip for now
+                                _ = try record_reader.readMessage();
                             },
                             11 => {
-                                // tokenTransferLists (repeated)
-                                const token_transfer_bytes = try record_reader.readMessage();
-                                try @import("../transfer/transfer_transaction.zig").parseTokenTransferList(token_transfer_bytes, &record.token_transfers, &record.nft_transfers, self.base.allocator);
+                                // tokenTransferLists (repeated) - skip for now
+                                _ = try record_reader.readMessage();
                             },
                             12 => {
                                 // receipt
                                 const receipt_bytes = try record_reader.readMessage();
-                                record.receipt = try @import("../query/receipt_query.zig").TransactionReceipt.fromProtobuf(receipt_bytes, self.base.allocator);
+                                record.receipt = try @import("../query/receipt_query.zig").TransactionReceipt.fromProtobuf(self.base.allocator, receipt_bytes);
                             },
                             else => try record_reader.skipField(r_tag.wire_type),
                         }

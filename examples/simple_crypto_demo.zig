@@ -101,8 +101,8 @@ pub fn main() !void {
     
     const amount = try hedera.Hbar.from(100);
     std.log.info("  ✓ 100 hbar = {} tinybar", .{amount.tinybars});
-    
-    const tiny_amount = try try hedera.Hbar.fromTinybars(50000000);
+
+    const tiny_amount = try hedera.Hbar.fromTinybars(50000000);
     std.log.info("  ✓ 50000000 tinybar = {} hbar", .{tiny_amount.toHbar()});
     
     std.log.info("", .{});

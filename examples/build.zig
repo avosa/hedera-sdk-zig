@@ -6,7 +6,7 @@ pub fn build(b: *std.Build) void {
     
     // Reference to the main hedera SDK module
     const hedera_module = b.addModule("hedera", .{
-        .root_source_file = b.path("../hedera-sdk-zig/src/hedera.zig"),
+        .root_source_file = b.path("../src/hedera.zig"),
         .target = target,
         .optimize = optimize,
     });

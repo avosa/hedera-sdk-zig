@@ -4,6 +4,7 @@ const HederaError = errors.HederaError;
 const AccountId = @import("../core/id.zig").AccountId;
 const TokenId = @import("../core/id.zig").TokenId;
 const TransactionId = @import("../core/transaction_id.zig").TransactionId;
+const TxTimestamp = @import("../core/transaction_id.zig").Timestamp;
 const Timestamp = @import("../core/timestamp.zig").Timestamp;
 const JsonParser = @import("../utils/json.zig").JsonParser;
 
@@ -674,11 +675,9 @@ pub const MirrorNodeClient = struct {
         const num = try std.fmt.parseInt(u64, parts.next() orelse return error.InvalidAccountId, 10);
         
         return AccountId{
-            .entity = .{
-                .shard = @intCast(shard),
-                .realm = @intCast(realm),
-                .num = @intCast(num),
-            },
+            .shard = shard,
+            .realm = realm,
+            .account = num,
         };
     }
     
@@ -709,7 +708,7 @@ pub const MirrorNodeClient = struct {
         
         return TransactionId{
             .account_id = account_id,
-            .valid_start = Timestamp{
+            .valid_start = TxTimestamp{
                 .seconds = seconds,
                 .nanos = nanos,
             },
@@ -763,13 +762,11 @@ pub const MirrorNodeClient = struct {
         var client = std.http.Client{ .allocator = self.allocator };
         defer client.deinit();
         
-        var headers = std.http.Headers{ .allocator = self.allocator };
-        defer headers.deinit();
-        
-        var request = try client.request(.GET, uri, headers, .{});
+        var request = try client.open(.GET, uri, .{ .server_header_buffer = try self.allocator.alloc(u8, 16 * 1024) });
         defer request.deinit();
         
-        try request.start();
+        try request.send();
+        try request.finish();
         try request.wait();
         
         if (request.response.status != .ok) {
@@ -781,16 +778,15 @@ pub const MirrorNodeClient = struct {
         
         // Parse JSON response
         var parser = JsonParser.init(self.allocator);
-        defer parser.deinit();
+
+        var parsed = try parser.parse(body);
+        defer parsed.deinit(self.allocator);
         
-        const parsed = try parser.parse(body);
-        defer parsed.deinit();
-        
-        const balances_json = parsed.root.object.get("balances") orelse return HederaError.InvalidProtobuf;
+        const balances_json = parsed.object.get("balances") orelse return HederaError.InvalidProtobuf;
         const balance_array = balances_json.array;
-        
-        var balances = try self.allocator.alloc(AccountBalance, balance_array.items.len);
-        for (balance_array.items, 0..) |bal, i| {
+
+        var balances = try self.allocator.alloc(AccountBalance, balance_array.len);
+        for (balance_array, 0..) |bal, i| {
             const obj = bal.object;
             const empty_tokens = try self.allocator.alloc(TokenBalance, 0);
             
@@ -819,13 +815,11 @@ pub const MirrorNodeClient = struct {
         var client = std.http.Client{ .allocator = self.allocator };
         defer client.deinit();
         
-        var headers = std.http.Headers{ .allocator = self.allocator };
-        defer headers.deinit();
-        
-        var request = try client.request(.GET, uri, headers, .{});
+        var request = try client.open(.GET, uri, .{ .server_header_buffer = try self.allocator.alloc(u8, 16 * 1024) });
         defer request.deinit();
         
-        try request.start();
+        try request.send();
+        try request.finish();
         try request.wait();
         
         if (request.response.status != .ok) {
@@ -837,16 +831,15 @@ pub const MirrorNodeClient = struct {
         
         // Parse JSON response
         var parser = JsonParser.init(self.allocator);
-        defer parser.deinit();
+
+        var parsed = try parser.parse(body);
+        defer parsed.deinit(self.allocator);
         
-        const parsed = try parser.parse(body);
-        defer parsed.deinit();
-        
-        const txs = parsed.root.object.get("transactions") orelse return HederaError.InvalidProtobuf;
+        const txs = parsed.object.get("transactions") orelse return HederaError.InvalidProtobuf;
         const tx_array = txs.array;
-        
-        var transactions = try self.allocator.alloc(Transaction, tx_array.items.len);
-        for (tx_array.items, 0..) |tx, i| {
+
+        var transactions = try self.allocator.alloc(Transaction, tx_array.len);
+        for (tx_array, 0..) |tx, i| {
             const obj = tx.object;
             const empty_transfers = try self.allocator.alloc(Transfer, 0);
             const empty_token_transfers = try self.allocator.alloc(TokenTransfer, 0);

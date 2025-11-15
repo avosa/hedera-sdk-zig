@@ -7,9 +7,9 @@ pub fn main() !void {
     const allocator = arena.allocator();
     
     // Match Go SDK pattern: ClientForName
-    var client = try hedera.client_for_name(std.posix.getenv("HEDERA_NETWORK") orelse "testnet");
+    var client = try hedera.clientForName(std.posix.getenv("HEDERA_NETWORK") orelse "testnet");
     defer client.deinit();
-    
+
     // Match Go SDK pattern: AccountIDFromString and PrivateKeyFromString
     const operator_id_str = std.posix.getenv("OPERATOR_ID") orelse {
         std.log.err("OPERATOR_ID environment variable not set", .{});
@@ -19,13 +19,14 @@ pub fn main() !void {
         std.log.err("OPERATOR_KEY environment variable not set", .{});
         return;
     };
-    
-    const operator_id = try hedera.account_id_from_string(allocator, operator_id_str);
-    var operator_key = try hedera.private_key_from_string(allocator, operator_key_str);
+
+    const operator_id = try hedera.accountIdFromString(allocator, operator_id_str);
+    var operator_key = try hedera.privateKeyFromString(allocator, operator_key_str);
     defer operator_key.deinit();
-    
+
     // Match Go SDK pattern: SetOperator
-    try client.set_operator(operator_id, operator_key);
+    const operator_key_converted = try operator_key.toOperatorKey();
+    _ = try client.setOperator(operator_id, operator_key_converted);
     
     std.log.info("Smart Contract Example", .{});
     std.log.info("=====================", .{});
@@ -43,12 +44,12 @@ pub fn main() !void {
     // Create file with contract bytecode
     var file_create = hedera.FileCreateTransaction.init(allocator);
     defer file_create.deinit();
-    
-    try file_create.setContents(bytecode);
-    try file_create.setKeys(&[_]hedera.Key{hedera.Key.fromPublicKey(operator_key.getPublicKey())});
-    
-    const file_response = try file_create.execute(&client);
-    const file_receipt = try file_response.get_receipt(&client);
+
+    _ = try file_create.setContents(bytecode);
+    _ = try file_create.addKey(hedera.Key.fromPublicKey(operator_key.getPublicKey()));
+
+    var file_response = try file_create.execute(&client);
+    const file_receipt = try file_response.getReceipt(&client);
     
     const file_id = file_receipt.file_id orelse {
         std.log.err("Failed to get file ID", .{});
@@ -61,19 +62,19 @@ pub fn main() !void {
     var contract_create = hedera.ContractCreateTransaction.init(allocator);
     defer contract_create.deinit();
     
-    try contract_create.setBytecodeFileId(file_id);
-    try contract_create.setGas(100000);
+    _ = try contract_create.setBytecodeFileId(file_id);
+    _ = try contract_create.setGas(100000);
     
     // Set constructor parameters (uint256 = 42)
     var params = hedera.ContractFunctionParameters.init(allocator);
     defer params.deinit();
     try params.addUint256(42);
     
-    try contract_create.setConstructorParameters(try params.toBytes());
-    try contract_create.setContractMemo("Simple Storage Contract");
+    _ = try contract_create.setConstructorParameters(try params.toBytes());
+    _ = try contract_create.setContractMemo("Simple Storage Contract");
     
-    const contract_response = try contract_create.execute(&client);
-    const contract_receipt = try contract_response.get_receipt(&client);
+    var contract_response = try contract_create.execute(&client);
+    const contract_receipt = try contract_response.getReceipt(&client);
     
     const contract_id = contract_receipt.contract_id orelse {
         std.log.err("Failed to get contract ID", .{});
@@ -86,30 +87,30 @@ pub fn main() !void {
     var contract_query = hedera.ContractCallQuery.init(allocator);
     defer contract_query.deinit();
     
-    try contract_query.setContractId(contract_id);
-    try contract_query.setGas(30000);
-    try contract_query.setFunction("get", null);
+    _ = try contract_query.setContractId(contract_id);
+    _ = try contract_query.setGas(30000);
+    _ = try contract_query.setFunction("get", null);
     
     const query_result = try contract_query.execute(&client);
-    const stored_value = query_result.getUint256(0);
-    
-    std.log.info("Initial stored value: {}", .{stored_value});
+    const stored_value = try query_result.getUint256(0);
+
+    std.log.info("Initial stored value: {any}", .{stored_value});
     
     // Execute contract set() function with new value
     var contract_execute = hedera.ContractExecuteTransaction.init(allocator);
     defer contract_execute.deinit();
     
-    try contract_execute.setContractId(contract_id);
-    try contract_execute.setGas(30000);
+    _ = try contract_execute.setContractId(contract_id);
+    _ = try contract_execute.setGas(30000);
     
     var set_params = hedera.ContractFunctionParameters.init(allocator);
     defer set_params.deinit();
     try set_params.addUint256(123);
     
-    try contract_execute.setFunction("set", try set_params.toBytes());
+    _ = try contract_execute.setFunction("set", &set_params);
     
-    const execute_response = try contract_execute.execute(&client);
-    const execute_receipt = try execute_response.get_receipt(&client);
+    var execute_response = try contract_execute.execute(&client);
+    const execute_receipt = try execute_response.getReceipt(&client);
     
     std.log.info("Set function executed with status: {}", .{execute_receipt.status});
     
@@ -117,12 +118,12 @@ pub fn main() !void {
     var final_query = hedera.ContractCallQuery.init(allocator);
     defer final_query.deinit();
     
-    try final_query.setContractId(contract_id);
-    try final_query.setGas(30000);
-    try final_query.setFunction("get", null);
+    _ = try final_query.setContractId(contract_id);
+    _ = try final_query.setGas(30000);
+    _ = try final_query.setFunction("get", null);
     
     const final_result = try final_query.execute(&client);
-    const final_value = final_result.getUint256(0);
-    
-    std.log.info("Final stored value: {}", .{final_value});
+    const final_value = try final_result.getUint256(0);
+
+    std.log.info("Final stored value: {any}", .{final_value});
 }

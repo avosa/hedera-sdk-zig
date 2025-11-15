@@ -22,9 +22,9 @@ pub fn main() !void {
 
     const operator_id = try hedera.AccountId.fromString(allocator, operator_id_str);
     const operator_key = try hedera.PrivateKey.fromString(allocator, operator_key_str);
-    
+
     const operator_key_converted = try operator_key.toOperatorKey();
-    client.setOperator(operator_id, operator_key_converted);
+    _ = try client.setOperator(operator_id, operator_key_converted);
 
     std.log.info("File Service Example", .{});
     std.log.info("===================", .{});
@@ -36,13 +36,13 @@ pub fn main() !void {
     
     var file_create_tx = hedera.FileCreateTransaction.init(allocator);
     defer file_create_tx.deinit();
-    
-    try file_create_tx.setContents(initial_content);
-    try file_create_tx.addKey(operator_key.getPublicKey());
-    try file_create_tx.setMemo("Created by Hedera Zig SDK example");
-    try file_create_tx.setExpirationTime(hedera.Timestamp.fromUnixSeconds(std.time.timestamp() + 7776000)); // 90 days
-    
-    const create_response = try file_create_tx.execute(&client);
+
+    _ = try file_create_tx.setContents(initial_content);
+    _ = try file_create_tx.addKey(hedera.Key.fromPublicKey(operator_key.getPublicKey()));
+    _ = try file_create_tx.setMemo("Created by Hedera Zig SDK example");
+    _ = try file_create_tx.setExpirationTime(hedera.Timestamp.fromUnixSeconds(std.time.timestamp() + 7776000)); // 90 days
+
+    var create_response = try file_create_tx.execute(&client);
     const create_receipt = try create_response.getReceipt(&client);
     
     if (create_receipt.file_id) |file_id| {
@@ -54,15 +54,15 @@ pub fn main() !void {
         var file_info_query = hedera.FileInfoQuery.init(allocator);
         defer file_info_query.deinit();
         
-        try file_info_query.setFileId(file_id);
+        _ = try file_info_query.setFileId(file_id);
         const file_info = try file_info_query.execute(&client);
         
         std.log.info("✓ File ID: {}", .{file_info.file_id});
         std.log.info("✓ File size: {} bytes", .{file_info.size});
-        std.log.info("✓ File memo: {s}", .{file_info.file_memo});
+        std.log.info("✓ File memo: {s}", .{file_info.memo});
         std.log.info("✓ Expiration time: {}", .{file_info.expiration_time.seconds});
         std.log.info("✓ Deleted: {}", .{file_info.deleted});
-        std.log.info("✓ Number of keys: {}", .{file_info.keys.len});
+        std.log.info("✓ Number of keys: {}", .{file_info.keys.items.len});
         
         // Example 3: Query file contents
         std.log.info("\n3. Querying file contents...", .{});
@@ -70,7 +70,7 @@ pub fn main() !void {
         var file_contents_query = hedera.FileContentsQuery.init(allocator);
         defer file_contents_query.deinit();
         
-        try file_contents_query.setFileId(file_id);
+        _ = try file_contents_query.setFileId(file_id);
         const file_contents = try file_contents_query.execute(&client);
         
         std.log.info("✓ File contents retrieved: {} bytes", .{file_contents.contents.len});
@@ -84,10 +84,10 @@ pub fn main() !void {
         var file_append_tx = hedera.FileAppendTransaction.init(allocator);
         defer file_append_tx.deinit();
         
-        try file_append_tx.setFileId(file_id);
-        try file_append_tx.setContents(append_content);
+        _ = try file_append_tx.setFileId(file_id);
+        _ = try file_append_tx.setContents(append_content);
         
-        const append_response = try file_append_tx.execute(&client);
+        var append_response = try file_append_tx.execute(&client);
         const append_receipt = try append_response.getReceipt(&client);
         
         std.log.info("✓ Content appended with status: {}", .{append_receipt.status});
@@ -98,7 +98,7 @@ pub fn main() !void {
         var updated_info_query = hedera.FileInfoQuery.init(allocator);
         defer updated_info_query.deinit();
         
-        try updated_info_query.setFileId(file_id);
+        _ = try updated_info_query.setFileId(file_id);
         const updated_info = try updated_info_query.execute(&client);
         
         std.log.info("✓ Updated file size: {} bytes", .{updated_info.size});
@@ -109,7 +109,7 @@ pub fn main() !void {
         var updated_contents_query = hedera.FileContentsQuery.init(allocator);
         defer updated_contents_query.deinit();
         
-        try updated_contents_query.setFileId(file_id);
+        _ = try updated_contents_query.setFileId(file_id);
         const updated_contents = try updated_contents_query.execute(&client);
         
         std.log.info("✓ Updated file contents: {} bytes", .{updated_contents.contents.len});
@@ -148,10 +148,10 @@ pub fn main() !void {
         var large_append_tx = hedera.FileAppendTransaction.init(allocator);
         defer large_append_tx.deinit();
         
-        try large_append_tx.setFileId(file_id);
-        try large_append_tx.setContents(large_content.items);
+        _ = try large_append_tx.setFileId(file_id);
+        _ = try large_append_tx.setContents(large_content.items);
         
-        const large_append_response = try large_append_tx.execute(&client);
+        var large_append_response = try large_append_tx.execute(&client);
         const large_append_receipt = try large_append_response.getReceipt(&client);
         
         std.log.info("✓ Large content appended with status: {}", .{large_append_receipt.status});
@@ -163,7 +163,7 @@ pub fn main() !void {
         var final_info_query = hedera.FileInfoQuery.init(allocator);
         defer final_info_query.deinit();
         
-        try final_info_query.setFileId(file_id);
+        _ = try final_info_query.setFileId(file_id);
         const final_info = try final_info_query.execute(&client);
         
         std.log.info("✓ Final file size: {} bytes", .{final_info.size});
@@ -186,12 +186,12 @@ pub fn main() !void {
         var binary_create_tx = hedera.FileCreateTransaction.init(allocator);
         defer binary_create_tx.deinit();
         
-        try binary_create_tx.setContents(&binary_data);
-        try binary_create_tx.addKey(operator_key.getPublicKey());
-        try binary_create_tx.setMemo("Binary PNG file created by Hedera Zig SDK");
-        try binary_create_tx.setExpirationTime(hedera.Timestamp.fromUnixSeconds(std.time.timestamp() + 7776000));
+        _ = try binary_create_tx.setContents(&binary_data);
+        _ = try binary_create_tx.addKey(hedera.Key.fromPublicKey(operator_key.getPublicKey()));
+        _ = try binary_create_tx.setMemo("Binary PNG file created by Hedera Zig SDK");
+        _ = try binary_create_tx.setExpirationTime(hedera.Timestamp.fromUnixSeconds(std.time.timestamp() + 7776000));
         
-        const binary_response = try binary_create_tx.execute(&client);
+        var binary_response = try binary_create_tx.execute(&client);
         const binary_receipt = try binary_response.getReceipt(&client);
         
         if (binary_receipt.file_id) |binary_file_id| {
@@ -201,7 +201,7 @@ pub fn main() !void {
             var binary_info_query = hedera.FileInfoQuery.init(allocator);
             defer binary_info_query.deinit();
             
-            try binary_info_query.setFileId(binary_file_id);
+            _ = try binary_info_query.setFileId(binary_file_id);
             const binary_info = try binary_info_query.execute(&client);
             
             std.log.info("✓ Binary file size: {} bytes", .{binary_info.size});
@@ -210,9 +210,9 @@ pub fn main() !void {
             var binary_delete_tx = hedera.FileDeleteTransaction.init(allocator);
             defer binary_delete_tx.deinit();
             
-            try binary_delete_tx.setFileId(binary_file_id);
+            _ = try binary_delete_tx.setFileId(binary_file_id);
             
-            const binary_delete_response = try binary_delete_tx.execute(&client);
+            var binary_delete_response = try binary_delete_tx.execute(&client);
             const binary_delete_receipt = try binary_delete_response.getReceipt(&client);
             
             std.log.info("✓ Binary file deleted with status: {}", .{binary_delete_receipt.status});
@@ -224,9 +224,9 @@ pub fn main() !void {
         var file_delete_tx = hedera.FileDeleteTransaction.init(allocator);
         defer file_delete_tx.deinit();
         
-        try file_delete_tx.setFileId(file_id);
+        _ = try file_delete_tx.setFileId(file_id);
         
-        const delete_response = try file_delete_tx.execute(&client);
+        var delete_response = try file_delete_tx.execute(&client);
         const delete_receipt = try delete_response.getReceipt(&client);
         
         std.log.info("✓ File deleted with status: {}", .{delete_receipt.status});
@@ -237,7 +237,7 @@ pub fn main() !void {
         var verify_info_query = hedera.FileInfoQuery.init(allocator);
         defer verify_info_query.deinit();
         
-        try verify_info_query.setFileId(file_id);
+        _ = try verify_info_query.setFileId(file_id);
         
         // This should show the file as deleted
         if (verify_info_query.execute(&client)) |verify_info| {

@@ -186,13 +186,13 @@ pub const MirrorNodeRestClient = struct {
     fn makeRequest(self: *MirrorNodeRestClient, url: []const u8) ![]u8 {
         const uri = std.Uri.parse(url) catch return error.InvalidUrl;
         
-        var headers = std.http.Headers{ .allocator = self.allocator };
-        defer headers.deinit();
-        
-        try headers.append("accept", "application/json");
-        try headers.append("user-agent", "hedera-sdk-zig/1.0.0");
-        
-        var request = try self.http_client.open(.GET, uri, headers, .{});
+        var request = try self.http_client.open(.GET, uri, .{
+            .server_header_buffer = try self.allocator.alloc(u8, 16 * 1024),
+            .extra_headers = &.{
+                .{ .name = "accept", .value = "application/json" },
+                .{ .name = "user-agent", .value = "hedera-sdk-zig/1.0.0" },
+            },
+        });
         defer request.deinit();
         
         try request.send();
