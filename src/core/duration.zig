@@ -211,7 +211,7 @@ pub const Duration = struct {
     // Serialize Duration to protobuf bytes
     pub fn toProtobuf(self: Duration, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         if (self.seconds != 0) {
             try writer.writeInt64(1, self.seconds);

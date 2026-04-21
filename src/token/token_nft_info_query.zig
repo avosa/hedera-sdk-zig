@@ -58,7 +58,7 @@ pub const TokenNftInfoQuery = struct {
     }
     
     pub fn deinit(self: *TokenNftInfoQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the NFT ID to query
@@ -108,12 +108,12 @@ pub const TokenNftInfoQuery = struct {
     // Build the query
     pub fn buildQuery(self: *TokenNftInfoQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Query message structure
         // header = 1
         var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
+        defer header_writer.deinit(self.allocator);
         
         // payment = 1
         if (self.base.payment_transaction) |payment| {
@@ -129,16 +129,16 @@ pub const TokenNftInfoQuery = struct {
         
         // tokenGetNftInfo = 19 (oneof query)
         var info_query_writer = ProtoWriter.init(self.base.allocator);
-        defer info_query_writer.deinit();
+        defer info_query_writer.deinit(self.allocator);
         
         // nftID = 1
         if (self.nft_id) |nft| {
             var nft_writer = ProtoWriter.init(self.base.allocator);
-            defer nft_writer.deinit();
+            defer nft_writer.deinit(self.allocator);
             
             // tokenID = 1
             var token_writer = ProtoWriter.init(self.base.allocator);
-            defer token_writer.deinit();
+            defer token_writer.deinit(self.allocator);
             try token_writer.writeInt64(1, @intCast(nft.token_id.shard));
             try token_writer.writeInt64(2, @intCast(nft.token_id.realm));
             try token_writer.writeInt64(3, @intCast(nft.token_id.num));

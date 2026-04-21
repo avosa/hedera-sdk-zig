@@ -37,7 +37,7 @@ pub const ContractCreateFlow = struct {
             .initial_balance = Hbar.init(0),
             .auto_renew_period = Duration.init(7776000), // 90 days
             .parameters = &[_]u8{},
-            .node_account_ids = std.ArrayList(AccountId).init(allocator),
+            .node_account_ids = std.ArrayList(AccountId){},
             .create_bytecode = &[_]u8{},
             .append_bytecode = &[_]u8{},
             .max_automatic_token_associations = 0,
@@ -49,7 +49,7 @@ pub const ContractCreateFlow = struct {
     pub fn deinit(self: *ContractCreateFlow) void {
         if (self.bytecode.len > 0) self.allocator.free(self.bytecode);
         if (self.parameters.len > 0) self.allocator.free(self.parameters);
-        self.node_account_ids.deinit();
+        self.node_account_ids.deinit(self.allocator);
         if (self.create_bytecode.len > 0) self.allocator.free(self.create_bytecode);
         if (self.append_bytecode.len > 0) self.allocator.free(self.append_bytecode);
         if (self.memo.len > 0) self.allocator.free(self.memo);
@@ -181,7 +181,7 @@ pub const ContractCreateFlow = struct {
         // Set operator public key as file key
         if (client.operator_public_key) |key| {
             var keys = std.ArrayList(Key).init(self.allocator);
-            try keys.append(key);
+            try keys.append(self.allocator, key);
             try file_create.setKeys(keys);
         }
         
@@ -250,7 +250,7 @@ pub const ContractCreateFlow = struct {
         
         // Create file with bytecode
         var file_create = try self.createFileCreateTransaction(client);
-        defer file_create.deinit();
+        defer file_create.deinit(self.allocator);
         
         const file_create_response = try file_create.execute(client);
         const file_create_receipt = try file_create_response.getReceipt(client);
@@ -264,7 +264,7 @@ pub const ContractCreateFlow = struct {
         // Append remaining bytecode if necessary
         if (self.append_bytecode.len > 0) {
             var file_append = try self.createFileAppendTransaction(file_id);
-            defer file_append.deinit();
+            defer file_append.deinit(self.allocator);
             
             const file_append_response = try file_append.execute(client);
             _ = try file_append_response.getReceipt(client);
@@ -272,7 +272,7 @@ pub const ContractCreateFlow = struct {
         
         // Create contract
         var contract_create = try self.createContractCreateTransaction(file_id);
-        defer contract_create.deinit();
+        defer contract_create.deinit(self.allocator);
         
         const contract_create_response = try contract_create.execute(client);
         _ = try contract_create_response.getReceipt(client);

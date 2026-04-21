@@ -8,22 +8,22 @@ pub const ContractAbi = struct {
     
     pub fn init(allocator: std.mem.Allocator) ContractAbi {
         return ContractAbi{
-            .functions = std.ArrayList(Function).init(allocator),
-            .events = std.ArrayList(Event).init(allocator),
+            .functions = std.ArrayList(Function){},
+            .events = std.ArrayList(Event){},
             .allocator = allocator,
         };
     }
     
     pub fn deinit(self: *ContractAbi) void {
         for (self.functions.items) |*func| {
-            func.deinit();
+            func.deinit(self.allocator);
         }
-        self.functions.deinit();
+        self.functions.deinit(self.allocator);
         
         for (self.events.items) |*event| {
-            event.deinit();
+            event.deinit(self.allocator);
         }
-        self.events.deinit();
+        self.events.deinit(self.allocator);
     }
     
     pub fn getFunction(self: *const ContractAbi, name: []const u8) ?*const Function {
@@ -47,12 +47,12 @@ pub const ContractAbi = struct {
             self.allocator.free(self.name);
             
             for (self.inputs) |*param| {
-                param.deinit();
+                param.deinit(self.allocator);
             }
             self.allocator.free(self.inputs);
             
             for (self.outputs) |*param| {
-                param.deinit();
+                param.deinit(self.allocator);
             }
             self.allocator.free(self.outputs);
         }
@@ -68,7 +68,7 @@ pub const ContractAbi = struct {
             self.allocator.free(self.name);
             
             for (self.inputs) |*param| {
-                param.deinit();
+                param.deinit(self.allocator);
             }
             self.allocator.free(self.inputs);
         }
@@ -86,7 +86,7 @@ pub const ContractAbi = struct {
             
             if (self.components) |comps| {
                 for (comps) |*comp| {
-                    comp.deinit();
+                    comp.deinit(self.allocator);
                 }
                 self.allocator.free(comps);
             }
@@ -106,7 +106,7 @@ pub const ContractAbi = struct {
             
             if (self.components) |comps| {
                 for (comps) |*comp| {
-                    comp.deinit();
+                    comp.deinit(self.allocator);
                 }
                 self.allocator.free(comps);
             }

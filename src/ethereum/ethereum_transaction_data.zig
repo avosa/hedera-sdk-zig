@@ -237,7 +237,7 @@ pub const EthereumTransactionData = union(enum) {
     // Convert to protobuf bytes
     pub fn toProtobufBytes(self: *const Self, allocator: Allocator) ![]u8 {
         var writer = protobuf.ProtobufWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         const tx_bytes = try self.toBytes(allocator);
         defer allocator.free(tx_bytes);

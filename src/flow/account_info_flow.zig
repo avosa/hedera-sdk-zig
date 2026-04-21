@@ -12,9 +12,13 @@ const Transaction = @import("../transaction/transaction.zig").Transaction;
 pub const AccountInfoFlow = struct {
     
     // Verify a signature using the account's key from the network
-    pub fn verifySignature(client: *Client, account_id: AccountId, message: []const u8, signature: []const u8) !bool {
+    pub fn verifySignature(client: *Client, account_id: AccountId, message: []const u8, signature: []const u8, allocator: std.mem.Allocator) !bool {
+        
+        
+        
+        
         var info_query = AccountInfoQuery.init(client.allocator);
-        defer info_query.deinit();
+        defer info_query.deinit(allocator);
         _ = info_query.setAccountId(account_id);
         
         const info = try info_query.execute(client);
@@ -32,9 +36,13 @@ pub const AccountInfoFlow = struct {
     }
     
     // Verify a transaction using the account's key from the network
-    pub fn verifyTransaction(client: *Client, account_id: AccountId, transaction: Transaction) !bool {
+    pub fn verifyTransaction(client: *Client, account_id: AccountId, transaction: Transaction, allocator: std.mem.Allocator) !bool {
+        
+        
+        
+        
         var info_query = AccountInfoQuery.init(client.allocator);
-        defer info_query.deinit();
+        defer info_query.deinit(allocator);
         _ = info_query.setAccountId(account_id);
         
         const info = try info_query.execute(client);
@@ -54,5 +62,9 @@ pub const AccountInfoFlow = struct {
 
 // Creates a new account information flow
 pub fn accountInfoFlow() AccountInfoFlow {
-    return AccountInfoFlow{};
+    
+        
+        
+        
+        return AccountInfoFlow{};
 }

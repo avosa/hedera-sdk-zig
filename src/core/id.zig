@@ -57,7 +57,7 @@ pub const EntityId = struct {
         if (self.checksum == null) return true;
         
         const computed = try self.computeChecksum(ledger_id);
-        defer computed.deinit();
+        defer computed.deinit(self.allocator);
         
         return std.mem.eql(u8, self.checksum.?, computed.items);
     }
@@ -337,7 +337,7 @@ pub const AccountId = struct {
     
     pub fn toProtobuf(self: AccountId, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         if (self.shard != 0) {
             try writer.writeInt64(1, @intCast(self.shard));
@@ -519,7 +519,7 @@ pub const ContractId = struct {
     
     pub fn toProtobuf(self: ContractId, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         if (self.entity.shard != 0) {
             try writer.writeInt64(1, @intCast(self.entity.shard));
@@ -607,7 +607,7 @@ pub const FileId = struct {
     
     pub fn toProtobuf(self: FileId, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         if (self.entity.shard != 0) {
             try writer.writeInt64(1, @intCast(self.entity.shard));
@@ -705,7 +705,7 @@ pub const TokenId = struct {
     
     pub fn toProtobuf(self: TokenId, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         if (self.entity.shard != 0) {
             try writer.writeInt64(1, @intCast(self.entity.shard));
@@ -810,7 +810,7 @@ pub const TopicId = struct {
     
     pub fn toProtobuf(self: TopicId, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         if (self.entity.shard != 0) {
             try writer.writeInt64(1, @intCast(self.entity.shard));
@@ -898,7 +898,7 @@ pub const ScheduleId = struct {
     
     pub fn toProtobuf(self: ScheduleId, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         if (self.entity.shard != 0) {
             try writer.writeInt64(1, @intCast(self.entity.shard));

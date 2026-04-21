@@ -163,7 +163,7 @@ pub const ManagedNetwork = struct {
         return ManagedNetwork{
             .ledger_id = ledger_id,
             .nodes = std.HashMap(AccountId, ManagedNode, AccountIdContext, std.hash_map.default_max_load_percentage).init(allocator),
-            .healthy_nodes = std.ArrayList(AccountId).init(allocator),
+            .healthy_nodes = std.ArrayList(AccountId){},
             .config = NetworkConfig.init(),
             .stats = NetworkStats.init(),
             .load_balancing_strategy = .RoundRobin,
@@ -180,10 +180,10 @@ pub const ManagedNetwork = struct {
         
         var iter = self.nodes.iterator();
         while (iter.next()) |entry| {
-            entry.value_ptr.deinit();
+            entry.value_ptr.deinit(self.allocator);
         }
-        self.nodes.deinit();
-        self.healthy_nodes.deinit();
+        self.nodes.deinit(self.allocator);
+        self.healthy_nodes.deinit(self.allocator);
     }
 
     pub fn setConfig(self: *ManagedNetwork, config: NetworkConfig) !*ManagedNetwork {
@@ -223,7 +223,7 @@ pub const ManagedNetwork = struct {
 
         if (self.nodes.fetchRemove(account_id)) |kv| {
             var node = kv.value;
-            node.deinit();
+            node.deinit(self.allocator);
             
             self.stats.total_nodes -= 1;
             switch (node.getHealth()) {
@@ -486,13 +486,13 @@ pub const ManagedNetwork = struct {
         self.mutex.lock();
         defer self.mutex.unlock();
 
-        var result = std.ArrayList(NodeInfo).init(allocator);
-        defer result.deinit();
+        var result = std.ArrayList(NodeInfo){};
+        defer result.deinit(self.allocator);
 
         var iter = self.nodes.iterator();
         while (iter.next()) |entry| {
             const node_info = try entry.value_ptr.getNodeInfo(allocator);
-            try result.append(node_info);
+            try result.append(self.allocator, node_info);
         }
 
         return result.toOwnedSlice();

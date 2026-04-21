@@ -22,25 +22,25 @@ pub const BatchTransaction = struct {
     pub fn init(allocator: std.mem.Allocator) BatchTransaction {
         return BatchTransaction{
             .base = Transaction.init(allocator),
-            .transactions = std.ArrayList(*Transaction).init(allocator),
-            .signed_transactions = std.ArrayList(SignedTransaction).init(allocator),
+            .transactions = std.ArrayList(*Transaction){},
+            .signed_transactions = std.ArrayList(SignedTransaction){},
         };
     }
     
     pub fn deinit(self: *BatchTransaction) void {
-        self.base.deinit();
-        self.transactions.deinit();
+        self.base.deinit(self.allocator);
+        self.transactions.deinit(self.allocator);
         for (self.signed_transactions.items) |*signed| {
             self.base.allocator.free(signed.body_bytes);
-            signed.signature_map.deinit();
+            signed.signature_map.deinit(self.allocator);
         }
-        self.signed_transactions.deinit();
+        self.signed_transactions.deinit(self.allocator);
     }
     
     // Add a transaction to the batch
     pub fn addTransaction(self: *BatchTransaction, transaction: *Transaction) !void {
         if (self.base.frozen) return error.TransactionFrozen;
-        try self.transactions.append(transaction);
+        try self.transactions.append(self.allocator, transaction);
     }
     
     // Set all transactions in the batch
@@ -90,7 +90,7 @@ pub const BatchTransaction = struct {
                 }
             }
             
-            try self.signed_transactions.append(SignedTransaction{
+            try self.signed_transactions.append(self.allocator, SignedTransaction{
                 .body_bytes = body_bytes,
                 .signature_map = sig_map,
             });
@@ -105,11 +105,11 @@ pub const BatchTransaction = struct {
         
         // Execute each transaction in the batch
         var responses = std.ArrayList(TransactionResponse).init(self.base.allocator);
-        defer responses.deinit();
+        defer responses.deinit(self.allocator);
         
         for (self.transactions.items) |tx| {
             const response = try tx.execute(client);
-            try responses.append(response);
+            try responses.append(self.allocator, response);
         }
         
         // Return the first response as representative
@@ -126,31 +126,31 @@ pub const BatchTransaction = struct {
     // Build transaction body for the batch
     pub fn buildTransactionBody(self: *BatchTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Write common transaction fields
         try self.writeCommonFields(&writer);
         
         // batch = 62 (oneof data)
         var batch_writer = ProtoWriter.init(self.base.allocator);
-        defer batch_writer.deinit();
+        defer batch_writer.deinit(self.allocator);
         
         // signedTransactions = 1 (repeated)
         for (self.signed_transactions.items) |signed| {
             var signed_writer = ProtoWriter.init(self.base.allocator);
-            defer signed_writer.deinit();
+            defer signed_writer.deinit(self.allocator);
             
             // bodyBytes = 1
             try signed_writer.writeBytes(1, signed.body_bytes);
             
             // sigMap = 2
             var sig_map_writer = ProtoWriter.init(self.base.allocator);
-            defer sig_map_writer.deinit();
+            defer sig_map_writer.deinit(self.allocator);
             
             var iter = signed.signature_map.iterator();
             while (iter.next()) |entry| {
                 var sig_pair_writer = ProtoWriter.init(self.base.allocator);
-                defer sig_pair_writer.deinit();
+                defer sig_pair_writer.deinit(self.allocator);
                 
                 // pubKeyPrefix = 1
                 const account_id = entry.key_ptr.*;

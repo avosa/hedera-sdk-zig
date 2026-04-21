@@ -16,18 +16,18 @@ pub const TokenClaimAirdropTransaction = struct {
     pub fn init(allocator: std.mem.Allocator) TokenClaimAirdropTransaction {
         return TokenClaimAirdropTransaction{
             .base = Transaction.init(allocator),
-            .pending_airdrops = std.ArrayList(PendingAirdropId).init(allocator),
+            .pending_airdrops = std.ArrayList(PendingAirdropId){},
         };
     }
     
     pub fn deinit(self: *TokenClaimAirdropTransaction) void {
-        self.base.deinit();
-        self.pending_airdrops.deinit();
+        self.base.deinit(self.allocator);
+        self.pending_airdrops.deinit(self.allocator);
     }
     
     // Add a pending airdrop to claim
     pub fn addPendingAirdrop(self: *TokenClaimAirdropTransaction, pending_airdrop: PendingAirdropId) !void {
-        try self.pending_airdrops.append(pending_airdrop);
+        try self.pending_airdrops.append(self.allocator, pending_airdrop);
     }
     
     // Set all pending airdrops to claim
@@ -45,23 +45,23 @@ pub const TokenClaimAirdropTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *TokenClaimAirdropTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Write common transaction fields
         try self.writeCommonFields(&writer);
         
         // tokenClaimAirdrop = 58 (oneof data)
         var claim_writer = ProtoWriter.init(self.base.allocator);
-        defer claim_writer.deinit();
+        defer claim_writer.deinit(self.allocator);
         
         // pendingAirdrops = 1 (repeated)
         for (self.pending_airdrops.items) |pending| {
             var pending_writer = ProtoWriter.init(self.base.allocator);
-            defer pending_writer.deinit();
+            defer pending_writer.deinit(self.allocator);
             
             // senderId = 1
             var sender_writer = ProtoWriter.init(self.base.allocator);
-            defer sender_writer.deinit();
+            defer sender_writer.deinit(self.allocator);
             try sender_writer.writeInt64(1, @intCast(pending.sender.shard));
             try sender_writer.writeInt64(2, @intCast(pending.sender.realm));
             try sender_writer.writeInt64(3, @intCast(pending.sender.account));
@@ -71,7 +71,7 @@ pub const TokenClaimAirdropTransaction = struct {
             
             // receiverId = 2
             var receiver_writer = ProtoWriter.init(self.base.allocator);
-            defer receiver_writer.deinit();
+            defer receiver_writer.deinit(self.allocator);
             try receiver_writer.writeInt64(1, @intCast(pending.receiver.shard));
             try receiver_writer.writeInt64(2, @intCast(pending.receiver.realm));
             try receiver_writer.writeInt64(3, @intCast(pending.receiver.account));
@@ -82,7 +82,7 @@ pub const TokenClaimAirdropTransaction = struct {
             // token = 3 (oneof)
             if (pending.token_id) |token_id| {
                 var token_writer = ProtoWriter.init(self.base.allocator);
-                defer token_writer.deinit();
+                defer token_writer.deinit(self.allocator);
                 try token_writer.writeInt64(1, @intCast(token_id.shard));
                 try token_writer.writeInt64(2, @intCast(token_id.realm));
                 try token_writer.writeInt64(3, @intCast(token_id.num));
@@ -94,11 +94,11 @@ pub const TokenClaimAirdropTransaction = struct {
             // nft = 4 (oneof)
             if (pending.nft_id) |nft_id| {
                 var nft_writer = ProtoWriter.init(self.base.allocator);
-                defer nft_writer.deinit();
+                defer nft_writer.deinit(self.allocator);
                 
                 // tokenId = 1
                 var token_writer = ProtoWriter.init(self.base.allocator);
-                defer token_writer.deinit();
+                defer token_writer.deinit(self.allocator);
                 try token_writer.writeInt64(1, @intCast(nft_id.token_id.shard));
                 try token_writer.writeInt64(2, @intCast(nft_id.token_id.realm));
                 try token_writer.writeInt64(3, @intCast(nft_id.token_id.num));

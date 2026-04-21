@@ -23,12 +23,12 @@ pub const TransactionFeeSchedule = struct {
     
     pub fn deinit(self: *Self) void {
         if (self.fee_data) |fee_data| {
-            fee_data.deinit();
+            fee_data.deinit(self.allocator);
             self.allocator.destroy(fee_data);
         }
         
         for (self.fees) |fee| {
-            fee.deinit();
+            fee.deinit(self.allocator);
             self.allocator.destroy(fee);
         }
         
@@ -39,7 +39,7 @@ pub const TransactionFeeSchedule = struct {
     
     pub fn setFeeData(self: *Self, fee_data: *FeeData) !*Self {
         if (self.fee_data) |old_fee_data| {
-            old_fee_data.deinit();
+            old_fee_data.deinit(self.allocator);
             self.allocator.destroy(old_fee_data);
         }
         self.fee_data = fee_data;
@@ -49,7 +49,7 @@ pub const TransactionFeeSchedule = struct {
     pub fn setFees(self: *Self, fees: []const *FeeData) !*Self {
         // Clean up existing fees
         for (self.fees) |fee| {
-            fee.deinit();
+            fee.deinit(self.allocator);
             self.allocator.destroy(fee);
         }
         if (self.fees.len > 0) {
@@ -91,13 +91,13 @@ pub const TransactionFeeSchedule = struct {
         
         var request_type: RequestType = .None;
         var fee_data: ?*FeeData = null;
-        var fees = std.ArrayList(*FeeData).init(allocator);
+        var fees = std.ArrayList(*FeeData){};
         defer {
             for (fees.items) |fee| {
-                fee.deinit();
+                fee.deinit(self.allocator);
                 allocator.destroy(fee);
             }
-            fees.deinit();
+            fees.deinit(self.allocator);
         }
         
         while (try reader.nextField()) |field| {
@@ -123,7 +123,7 @@ pub const TransactionFeeSchedule = struct {
                     
                     const fee = try allocator.create(FeeData);
                     fee.* = try FeeData.fromProtobufBytes(allocator, fee_bytes);
-                    try fees.append(fee);
+                    try fees.append(self.allocator, fee);
                 },
                 else => try field.skip(),
             }
@@ -143,7 +143,7 @@ pub const TransactionFeeSchedule = struct {
     
     pub fn toProtobufBytes(self: *const Self, allocator: Allocator) ![]u8 {
         var writer = protobuf.ProtobufWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // hederaFunctionality = 1
         try writer.writeEnumField(1, RequestType, self.request_type);
@@ -223,8 +223,8 @@ pub const TransactionFeeSchedule = struct {
     }
     
     pub fn toJson(self: *const Self, allocator: Allocator) ![]u8 {
-        var buffer = std.ArrayList(u8).init(allocator);
-        defer buffer.deinit();
+        var buffer = std.ArrayList(u8){};
+        defer buffer.deinit(self.allocator);
         
         try buffer.appendSlice("{");
         try buffer.writer().print("\"requestType\":\"{s}\",", .{@tagName(self.request_type)});

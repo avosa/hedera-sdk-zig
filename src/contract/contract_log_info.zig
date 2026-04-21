@@ -15,14 +15,14 @@ pub const ContractLogInfo = struct {
         return ContractLogInfo{
             .contract_id = contract_id,
             .bloom = std.mem.zeroes([256]u8),
-            .topics = std.ArrayList([32]u8).init(allocator),
+            .topics = std.ArrayList([32]u8){},
             .data = &[_]u8{},
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *ContractLogInfo) void {
-        self.topics.deinit();
+        self.topics.deinit(self.allocator);
         if (self.data.len > 0) {
             self.allocator.free(self.data);
         }
@@ -33,7 +33,7 @@ pub const ContractLogInfo = struct {
     }
 
     pub fn addTopic(self: *ContractLogInfo, topic: [32]u8) !void {
-        try self.topics.append(topic);
+        try self.topics.append(self.allocator, topic);
     }
 
     pub fn setData(self: *ContractLogInfo, data: []const u8) !*ContractLogInfo {
@@ -89,11 +89,11 @@ pub const ContractLogInfo = struct {
 
     pub fn toProtobuf(self: *const ContractLogInfo, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         // contractID = 1
         var contract_writer = ProtoWriter.init(allocator);
-        defer contract_writer.deinit();
+        defer contract_writer.deinit(self.allocator);
         try contract_writer.writeInt64(1, @intCast(self.contract_id.shard));
         try contract_writer.writeInt64(2, @intCast(self.contract_id.realm));
         try contract_writer.writeInt64(3, @intCast(self.contract_id.num));
@@ -121,7 +121,7 @@ pub const ContractLogInfo = struct {
         var reader = ProtoReader.init(data);
         const contract_id = ContractId.init(0, 0, 0);
         var log_info = ContractLogInfo.init(allocator, contract_id);
-        errdefer log_info.deinit();
+        errdefer log_info.deinit(allocator);
 
         while (try reader.next()) |field| {
             switch (field.number) {
@@ -166,7 +166,7 @@ pub const ContractLogInfo = struct {
 
     pub fn clone(self: *const ContractLogInfo, allocator: std.mem.Allocator) !ContractLogInfo {
         var result = ContractLogInfo.init(allocator, self.contract_id);
-        errdefer result.deinit();
+        errdefer result.deinit(self.allocator);
 
         result.bloom = self.bloom;
         
@@ -221,20 +221,20 @@ pub const ContractLogInfoList = struct {
 
     pub fn init(allocator: std.mem.Allocator) ContractLogInfoList {
         return ContractLogInfoList{
-            .logs = std.ArrayList(ContractLogInfo).init(allocator),
+            .logs = std.ArrayList(ContractLogInfo){},
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *ContractLogInfoList) void {
         for (self.logs.items) |*log| {
-            log.deinit();
+            log.deinit(self.allocator);
         }
-        self.logs.deinit();
+        self.logs.deinit(self.allocator);
     }
 
     pub fn add(self: *ContractLogInfoList, log: ContractLogInfo) !void {
-        try self.logs.append(log);
+        try self.logs.append(self.allocator, log);
     }
 
     pub fn get(self: *const ContractLogInfoList, index: usize) ?*const ContractLogInfo {
@@ -252,14 +252,14 @@ pub const ContractLogInfoList = struct {
 
     pub fn clear(self: *ContractLogInfoList) void {
         for (self.logs.items) |*log| {
-            log.deinit();
+            log.deinit(self.allocator);
         }
         self.logs.clearRetainingCapacity();
     }
 
     pub fn getLogsForContract(self: *const ContractLogInfoList, contract_id: ContractId, allocator: std.mem.Allocator) ![]ContractLogInfo {
-        var result = std.ArrayList(ContractLogInfo).init(allocator);
-        defer result.deinit();
+        var result = std.ArrayList(ContractLogInfo){};
+        defer result.deinit(self.allocator);
 
         for (self.logs.items) |log| {
             if (log.contract_id.shard == contract_id.shard and
@@ -273,8 +273,8 @@ pub const ContractLogInfoList = struct {
     }
 
     pub fn filterByTopic(self: *const ContractLogInfoList, topic: [32]u8, allocator: std.mem.Allocator) ![]ContractLogInfo {
-        var result = std.ArrayList(ContractLogInfo).init(allocator);
-        defer result.deinit();
+        var result = std.ArrayList(ContractLogInfo){};
+        defer result.deinit(self.allocator);
 
         for (self.logs.items) |log| {
             for (log.topics.items) |log_topic| {
@@ -289,8 +289,8 @@ pub const ContractLogInfoList = struct {
     }
 
     pub fn filterByEventSignature(self: *const ContractLogInfoList, event_signature: [32]u8, allocator: std.mem.Allocator) ![]ContractLogInfo {
-        var result = std.ArrayList(ContractLogInfo).init(allocator);
-        defer result.deinit();
+        var result = std.ArrayList(ContractLogInfo){};
+        defer result.deinit(self.allocator);
 
         for (self.logs.items) |log| {
             if (log.getEventSignature()) |signature| {
@@ -313,16 +313,16 @@ pub const ContractStateChange = struct {
     pub fn init(allocator: std.mem.Allocator, contract_id: ContractId) ContractStateChange {
         return ContractStateChange{
             .contract_id = contract_id,
-            .storage_changes = std.ArrayList(StorageChange).init(allocator),
+            .storage_changes = std.ArrayList(StorageChange){},
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *ContractStateChange) void {
         for (self.storage_changes.items) |*change| {
-            change.deinit();
+            change.deinit(self.allocator);
         }
-        self.storage_changes.deinit();
+        self.storage_changes.deinit(self.allocator);
     }
 
     pub fn addStorageChange(self: *ContractStateChange, slot: [32]u8, value_read: [32]u8, value_written: ?[32]u8) !void {
@@ -331,7 +331,7 @@ pub const ContractStateChange = struct {
             .value_read = value_read,
             .value_written = value_written,
         };
-        try self.storage_changes.append(change);
+        try self.storage_changes.append(self.allocator, change);
     }
 
     pub fn getContractId(self: *const ContractStateChange) ContractId {

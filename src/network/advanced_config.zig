@@ -292,7 +292,7 @@ pub const HttpConfig = struct {
             self.custom_headers.allocator.free(entry.key_ptr.*);
             self.custom_headers.allocator.free(entry.value_ptr.*);
         }
-        self.custom_headers.deinit();
+        self.custom_headers.deinit(self.allocator);
     }
     
     pub fn withVersion(self: HttpConfig, version: HttpVersion) HttpConfig {
@@ -514,7 +514,7 @@ pub const LoadBalancingConfig = struct {
         while (iter.next()) |entry| {
             self.weights.allocator.free(entry.key_ptr.*);
         }
-        self.weights.deinit();
+        self.weights.deinit(self.allocator);
         
         if (self.health_check_path) |path| {
             self.weights.allocator.free(path);
@@ -604,7 +604,7 @@ pub const MonitoringConfig = struct {
                 allocator.free(entry.key_ptr.*);
                 allocator.free(entry.value_ptr.*);
             }
-            self.labels.deinit();
+            self.labels.deinit(allocator);
         }
     };
     
@@ -643,7 +643,7 @@ pub const MonitoringConfig = struct {
         for (self.custom_metrics.items) |metric| {
             metric.deinit(self.custom_metrics.allocator);
         }
-        self.custom_metrics.deinit();
+        self.custom_metrics.deinit(self.allocator);
         
         if (self.export_endpoint) |endpoint| {
             self.custom_metrics.allocator.free(endpoint);
@@ -664,7 +664,7 @@ pub const MonitoringConfig = struct {
     }
     
     pub fn addCustomMetric(self: *MonitoringConfig, metric: CustomMetric) !void {
-        try self.custom_metrics.append(metric);
+        try self.custom_metrics.append(self.allocator, metric);
     }
 };
 
@@ -709,9 +709,9 @@ pub const AdvancedNetworkConfig = struct {
     }
     
     pub fn deinit(self: *AdvancedNetworkConfig) void {
-        self.http.deinit();
-        self.load_balancing.deinit();
-        self.monitoring.deinit();
+        self.http.deinit(self.allocator);
+        self.load_balancing.deinit(self.allocator);
+        self.monitoring.deinit(self.allocator);
         
         if (self.name) |name| {
             self.http.custom_headers.allocator.free(name); // Using any allocator reference
@@ -937,7 +937,7 @@ test "AdvancedNetworkConfig optimization profiles" {
     const allocator = testing.allocator;
     
     var config = AdvancedNetworkConfig.init(allocator);
-    defer config.deinit();
+    defer config.deinit(allocator);
     
     // Test latency optimization
     const latency_config = config.optimizeForLatency();
@@ -960,13 +960,13 @@ test "NetworkProfiles factory methods" {
     const allocator = testing.allocator;
     
     var mainnet_config = try NetworkProfiles.hederaMainnet(allocator);
-    defer mainnet_config.deinit();
+    defer mainnet_config.deinit(allocator);
     
     try testing.expectEqual(AdvancedNetworkConfig.NetworkEnvironment.production, mainnet_config.environment);
     try testing.expect(mainnet_config.load_balancing.health_check_enabled);
     
     var testnet_config = try NetworkProfiles.hederaTestnet(allocator);
-    defer testnet_config.deinit();
+    defer testnet_config.deinit(allocator);
     
     try testing.expectEqual(AdvancedNetworkConfig.NetworkEnvironment.testing, testnet_config.environment);
     try testing.expectEqual(QosConfig.Priority.high, testnet_config.qos.priority);
@@ -976,7 +976,7 @@ test "Configuration validation" {
     const allocator = testing.allocator;
     
     var valid_config = AdvancedNetworkConfig.init(allocator);
-    defer valid_config.deinit();
+    defer valid_config.deinit(allocator);
     
     try valid_config.validate(); // Should not throw
     

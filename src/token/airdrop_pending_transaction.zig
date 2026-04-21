@@ -20,20 +20,20 @@ pub const AirdropPendingTransaction = struct {
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .base = Transaction.init(allocator),
-            .pending_airdrop_ids = std.ArrayList(PendingAirdropId).init(allocator),
+            .pending_airdrop_ids = std.ArrayList(PendingAirdropId){},
         };
     }
     
     pub fn deinit(self: *Self) void {
-        self.pending_airdrop_ids.deinit();
-        self.base.deinit();
+        self.pending_airdrop_ids.deinit(self.allocator);
+        self.base.deinit(self.allocator);
     }
     
     // Add a pending airdrop ID to the transaction
     pub fn addPendingAirdropId(self: *Self, pending_airdrop_id: PendingAirdropId) HederaError!*Self {
         try requireNotFrozen(self.base.frozen);
         try pending_airdrop_id.validate();
-        try self.pending_airdrop_ids.append(pending_airdrop_id);
+        try self.pending_airdrop_ids.append(self.allocator, pending_airdrop_id);
         return self;
     }
     
@@ -47,7 +47,7 @@ pub const AirdropPendingTransaction = struct {
         // Validate and add all
         for (pending_airdrop_ids) |id| {
             try id.validate();
-            try self.pending_airdrop_ids.append(id);
+            try self.pending_airdrop_ids.append(self.allocator, id);
         }
         
         return self;
@@ -68,18 +68,18 @@ pub const AirdropPendingTransaction = struct {
     // Build transaction body for a specific node
     pub fn buildTransactionBodyForNode(self: *Self, node: AccountId) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Build TransactionBody
         
         // transactionID = 1
         if (self.base.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
-            defer tx_id_writer.deinit();
+            defer tx_id_writer.deinit(self.allocator);
             
             // validStart
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
             try timestamp_writer.writeInt32(2, tx_id.valid_start.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -88,7 +88,7 @@ pub const AirdropPendingTransaction = struct {
             
             // accountID
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
             try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
             try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
@@ -103,7 +103,7 @@ pub const AirdropPendingTransaction = struct {
         
         // nodeAccountID = 2
         var node_writer = ProtoWriter.init(self.base.allocator);
-        defer node_writer.deinit();
+        defer node_writer.deinit(self.allocator);
         try node_writer.writeInt64(1, @intCast(node.shard));
         try node_writer.writeInt64(2, @intCast(node.realm));
         try node_writer.writeInt64(3, @intCast(node.account));
@@ -118,7 +118,7 @@ pub const AirdropPendingTransaction = struct {
         
         // transactionValidDuration = 4
         var duration_writer = ProtoWriter.init(self.base.allocator);
-        defer duration_writer.deinit();
+        defer duration_writer.deinit(self.allocator);
         try duration_writer.writeInt64(1, self.base.transaction_valid_duration.seconds);
         const duration_bytes = try duration_writer.toOwnedSlice();
         defer self.base.allocator.free(duration_bytes);
@@ -140,7 +140,7 @@ pub const AirdropPendingTransaction = struct {
     // Build the airdrop pending transaction body
     fn buildAirdropPendingBody(self: *Self) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // pendingAirdropIds = 1 (repeated field)
         for (self.pending_airdrop_ids.items) |pending_id| {

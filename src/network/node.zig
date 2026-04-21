@@ -16,6 +16,12 @@ pub const Node = struct {
     healthy: bool,
     
     pub fn init(account_id: AccountId, address: std.net.Address) Node {
+        
+        
+        
+        
+        
+        
         return Node{
             .account_id = account_id,
             .address = address,
@@ -31,7 +37,12 @@ pub const Node = struct {
         };
     }
     
-    pub fn fromString(allocator: std.mem.Allocator, account_str: []const u8, address_str: []const u8) !Node {
+    pub fn fromString(allocator: std.mem.Allocator, account_str: []const u8, address_str: []const u8) !Node {        
+        
+        
+        
+        
+        
         const account_id = try AccountId.fromString(allocator, account_str);
         
         // Parse address (format: "host:port" or "host:port:certHash")
@@ -45,7 +56,7 @@ pub const Node = struct {
         // Try to parse as IP, if fails, resolve hostname
         const address = std.net.Address.parseIp(host, port) catch blk: {
             const addresses = try std.net.getAddressList(allocator, host, port);
-            defer addresses.deinit();
+            defer addresses.deinit(allocator);
             if (addresses.addrs.len == 0) return error.UnknownHost;
             break :blk addresses.addrs[0];
         };
@@ -62,7 +73,12 @@ pub const Node = struct {
         return node;
     }
     
-    pub fn toString(self: Node, allocator: std.mem.Allocator) ![]u8 {
+    pub fn toString(self: Node, allocator: std.mem.Allocator) ![]u8 {        
+        
+        
+        
+        
+        
         const account_str = try self.account_id.toString(allocator);
         defer allocator.free(account_str);
         
@@ -77,6 +93,12 @@ pub const Node = struct {
     }
     
     pub fn isHealthy(self: Node) bool {
+        
+        
+        
+        
+        
+        
         if (!self.healthy) return false;
         
         const now = std.time.nanoTimestamp();
@@ -84,6 +106,12 @@ pub const Node = struct {
     }
     
     pub fn increaseBackoff(self: *Node) void {
+        
+        
+        
+        
+        
+        
         const now = std.time.nanoTimestamp();
         
         // Calculate next backoff duration
@@ -98,6 +126,12 @@ pub const Node = struct {
     }
     
     pub fn decreaseBackoff(self: *Node) void {
+        
+        
+        
+        
+        
+        
         const now = std.time.nanoTimestamp();
         
         // Reset or reduce backoff
@@ -112,16 +146,34 @@ pub const Node = struct {
     }
     
     pub fn resetBackoff(self: *Node) void {
+        
+        
+        
+        
+        
+        
         self.bad_until = 0;
         self.healthy = true;
     }
     
     pub fn markUsed(self: *Node) void {
+        
+        
+        
+        
+        
+        
         self.used_count += 1;
         self.last_used = @intCast(std.time.nanoTimestamp());
     }
     
     pub fn getReadiness(self: Node) i64 {
+        
+        
+        
+        
+        
+        
         if (!self.isHealthy()) {
             return std.math.maxInt(i64);
         }
@@ -138,7 +190,12 @@ pub const Node = struct {
         return base_score + usage_penalty - freshness_bonus;
     }
     
-    pub fn clone(self: Node, allocator: std.mem.Allocator) !Node {
+    pub fn clone(self: Node, allocator: std.mem.Allocator) !Node {        
+        
+        
+        
+        
+        
         var new_node = self;
         if (self.hostname) |hostname| {
             new_node.hostname = try allocator.dupe(u8, hostname);
@@ -152,10 +209,21 @@ pub const Node = struct {
     /// Get the hostname for TLS SNI (Server Name Indication)
     /// Returns the configured hostname or a default for testnet
     pub fn getEndpoint(self: Node) []const u8 {
+        
+        
+        
+        
+        
+        
         return self.hostname orelse "testnet.hedera.com";
     }
     
-    pub fn deinit(self: *Node, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *Node, allocator: std.mem.Allocator) void {        
+        
+        
+        
+        
+        
         if (self.hostname) |hostname| {
             allocator.free(hostname);
             self.hostname = null;
@@ -174,6 +242,12 @@ pub const NodeAddress = struct {
     account_id: AccountId,
     
     pub fn init(ip: []const u8, port: u16, account_id: AccountId) NodeAddress {
+        
+        
+        
+        
+        
+        
         return NodeAddress{
             .ip = ip,
             .port = port,
@@ -182,6 +256,12 @@ pub const NodeAddress = struct {
     }
     
     pub fn toAddress(self: NodeAddress) !std.net.Address {
+        
+        
+        
+        
+        
+        
         // Handle testnet hostnames with known IP addresses
         if (std.mem.eql(u8, self.ip, "0.testnet.hedera.com")) {
             return std.net.Address.initIp4([4]u8{ 34, 94, 106, 61 }, self.port);
@@ -208,6 +288,12 @@ pub const Network = enum {
     Custom,
     
     pub fn getName(self: Network) []const u8 {
+        
+        
+        
+        
+        
+        
         return switch (self) {
             .Mainnet => "mainnet",
             .Testnet => "testnet",
@@ -217,6 +303,12 @@ pub const Network = enum {
     }
     
     pub fn getLedgerId(self: Network) []const u8 {
+        
+        
+        
+        
+        
+        
         return switch (self) {
             .Mainnet => "mainnet",
             .Testnet => "testnet",
@@ -226,6 +318,12 @@ pub const Network = enum {
     }
     
     pub fn getMirrorNodeUrl(self: Network) []const u8 {
+        
+        
+        
+        
+        
+        
         return switch (self) {
             .Mainnet => "https://mainnet-public.mirrornode.hedera.com",
             .Testnet => "https://testnet.mirrornode.hedera.com",
@@ -235,8 +333,14 @@ pub const Network = enum {
     }
     
     // Get default nodes for each network
-    pub fn getDefaultNodes(self: Network, allocator: std.mem.Allocator) !std.ArrayList(NodeAddress) {
-        var nodes = std.ArrayList(NodeAddress).init(allocator);
+    pub fn getDefaultNodes(self: Network, allocator: std.mem.Allocator) !std.ArrayList(NodeAddress) {        
+        
+        
+        
+        
+        
+        _ = allocator;
+        var nodes = std.ArrayList(NodeAddress){};
         
         switch (self) {
             .Mainnet => {
@@ -298,14 +402,26 @@ pub const Network = enum {
 pub const AddressBook = struct {
     node_addresses: std.ArrayList(NodeAddress),
     
-    pub fn init(allocator: std.mem.Allocator) AddressBook {
+    pub fn init(allocator: std.mem.Allocator) AddressBook {        
+        
+        
+        
+        
+        
+        _ = allocator;
         return AddressBook{
-            .node_addresses = std.ArrayList(NodeAddress).init(allocator),
+            .node_addresses = std.ArrayList(NodeAddress){},
         };
     }
     
     pub fn deinit(self: *AddressBook) void {
-        self.node_addresses.deinit();
+        
+        
+        
+        
+        
+        
+        self.node_addresses.deinit(self.allocator);
     }
 };
 
@@ -314,22 +430,46 @@ pub const MirrorNetwork = struct {
     nodes: std.ArrayList([]const u8),
     network_name: []const u8,
     
-    pub fn init(allocator: std.mem.Allocator) MirrorNetwork {
+    pub fn init(allocator: std.mem.Allocator) MirrorNetwork {        
+        
+        
+        
+        
+        
+        _ = allocator;
         return MirrorNetwork{
-            .nodes = std.ArrayList([]const u8).init(allocator),
+            .nodes = std.ArrayList([]const u8){},
             .network_name = "",
         };
     }
     
     pub fn deinit(self: *MirrorNetwork) void {
-        self.nodes.deinit();
+        
+        
+        
+        
+        
+        
+        self.nodes.deinit(self.allocator);
     }
     
     pub fn addNode(self: *MirrorNetwork, node: []const u8) !void {
-        try self.nodes.append(node);
+        
+        
+        
+        
+        
+        
+        try self.nodes.append(self.allocator, node);
     }
     
     pub fn getNodes(self: MirrorNetwork) [][]const u8 {
+        
+        
+        
+        
+        
+        
         return self.nodes.items;
     }
 };

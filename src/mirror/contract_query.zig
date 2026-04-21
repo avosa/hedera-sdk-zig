@@ -102,7 +102,7 @@ pub const ContractCallResultQuery = struct {
             for (query_params.items) |param| {
                 self.allocator.free(param);
             }
-            query_params.deinit();
+            query_params.deinit(self.allocator);
         }
 
         if (self.timestamp) |timestamp| {
@@ -111,12 +111,12 @@ pub const ContractCallResultQuery = struct {
                 "timestamp={d}.{d:0>9}",
                 .{ timestamp.seconds, timestamp.nanos }
             );
-            try query_params.append(param);
+            try query_params.append(self.allocator, param);
         }
 
         if (self.transaction_id) |tx_id| {
             const param = try std.fmt.allocPrint(self.allocator, "transactionid={s}", .{tx_id});
-            try query_params.append(param);
+            try query_params.append(self.allocator, param);
         }
 
         if (self.from) |from| {
@@ -125,16 +125,16 @@ pub const ContractCallResultQuery = struct {
                 "timestamp=gte:{d}.{d:0>9}",
                 .{ from.seconds, from.nanos }
             );
-            try query_params.append(param);
+            try query_params.append(self.allocator, param);
         }
 
         if (self.limit != 25) {
             const param = try std.fmt.allocPrint(self.allocator, "limit={d}", .{self.limit});
-            try query_params.append(param);
+            try query_params.append(self.allocator, param);
         }
 
         const param = try std.fmt.allocPrint(self.allocator, "order={s}", .{self.order.toString()});
-        try query_params.append(param);
+        try query_params.append(self.allocator, param);
 
         if (query_params.items.len > 0) {
             var final_url = try std.fmt.allocPrint(self.allocator, "{s}?", .{url});
@@ -159,7 +159,7 @@ pub const ContractCallResultQuery = struct {
 
     fn parseResults(self: *ContractCallResultQuery, json: []const u8) ![]ContractResult {
         var parser = JsonParser.init(self.allocator);
-        defer parser.deinit();
+        defer parser.deinit(self.allocator);
 
         var root = try parser.parse(json);
         defer root.deinit(self.allocator);
@@ -167,12 +167,12 @@ pub const ContractCallResultQuery = struct {
         const obj = root.getObject() orelse return error.InvalidJson;
         const results = obj.get("results").?.getArray() orelse return error.InvalidField;
         var contract_results = std.ArrayList(ContractResult).init(self.allocator);
-        defer contract_results.deinit();
+        defer contract_results.deinit(self.allocator);
 
         for (results) |result| {
             const result_obj = result.getObject() orelse continue;
             const contract_result = try parseContractResult(result_obj, self.allocator);
-            try contract_results.append(contract_result);
+            try contract_results.append(self.allocator, contract_result);
         }
 
         return contract_results.toOwnedSlice();
@@ -236,7 +236,7 @@ pub const ContractStateQuery = struct {
             for (query_params.items) |param| {
                 self.allocator.free(param);
             }
-            query_params.deinit();
+            query_params.deinit(self.allocator);
         }
 
         if (self.slot) |slot| {
@@ -244,16 +244,16 @@ pub const ContractStateQuery = struct {
             defer self.allocator.free(slot_hex);
             
             const param = try std.fmt.allocPrint(self.allocator, "slot=0x{s}", .{slot_hex});
-            try query_params.append(param);
+            try query_params.append(self.allocator, param);
         }
 
         if (self.limit != 25) {
             const param = try std.fmt.allocPrint(self.allocator, "limit={d}", .{self.limit});
-            try query_params.append(param);
+            try query_params.append(self.allocator, param);
         }
 
         const param = try std.fmt.allocPrint(self.allocator, "order={s}", .{self.order.toString()});
-        try query_params.append(param);
+        try query_params.append(self.allocator, param);
 
         if (query_params.items.len > 0) {
             var final_url = try std.fmt.allocPrint(self.allocator, "{s}?", .{url});
@@ -278,7 +278,7 @@ pub const ContractStateQuery = struct {
 
     fn parseState(self: *ContractStateQuery, json: []const u8) ![]ContractStateEntry {
         var parser = JsonParser.init(self.allocator);
-        defer parser.deinit();
+        defer parser.deinit(self.allocator);
 
         var root = try parser.parse(json);
         defer root.deinit(self.allocator);
@@ -286,12 +286,12 @@ pub const ContractStateQuery = struct {
         const obj = root.getObject() orelse return error.InvalidJson;
         const state = obj.get("state").?.getArray() orelse return error.InvalidField;
         var entries = std.ArrayList(ContractStateEntry).init(self.allocator);
-        defer entries.deinit();
+        defer entries.deinit(self.allocator);
 
         for (state) |entry| {
             const entry_obj = entry.getObject() orelse continue;
             const state_entry = try parseStateEntry(entry_obj, self.allocator);
-            try entries.append(state_entry);
+            try entries.append(self.allocator, state_entry);
         }
 
         return entries.toOwnedSlice();
@@ -328,7 +328,7 @@ pub const ContractBytecodeQuery = struct {
 
     fn parseBytecode(self: *ContractBytecodeQuery, json: []const u8) !ContractBytecode {
         var parser = JsonParser.init(self.allocator);
-        defer parser.deinit();
+        defer parser.deinit(self.allocator);
 
         var root = try parser.parse(json);
         defer root.deinit(self.allocator);
@@ -384,14 +384,14 @@ pub const ContractResult = struct {
         }
         
         for (self.logs.items) |*log| {
-            log.deinit();
+            log.deinit(self.allocator);
         }
-        self.logs.deinit();
+        self.logs.deinit(self.allocator);
         
         for (self.state_changes.items) |*change| {
-            change.deinit();
+            change.deinit(self.allocator);
         }
-        self.state_changes.deinit();
+        self.state_changes.deinit(self.allocator);
     }
 };
 
@@ -467,8 +467,8 @@ fn parseContractResult(obj: std.HashMap([]const u8, JsonValue, std.hash_map.Stri
             if (err_val.getString()) |err_str| try allocator.dupe(u8, err_str) else null
         else 
             null,
-        .logs = std.ArrayList(ContractLogInfo).init(allocator),
-        .state_changes = std.ArrayList(ContractStateChange).init(allocator),
+        .logs = std.ArrayList(ContractLogInfo){},
+        .state_changes = std.ArrayList(ContractStateChange){},
     };
 
     if (obj.get("logs")) |logs_val| {
@@ -476,7 +476,7 @@ fn parseContractResult(obj: std.HashMap([]const u8, JsonValue, std.hash_map.Stri
             for (logs_array) |log_val| {
                 if (log_val.getObject()) |log_obj| {
                     const log = try parseContractLog(log_obj, allocator);
-                    try result.logs.append(log);
+                    try result.logs.append(self.allocator, log);
                 }
             }
         }

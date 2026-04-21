@@ -87,7 +87,7 @@ pub const PendingAirdropId = struct {
     // Convert to protobuf bytes
     pub fn toProtobuf(self: *const Self, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // senderId = 1
         if (self.sender_id) |sender| {
@@ -110,7 +110,7 @@ pub const PendingAirdropId = struct {
             try writer.writeMessage(3, token_bytes);
         } else if (self.nft_id) |nft| {
             var nft_writer = ProtoWriter.init(allocator);
-            defer nft_writer.deinit();
+            defer nft_writer.deinit(self.allocator);
             
             // tokenId
             const token_bytes = try nft.token_id.toProtobuf(allocator);

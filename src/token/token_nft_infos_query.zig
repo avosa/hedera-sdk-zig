@@ -22,7 +22,7 @@ pub const TokenNftInfosQuery = struct {
     }
     
     pub fn deinit(self: *TokenNftInfosQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set token ID to query NFTs for
@@ -73,15 +73,15 @@ pub const TokenNftInfosQuery = struct {
         if (self.token_id == null) return error.TokenIdRequired;
         
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // tokenGetNftInfos = 72 (oneof query)
         var query_writer = ProtoWriter.init(self.base.allocator);
-        defer query_writer.deinit();
+        defer query_writer.deinit(self.allocator);
         
         // tokenID = 1
         var token_writer = ProtoWriter.init(self.base.allocator);
-        defer token_writer.deinit();
+        defer token_writer.deinit(self.allocator);
         try token_writer.writeInt64(1, @intCast(self.token_id.?.shard));
         try token_writer.writeInt64(2, @intCast(self.token_id.?.realm));
         try token_writer.writeInt64(3, @intCast(self.token_id.?.num));
@@ -111,14 +111,14 @@ pub const TokenNftInfosQuery = struct {
     fn parseResponse(self: *TokenNftInfosQuery, data: []const u8) ![]TokenNftInfo {
         var reader = ProtoReader.init(data);
         var nfts = std.ArrayList(TokenNftInfo).init(self.base.allocator);
-        errdefer nfts.deinit();
+        errdefer nfts.deinit(self.allocator);
         
         while (try reader.next()) |field| {
             switch (field.number) {
                 1 => {
                     // nfts (repeated)
                     const nft_info = try parseNftInfo(field.data, self.base.allocator);
-                    try nfts.append(nft_info);
+                    try nfts.append(self.allocator, nft_info);
                 },
                 else => {},
             }
@@ -275,7 +275,7 @@ pub const TokenGetAccountNftInfosQuery = struct {
     }
     
     pub fn deinit(self: *TokenGetAccountNftInfosQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set account ID to query NFTs for
@@ -309,15 +309,15 @@ pub const TokenGetAccountNftInfosQuery = struct {
         if (self.account_id == null) return error.AccountIdRequired;
         
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // tokenGetAccountNftInfos = 73 (oneof query)
         var query_writer = ProtoWriter.init(self.base.allocator);
-        defer query_writer.deinit();
+        defer query_writer.deinit(self.allocator);
         
         // accountID = 1
         var account_writer = ProtoWriter.init(self.base.allocator);
-        defer account_writer.deinit();
+        defer account_writer.deinit(self.allocator);
         try account_writer.writeInt64(1, @intCast(self.account_id.?.shard));
         try account_writer.writeInt64(2, @intCast(self.account_id.?.realm));
         try account_writer.writeInt64(3, @intCast(self.account_id.?.num));
@@ -328,11 +328,11 @@ pub const TokenGetAccountNftInfosQuery = struct {
         // start = 2 (optional)
         if (self.start_token) |start| {
             var start_writer = ProtoWriter.init(self.base.allocator);
-            defer start_writer.deinit();
+            defer start_writer.deinit(self.allocator);
             
             // tokenId
             var token_writer = ProtoWriter.init(self.base.allocator);
-            defer token_writer.deinit();
+            defer token_writer.deinit(self.allocator);
             try token_writer.writeInt64(1, @intCast(start.token_id.shard));
             try token_writer.writeInt64(2, @intCast(start.token_id.realm));
             try token_writer.writeInt64(3, @intCast(start.token_id.num));
@@ -351,11 +351,11 @@ pub const TokenGetAccountNftInfosQuery = struct {
         // end = 3 (optional)
         if (self.end_token) |end| {
             var end_writer = ProtoWriter.init(self.base.allocator);
-            defer end_writer.deinit();
+            defer end_writer.deinit(self.allocator);
             
             // tokenId
             var token_writer = ProtoWriter.init(self.base.allocator);
-            defer token_writer.deinit();
+            defer token_writer.deinit(self.allocator);
             try token_writer.writeInt64(1, @intCast(end.token_id.shard));
             try token_writer.writeInt64(2, @intCast(end.token_id.realm));
             try token_writer.writeInt64(3, @intCast(end.token_id.num));
@@ -382,14 +382,14 @@ pub const TokenGetAccountNftInfosQuery = struct {
     fn parseResponse(self: *TokenGetAccountNftInfosQuery, data: []const u8) ![]TokenNftInfo {
         var reader = ProtoReader.init(data);
         var nfts = std.ArrayList(TokenNftInfo).init(self.base.allocator);
-        errdefer nfts.deinit();
+        errdefer nfts.deinit(self.allocator);
         
         while (try reader.next()) |field| {
             switch (field.number) {
                 1 => {
                     // nfts (repeated)
                     const nft_info = try TokenNftInfosQuery.parseNftInfo(field.data, self.base.allocator);
-                    try nfts.append(nft_info);
+                    try nfts.append(self.allocator, nft_info);
                 },
                 else => {},
             }

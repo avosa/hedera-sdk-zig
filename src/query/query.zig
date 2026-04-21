@@ -83,11 +83,11 @@ pub const Query = struct {
     pub fn init(allocator: std.mem.Allocator) Query {
         return Query{
             .allocator = allocator,
-            .node_account_ids = std.ArrayList(AccountId).init(allocator),
+            .node_account_ids = std.ArrayList(AccountId){},
             .payment_transaction_id = null,
             .payment_amount = null,
             .max_payment_amount = null,
-            .payment_transactions = std.ArrayList(Transaction).init(allocator),
+            .payment_transactions = std.ArrayList(Transaction){},
             .query_payments = std.AutoHashMap(AccountId, Hbar).init(allocator),
             .response_type = .AnswerOnly,
             .timestamp = null,
@@ -103,9 +103,9 @@ pub const Query = struct {
     }
     
     pub fn deinit(self: *Query) void {
-        self.node_account_ids.deinit();
-        self.payment_transactions.deinit();
-        self.query_payments.deinit();
+        self.node_account_ids.deinit(self.allocator);
+        self.payment_transactions.deinit(self.allocator);
+        self.query_payments.deinit(self.allocator);
     }
     
     // Set node account IDs
@@ -195,7 +195,7 @@ pub const Query = struct {
         
         // Generate and execute payment transaction
         const payment_tx = try self.generatePaymentTransaction(client, node_id, payment_amount);
-        try self.payment_transactions.append(payment_tx);
+        try self.payment_transactions.append(self.allocator, payment_tx);
         try self.query_payments.put(node_id, payment_amount);
     }
     
@@ -271,7 +271,7 @@ pub const Query = struct {
             defer client.allocator.free(nodes);
             
             for (nodes) |node| {
-                try self.node_account_ids.append(node.account_id);
+                try self.node_account_ids.append(self.allocator, node.account_id);
             }
         }
         
@@ -343,12 +343,12 @@ pub const Query = struct {
     // Build query (to be implemented by specific query types)
     pub fn buildQuery(self: *Query) ![]u8 {
         var writer = ProtoWriter.init(self.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Common query header fields
         if (self.payment_amount) |payment| {
             var payment_writer = ProtoWriter.init(self.allocator);
-            defer payment_writer.deinit();
+            defer payment_writer.deinit(self.allocator);
             
             try payment_writer.writeUint64(1, @intCast(payment.toTinybars()));
             const payment_bytes = try payment_writer.toOwnedSlice();

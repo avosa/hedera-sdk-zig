@@ -216,8 +216,8 @@ pub const TransactionId = struct {
     
     // Convert to bytes for hashing/signing
     pub fn toBytes(self: TransactionId, allocator: std.mem.Allocator) ![]u8 {
-        var bytes = std.ArrayList(u8).init(allocator);
-        defer bytes.deinit();
+        var bytes = std.ArrayList(u8){};
+        defer bytes.deinit(self.allocator);
         
         // Write account ID bytes
         const account_bytes = try self.account_id.toBytes(allocator);

@@ -47,7 +47,7 @@ pub const ScheduleInfo = struct {
             .executed_at = null,
             .deleted_at = null,
             .expiration_time = Timestamp{ .seconds = 0, .nanos = 0 },
-            .signatories = std.ArrayList(Key).init(allocator),
+            .signatories = std.ArrayList(Key){},
             .admin_key = null,
             .allocator = allocator,
             .owns_transaction_body = false,
@@ -66,7 +66,7 @@ pub const ScheduleInfo = struct {
         if (self.owns_memo) {
             self.allocator.free(self.memo);
         }
-        self.signatories.deinit();
+        self.signatories.deinit(self.allocator);
     }
 };
 
@@ -83,7 +83,7 @@ pub const ScheduleInfoQuery = struct {
     }
     
     pub fn deinit(self: *ScheduleInfoQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the schedule ID to query
@@ -133,12 +133,12 @@ pub const ScheduleInfoQuery = struct {
     // Build the query
     pub fn buildQuery(self: *ScheduleInfoQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Query message structure
         // header = 1
         var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
+        defer header_writer.deinit(self.allocator);
         
         // payment = 1
         if (self.base.payment_transaction) |payment| {
@@ -154,12 +154,12 @@ pub const ScheduleInfoQuery = struct {
         
         // scheduleGetInfo = 17 (oneof query)
         var info_query_writer = ProtoWriter.init(self.base.allocator);
-        defer info_query_writer.deinit();
+        defer info_query_writer.deinit(self.allocator);
         
         // scheduleID = 1
         if (self.schedule_id) |schedule| {
             var schedule_writer = ProtoWriter.init(self.base.allocator);
-            defer schedule_writer.deinit();
+            defer schedule_writer.deinit(self.allocator);
             try schedule_writer.writeInt64(1, @intCast(schedule.shard));
             try schedule_writer.writeInt64(2, @intCast(schedule.realm));
             try schedule_writer.writeInt64(3, @intCast(schedule.num));
@@ -344,7 +344,7 @@ pub const ScheduleInfoQuery = struct {
                                 // signatories (repeated)
                                 const sig_bytes = try schedule_reader.readMessage();
                                 const signatory = try Key.fromProtobuf(self.base.allocator, sig_bytes);
-                                try info.signatories.append(signatory);
+                                try info.signatories.append(self.allocator, signatory);
                             },
                             12 => {
                                 // adminKey

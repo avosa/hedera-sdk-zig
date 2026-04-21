@@ -96,17 +96,15 @@ pub const CustomFee = union(enum) {
         };
     }
 
-    pub fn toString(self: *const CustomFee, allocator: std.mem.Allocator) ![]u8 {
-        return switch (self.*) {
+    pub fn toString(self: *const CustomFee, allocator: std.mem.Allocator) ![]u8 {        return switch (self.*) {
             .fixed => |fee| fee.toString(allocator),
             .fractional => |fee| fee.toString(allocator),
             .royalty => |fee| fee.toString(allocator),
         };
     }
 
-    pub fn toProtobuf(self: *const CustomFee, allocator: std.mem.Allocator) ![]u8 {
-        var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+    pub fn toProtobuf(self: *const CustomFee, allocator: std.mem.Allocator) ![]u8 {        var writer = ProtoWriter.init(allocator);
+        defer writer.deinit(allocator);
 
         switch (self.*) {
             .fixed => |fee| {
@@ -129,8 +127,7 @@ pub const CustomFee = union(enum) {
         return writer.toOwnedSlice();
     }
 
-    pub fn fromProtobuf(data: []const u8, allocator: std.mem.Allocator) !CustomFee {
-        var reader = ProtoReader.init(data);
+    pub fn fromProtobuf(data: []const u8, allocator: std.mem.Allocator) !CustomFee {        var reader = ProtoReader.init(data);
 
         while (reader.hasMore()) {
             const tag = try reader.readTag();
@@ -227,19 +224,18 @@ pub const CustomFeeList = struct {
     fees: std.ArrayList(CustomFee),
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator) CustomFeeList {
-        return CustomFeeList{
-            .fees = std.ArrayList(CustomFee).init(allocator),
+    pub fn init(allocator: std.mem.Allocator) CustomFeeList {        return CustomFeeList{
+            .fees = std.ArrayList(CustomFee){},
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *CustomFeeList) void {
-        self.fees.deinit();
+        self.fees.deinit(self.allocator);
     }
 
     pub fn add(self: *CustomFeeList, fee: CustomFee) !void {
-        try self.fees.append(fee);
+        try self.fees.append(self.allocator, fee);
     }
 
     pub fn addFixed(self: *CustomFeeList, fee: CustomFixedFee) !void {
@@ -291,56 +287,51 @@ pub const CustomFeeList = struct {
         }
     }
 
-    pub fn getFixedFees(self: *const CustomFeeList, allocator: std.mem.Allocator) ![]CustomFixedFee {
-        var result = std.ArrayList(CustomFixedFee).init(allocator);
-        defer result.deinit();
+    pub fn getFixedFees(self: *const CustomFeeList, allocator: std.mem.Allocator) ![]CustomFixedFee {        var result = std.ArrayList(CustomFixedFee){};
+        defer result.deinit(allocator);
 
         for (self.fees.items) |fee| {
             if (fee.isFixed()) {
-                try result.append(fee.fixed);
+                try result.append(allocator, fee.fixed);
             }
         }
 
         return result.toOwnedSlice();
     }
 
-    pub fn getFractionalFees(self: *const CustomFeeList, allocator: std.mem.Allocator) ![]CustomFractionalFee {
-        var result = std.ArrayList(CustomFractionalFee).init(allocator);
-        defer result.deinit();
+    pub fn getFractionalFees(self: *const CustomFeeList, allocator: std.mem.Allocator) ![]CustomFractionalFee {        var result = std.ArrayList(CustomFractionalFee){};
+        defer result.deinit(allocator);
 
         for (self.fees.items) |fee| {
             if (fee.isFractional()) {
-                try result.append(fee.fractional);
+                try result.append(allocator, fee.fractional);
             }
         }
 
         return result.toOwnedSlice();
     }
 
-    pub fn getRoyaltyFees(self: *const CustomFeeList, allocator: std.mem.Allocator) ![]CustomRoyaltyFee {
-        var result = std.ArrayList(CustomRoyaltyFee).init(allocator);
-        defer result.deinit();
+    pub fn getRoyaltyFees(self: *const CustomFeeList, allocator: std.mem.Allocator) ![]CustomRoyaltyFee {        var result = std.ArrayList(CustomRoyaltyFee){};
+        defer result.deinit(allocator);
 
         for (self.fees.items) |fee| {
             if (fee.isRoyalty()) {
-                try result.append(fee.royalty);
+                try result.append(allocator, fee.royalty);
             }
         }
 
         return result.toOwnedSlice();
     }
 
-    pub fn clone(self: *const CustomFeeList, allocator: std.mem.Allocator) !CustomFeeList {
-        var result = CustomFeeList.init(allocator);
+    pub fn clone(self: *const CustomFeeList, allocator: std.mem.Allocator) !CustomFeeList {        var result = CustomFeeList.init(allocator);
         for (self.fees.items) |fee| {
             try result.add(fee.clone());
         }
         return result;
     }
 
-    pub fn toProtobuf(self: *const CustomFeeList, allocator: std.mem.Allocator) ![]u8 {
-        var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+    pub fn toProtobuf(self: *const CustomFeeList, allocator: std.mem.Allocator) ![]u8 {        var writer = ProtoWriter.init(allocator);
+        defer writer.deinit(allocator);
 
         for (self.fees.items) |fee| {
             const fee_bytes = try fee.toProtobuf(allocator);
@@ -351,10 +342,9 @@ pub const CustomFeeList = struct {
         return writer.toOwnedSlice();
     }
 
-    pub fn fromProtobuf(data: []const u8, allocator: std.mem.Allocator) !CustomFeeList {
-        var reader = ProtoReader.init(data);
+    pub fn fromProtobuf(data: []const u8, allocator: std.mem.Allocator) !CustomFeeList {        var reader = ProtoReader.init(data);
         var list = CustomFeeList.init(allocator);
-        errdefer list.deinit();
+        errdefer list.deinit(allocator);
 
         while (try reader.next()) |field| {
             if (field.number == 1) {

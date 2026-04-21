@@ -37,7 +37,7 @@ pub const EthereumEip1559Transaction = struct {
             .gas_limit = 21000,
             .value = &[_]u8{},
             .data = &[_]u8{},
-            .access_list = std.ArrayList(AccessListEntry).init(allocator),
+            .access_list = std.ArrayList(AccessListEntry){},
             .recovery_id = 0,
             .signature_v = &[_]u8{},
             .signature_r = &[_]u8{},
@@ -46,7 +46,7 @@ pub const EthereumEip1559Transaction = struct {
     }
     
     pub fn deinit(self: *EthereumEip1559Transaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
         if (self.chain_id.len > 0) self.base.allocator.free(self.chain_id);
         if (self.max_priority_fee_per_gas.len > 0) self.base.allocator.free(self.max_priority_fee_per_gas);
         if (self.max_fee_per_gas.len > 0) self.base.allocator.free(self.max_fee_per_gas);
@@ -58,9 +58,9 @@ pub const EthereumEip1559Transaction = struct {
             for (entry.storage_keys.items) |key| {
                 self.base.allocator.free(key);
             }
-            entry.storage_keys.deinit();
+            entry.storage_keys.deinit(self.allocator);
         }
-        self.access_list.deinit();
+        self.access_list.deinit(self.allocator);
         if (self.signature_v.len > 0) self.base.allocator.free(self.signature_v);
         if (self.signature_r.len > 0) self.base.allocator.free(self.signature_r);
         if (self.signature_s.len > 0) self.base.allocator.free(self.signature_s);
@@ -167,63 +167,63 @@ pub const EthereumEip1559Transaction = struct {
     
     // Build RLP-encoded transaction
     pub fn toRlp(self: *EthereumEip1559Transaction, allocator: std.mem.Allocator) ![]u8 {
-        var rlp = std.ArrayList(u8).init(allocator);
-        defer rlp.deinit();
+        var rlp = std.ArrayList(u8){};
+        defer rlp.deinit(allocator);
         
         // EIP-1559 transaction type (0x02)
-        try rlp.append(0x02);
+        try rlp.append(allocator, 0x02);
         
         // RLP encode the transaction fields
         // This is a complete RLP encoding implementation
-        try rlpEncodeBytes(&rlp, self.chain_id);
-        try rlpEncodeUint(&rlp, self.nonce);
-        try rlpEncodeBytes(&rlp, self.max_priority_fee_per_gas);
-        try rlpEncodeBytes(&rlp, self.max_fee_per_gas);
-        try rlpEncodeUint(&rlp, self.gas_limit);
+        try rlpEncodeBytes(&rlp, allocator, self.chain_id);
+        try rlpEncodeUint(&rlp, allocator, self.nonce);
+        try rlpEncodeBytes(&rlp, allocator, self.max_priority_fee_per_gas);
+        try rlpEncodeBytes(&rlp, allocator, self.max_fee_per_gas);
+        try rlpEncodeUint(&rlp, allocator, self.gas_limit);
         if (self.to) |to| {
-            try rlpEncodeBytes(&rlp, to);
+            try rlpEncodeBytes(&rlp, allocator, to);
         } else {
-            try rlp.append(0x80); // Empty RLP
+            try rlp.append(allocator, 0x80); // Empty RLP
         }
-        try rlpEncodeBytes(&rlp, self.value);
-        try rlpEncodeBytes(&rlp, self.data);
-        
+        try rlpEncodeBytes(&rlp, allocator, self.value);
+        try rlpEncodeBytes(&rlp, allocator, self.data);
+
         // Encode access list
-        try rlpEncodeList(&rlp, self.access_list.items.len);
+        try rlpEncodeList(&rlp, allocator, self.access_list.items.len);
         for (self.access_list.items) |entry| {
-            try rlpEncodeBytes(&rlp, entry.address);
-            try rlpEncodeList(&rlp, entry.storage_keys.items.len);
+            try rlpEncodeBytes(&rlp, allocator, entry.address);
+            try rlpEncodeList(&rlp, allocator, entry.storage_keys.items.len);
             for (entry.storage_keys.items) |key| {
-                try rlpEncodeBytes(&rlp, key);
+                try rlpEncodeBytes(&rlp, allocator, key);
             }
         }
         
         // Encode signature
-        try rlpEncodeBytes(&rlp, self.signature_v);
-        try rlpEncodeBytes(&rlp, self.signature_r);
-        try rlpEncodeBytes(&rlp, self.signature_s);
+        try rlpEncodeBytes(&rlp, allocator, self.signature_v);
+        try rlpEncodeBytes(&rlp, allocator, self.signature_r);
+        try rlpEncodeBytes(&rlp, allocator, self.signature_s);
         
         return rlp.toOwnedSlice();
     }
     
     // RLP encoding helpers
-    fn rlpEncodeBytes(list: *std.ArrayList(u8), bytes: []const u8) !void {
+    fn rlpEncodeBytes(list: *std.ArrayList(u8), allocator: std.mem.Allocator, bytes: []const u8) !void {
         if (bytes.len == 1 and bytes[0] < 0x80) {
-            try list.append(bytes[0]);
+            try list.append(allocator, bytes[0]);
         } else if (bytes.len <= 55) {
-            try list.append(@intCast(0x80 + bytes.len));
-            try list.appendSlice(bytes);
+            try list.append(allocator, @intCast(0x80 + bytes.len));
+            try list.appendSlice(allocator, bytes);
         } else {
             const len_bytes = bytesForInt(bytes.len);
-            try list.append(@intCast(0xb7 + len_bytes));
-            try writeInt(list, bytes.len, len_bytes);
-            try list.appendSlice(bytes);
+            try list.append(allocator, @intCast(0xb7 + len_bytes));
+            try writeInt(list, allocator, bytes.len, len_bytes);
+            try list.appendSlice(allocator, bytes);
         }
     }
     
-    fn rlpEncodeUint(list: *std.ArrayList(u8), value: u64) !void {
+    fn rlpEncodeUint(list: *std.ArrayList(u8), allocator: std.mem.Allocator, value: u64) !void {
         if (value == 0) {
-            try list.append(0x80);
+            try list.append(allocator, 0x80);
         } else {
             const bytes_needed = bytesForInt(value);
             var bytes: [8]u8 = undefined;
@@ -233,14 +233,14 @@ pub const EthereumEip1559Transaction = struct {
                 bytes[i - 1] = @intCast(v & 0xFF);
                 v >>= 8;
             }
-            try rlpEncodeBytes(list, bytes[0..bytes_needed]);
+            try rlpEncodeBytes(list, allocator, bytes[0..bytes_needed]);
         }
     }
     
-    fn rlpEncodeList(list: *std.ArrayList(u8), count: usize) !void {
+    fn rlpEncodeList(list: *std.ArrayList(u8), allocator: std.mem.Allocator, count: usize) !void {
         _ = count;
         // List encoding marker
-        try list.append(0xc0);
+        try list.append(allocator, 0xc0);
     }
     
     fn bytesForInt(value: u64) u8 {
@@ -253,25 +253,25 @@ pub const EthereumEip1559Transaction = struct {
         return bytes;
     }
     
-    fn writeInt(list: *std.ArrayList(u8), value: u64, bytes: u8) !void {
+    fn writeInt(list: *std.ArrayList(u8), allocator: std.mem.Allocator, value: u64, bytes: u8) !void {
         var i: u8 = bytes;
         const v = value;
         while (i > 0) : (i -= 1) {
-            try list.append(@intCast((v >> @intCast((i - 1) * 8)) & 0xFF));
+            try list.append(allocator, @intCast((v >> @intCast((i - 1) * 8)) & 0xFF));
         }
     }
     
     // Build transaction body
     pub fn buildTransactionBody(self: *EthereumEip1559Transaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Write common transaction fields
         try self.base.writeCommonFields(&writer);
         
         // ethereumTransaction = 50 (oneof data)
         var eth_writer = ProtoWriter.init(self.base.allocator);
-        defer eth_writer.deinit();
+        defer eth_writer.deinit(self.allocator);
         
         // ethereumData = 1
         const rlp_data = try self.toRlp(self.base.allocator);

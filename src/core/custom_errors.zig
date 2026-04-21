@@ -33,8 +33,7 @@ pub const NetworkError = struct {
             };
         }
         
-        pub fn deinit(self: ConnectionDetails, allocator: Allocator) void {
-            if (self.tls_version) |version| {
+        pub fn deinit(self: ConnectionDetails, allocator: Allocator) void {            if (self.tls_version) |version| {
                 allocator.free(version);
             }
             if (self.cipher_suite) |cipher| {
@@ -52,8 +51,7 @@ pub const NetworkError = struct {
         base_error: HederaError,
         node_endpoint: ?[]const u8,
         attempt_count: u32,
-    ) !NetworkError {
-        return NetworkError{
+    ) !NetworkError {        return NetworkError{
             .base_error = base_error,
             .node_endpoint = if (node_endpoint) |endpoint| try allocator.dupe(u8, endpoint) else null,
             .attempt_count = attempt_count,
@@ -62,8 +60,7 @@ pub const NetworkError = struct {
         };
     }
     
-    pub fn deinit(self: NetworkError, allocator: Allocator) void {
-        if (self.node_endpoint) |endpoint| {
+    pub fn deinit(self: NetworkError, allocator: Allocator) void {        if (self.node_endpoint) |endpoint| {
             allocator.free(endpoint);
         }
         if (self.connection_details) |details| {
@@ -75,8 +72,8 @@ pub const NetworkError = struct {
         self.connection_details = details;
     }
     
-    pub fn formatError(self: NetworkError, allocator: Allocator) ![]u8 {
-        var message = std.ArrayList(u8).init(allocator);
+    pub fn formatError(self: NetworkError, allocator: Allocator) ![]u8 {        _ = allocator;
+        var message = std.ArrayList(u8){};
         const writer = message.writer();
         
         try writer.print("Network Error: {s}", .{@tagName(self.base_error)});
@@ -149,8 +146,7 @@ pub const TransactionError = struct {
             expected_value: ?[]const u8,
             actual_value: ?[]const u8,
             constraint_violated: []const u8,
-        ) !ValidationFailure {
-            return ValidationFailure{
+        ) !ValidationFailure {            return ValidationFailure{
                 .field_name = try allocator.dupe(u8, field_name),
                 .expected_value = if (expected_value) |val| try allocator.dupe(u8, val) else null,
                 .actual_value = if (actual_value) |val| try allocator.dupe(u8, val) else null,
@@ -158,8 +154,7 @@ pub const TransactionError = struct {
             };
         }
         
-        pub fn deinit(self: ValidationFailure, allocator: Allocator) void {
-            allocator.free(self.field_name);
+        pub fn deinit(self: ValidationFailure, allocator: Allocator) void {            allocator.free(self.field_name);
             if (self.expected_value) |val| allocator.free(val);
             if (self.actual_value) |val| allocator.free(val);
             allocator.free(self.constraint_violated);
@@ -185,8 +180,7 @@ pub const TransactionError = struct {
             };
         }
         
-        pub fn deinit(self: ExecutionContext, allocator: Allocator) void {
-            if (self.transaction_hash) |hash| {
+        pub fn deinit(self: ExecutionContext, allocator: Allocator) void {            if (self.transaction_hash) |hash| {
                 allocator.free(hash);
             }
         }
@@ -204,8 +198,7 @@ pub const TransactionError = struct {
             self.consensus_timestamp = timestamp;
         }
         
-        pub fn withTransactionHash(self: *ExecutionContext, allocator: Allocator, hash: []const u8) !void {
-            self.transaction_hash = try allocator.dupe(u8, hash);
+        pub fn withTransactionHash(self: *ExecutionContext, allocator: Allocator, hash: []const u8) !void {            self.transaction_hash = try allocator.dupe(u8, hash);
         }
         
         pub fn withReceiptStatus(self: *ExecutionContext, status: HederaError) void {
@@ -218,8 +211,7 @@ pub const TransactionError = struct {
         base_error: HederaError,
         transaction_id: ?[]const u8,
         transaction_type: ?[]const u8,
-    ) !TransactionError {
-        return TransactionError{
+    ) !TransactionError {        return TransactionError{
             .base_error = base_error,
             .transaction_id = if (transaction_id) |id| try allocator.dupe(u8, id) else null,
             .transaction_type = if (transaction_type) |tx_type| try allocator.dupe(u8, tx_type) else null,
@@ -229,8 +221,7 @@ pub const TransactionError = struct {
         };
     }
     
-    pub fn deinit(self: TransactionError, allocator: Allocator) void {
-        if (self.transaction_id) |id| allocator.free(id);
+    pub fn deinit(self: TransactionError, allocator: Allocator) void {        if (self.transaction_id) |id| allocator.free(id);
         if (self.transaction_type) |tx_type| allocator.free(tx_type);
         if (self.node_account_id) |node_id| allocator.free(node_id);
         
@@ -244,8 +235,7 @@ pub const TransactionError = struct {
         }
     }
     
-    pub fn addValidationFailure(self: *TransactionError, allocator: Allocator, failure: ValidationFailure) !void {
-        const new_failures = try allocator.alloc(ValidationFailure, self.validation_failures.len + 1);
+    pub fn addValidationFailure(self: *TransactionError, allocator: Allocator, failure: ValidationFailure) !void {        const new_failures = try allocator.alloc(ValidationFailure, self.validation_failures.len + 1);
         std.mem.copy(ValidationFailure, new_failures, self.validation_failures);
         new_failures[self.validation_failures.len] = failure;
         
@@ -257,8 +247,8 @@ pub const TransactionError = struct {
         self.execution_context = context;
     }
     
-    pub fn formatError(self: TransactionError, allocator: Allocator) ![]u8 {
-        var message = std.ArrayList(u8).init(allocator);
+    pub fn formatError(self: TransactionError, allocator: Allocator) ![]u8 {        _ = allocator;
+        var message = std.ArrayList(u8){};
         const writer = message.writer();
         
         try writer.print("Transaction Error: {s}", .{@tagName(self.base_error)});
@@ -342,16 +332,14 @@ pub const QueryError = struct {
         payment_account_id: []const u8,
         query_payment_transaction_id: ?[]const u8,
         
-        pub fn init(allocator: Allocator, amount: u64, account_id: []const u8, tx_id: ?[]const u8) !PaymentDetails {
-            return PaymentDetails{
+        pub fn init(allocator: Allocator, amount: u64, account_id: []const u8, tx_id: ?[]const u8) !PaymentDetails {            return PaymentDetails{
                 .payment_amount = amount,
                 .payment_account_id = try allocator.dupe(u8, account_id),
                 .query_payment_transaction_id = if (tx_id) |id| try allocator.dupe(u8, id) else null,
             };
         }
         
-        pub fn deinit(self: PaymentDetails, allocator: Allocator) void {
-            allocator.free(self.payment_account_id);
+        pub fn deinit(self: PaymentDetails, allocator: Allocator) void {            allocator.free(self.payment_account_id);
             if (self.query_payment_transaction_id) |tx_id| {
                 allocator.free(tx_id);
             }
@@ -395,8 +383,7 @@ pub const QueryError = struct {
         base_error: HederaError,
         query_type: ?[]const u8,
         target_id: ?[]const u8,
-    ) !QueryError {
-        return QueryError{
+    ) !QueryError {        return QueryError{
             .base_error = base_error,
             .query_type = if (query_type) |qtype| try allocator.dupe(u8, qtype) else null,
             .target_id = if (target_id) |id| try allocator.dupe(u8, id) else null,
@@ -406,8 +393,7 @@ pub const QueryError = struct {
         };
     }
     
-    pub fn deinit(self: QueryError, allocator: Allocator) void {
-        if (self.query_type) |qtype| allocator.free(qtype);
+    pub fn deinit(self: QueryError, allocator: Allocator) void {        if (self.query_type) |qtype| allocator.free(qtype);
         if (self.target_id) |id| allocator.free(id);
         if (self.node_account_id) |node_id| allocator.free(node_id);
         
@@ -424,8 +410,8 @@ pub const QueryError = struct {
         self.response_details = details;
     }
     
-    pub fn formatError(self: QueryError, allocator: Allocator) ![]u8 {
-        var message = std.ArrayList(u8).init(allocator);
+    pub fn formatError(self: QueryError, allocator: Allocator) ![]u8 {        _ = allocator;
+        var message = std.ArrayList(u8){};
         const writer = message.writer();
         
         try writer.print("Query Error: {s}", .{@tagName(self.base_error)});
@@ -523,8 +509,7 @@ pub const CryptographyError = struct {
         operation_type: CryptoOperation,
         key_type: ?KeyType,
         algorithm_details: ?[]const u8,
-    ) !CryptographyError {
-        return CryptographyError{
+    ) !CryptographyError {        return CryptographyError{
             .base_error = base_error,
             .operation_type = operation_type,
             .key_type = key_type,
@@ -533,8 +518,7 @@ pub const CryptographyError = struct {
         };
     }
     
-    pub fn deinit(self: CryptographyError, allocator: Allocator) void {
-        if (self.algorithm_details) |details| {
+    pub fn deinit(self: CryptographyError, allocator: Allocator) void {        if (self.algorithm_details) |details| {
             allocator.free(details);
         }
     }
@@ -543,8 +527,8 @@ pub const CryptographyError = struct {
         self.input_size = size;
     }
     
-    pub fn formatError(self: CryptographyError, allocator: Allocator) ![]u8 {
-        var message = std.ArrayList(u8).init(allocator);
+    pub fn formatError(self: CryptographyError, allocator: Allocator) ![]u8 {        _ = allocator;
+        var message = std.ArrayList(u8){};
         const writer = message.writer();
         
         try writer.print("Cryptography Error: {s} during {s}", .{
@@ -601,8 +585,7 @@ pub const ConfigurationError = struct {
         base_error: HederaError,
         config_section: ?[]const u8,
         config_key: ?[]const u8,
-    ) !ConfigurationError {
-        return ConfigurationError{
+    ) !ConfigurationError {        return ConfigurationError{
             .base_error = base_error,
             .config_section = if (config_section) |section| try allocator.dupe(u8, section) else null,
             .config_key = if (config_key) |key| try allocator.dupe(u8, key) else null,
@@ -612,25 +595,22 @@ pub const ConfigurationError = struct {
         };
     }
     
-    pub fn deinit(self: ConfigurationError, allocator: Allocator) void {
-        if (self.config_section) |section| allocator.free(section);
+    pub fn deinit(self: ConfigurationError, allocator: Allocator) void {        if (self.config_section) |section| allocator.free(section);
         if (self.config_key) |key| allocator.free(key);
         if (self.expected_type) |etype| allocator.free(etype);
         if (self.actual_value) |value| allocator.free(value);
         if (self.suggested_fix) |fix| allocator.free(fix);
     }
     
-    pub fn withTypeError(self: *ConfigurationError, allocator: Allocator, expected: []const u8, actual: []const u8) !void {
-        self.expected_type = try allocator.dupe(u8, expected);
+    pub fn withTypeError(self: *ConfigurationError, allocator: Allocator, expected: []const u8, actual: []const u8) !void {        self.expected_type = try allocator.dupe(u8, expected);
         self.actual_value = try allocator.dupe(u8, actual);
     }
     
-    pub fn withSuggestedFix(self: *ConfigurationError, allocator: Allocator, fix: []const u8) !void {
-        self.suggested_fix = try allocator.dupe(u8, fix);
+    pub fn withSuggestedFix(self: *ConfigurationError, allocator: Allocator, fix: []const u8) !void {        self.suggested_fix = try allocator.dupe(u8, fix);
     }
     
-    pub fn formatError(self: ConfigurationError, allocator: Allocator) ![]u8 {
-        var message = std.ArrayList(u8).init(allocator);
+    pub fn formatError(self: ConfigurationError, allocator: Allocator) ![]u8 {        _ = allocator;
+        var message = std.ArrayList(u8){};
         const writer = message.writer();
         
         try writer.print("Configuration Error: {s}", .{@tagName(self.base_error)});
@@ -668,8 +648,7 @@ pub const ErrorContext = union(enum) {
     configuration: ConfigurationError,
     generic: HederaError,
     
-    pub fn deinit(self: ErrorContext, allocator: Allocator) void {
-        switch (self) {
+    pub fn deinit(self: ErrorContext, allocator: Allocator) void {        switch (self) {
             .network => |err| err.deinit(allocator),
             .transaction => |err| err.deinit(allocator),
             .query => |err| err.deinit(allocator),
@@ -690,8 +669,7 @@ pub const ErrorContext = union(enum) {
         };
     }
     
-    pub fn formatError(self: ErrorContext, allocator: Allocator) ![]u8 {
-        return switch (self) {
+    pub fn formatError(self: ErrorContext, allocator: Allocator) ![]u8 {        return switch (self) {
             .network => |err| err.formatError(allocator),
             .transaction => |err| err.formatError(allocator),
             .query => |err| err.formatError(allocator),
@@ -720,8 +698,7 @@ pub const ErrorContext = union(enum) {
 pub const ErrorBuilder = struct {
     allocator: Allocator,
     
-    pub fn init(allocator: Allocator) ErrorBuilder {
-        return ErrorBuilder{
+    pub fn init(allocator: Allocator) ErrorBuilder {        return ErrorBuilder{
             .allocator = allocator,
         };
     }
@@ -751,8 +728,7 @@ pub const ErrorBuilder = struct {
         return ErrorContext{ .configuration = err };
     }
     
-    pub fn genericError(self: ErrorBuilder, base_error: HederaError) ErrorContext {
-        _ = self;
+    pub fn genericError(self: ErrorBuilder, base_error: HederaError) ErrorContext {        _ = self;
         return ErrorContext{ .generic = base_error };
     }
 };

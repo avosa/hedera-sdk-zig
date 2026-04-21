@@ -12,19 +12,20 @@ pub const LoadBalancer = struct {
     nodes: std.ArrayList(AccountId),
     
     pub fn init(allocator: std.mem.Allocator, strategy: LoadBalancingStrategy) LoadBalancer {
+        _ = allocator;
         return LoadBalancer{
             .strategy = strategy,
             .current_index = 0,
-            .nodes = std.ArrayList(AccountId).init(allocator),
+            .nodes = std.ArrayList(AccountId){},
         };
     }
     
     pub fn deinit(self: *LoadBalancer) void {
-        self.nodes.deinit();
+        self.nodes.deinit(self.allocator);
     }
     
     pub fn addNode(self: *LoadBalancer, node_id: AccountId) !void {
-        try self.nodes.append(node_id);
+        try self.nodes.append(self.allocator, node_id);
     }
     
     pub fn getNextNode(self: *LoadBalancer) ?AccountId {

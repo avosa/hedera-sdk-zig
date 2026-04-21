@@ -134,7 +134,7 @@ pub const TopicMessageQuery = struct {
         
         // Create SSE connection for streaming
         var sse_client = try mirror_client.createSSEConnection(endpoint);
-        defer sse_client.deinit();
+        defer sse_client.deinit(self.allocator);
         
         // Set up event handler
         sse_client.onMessage = struct {
@@ -170,7 +170,7 @@ pub const TopicMessageQuery = struct {
     
     fn buildStreamingEndpoint(self: *const TopicMessageQuery, mirror_client: *MirrorNodeClient) ![]u8 {
         var url = std.ArrayList(u8).init(self.allocator);
-        defer url.deinit();
+        defer url.deinit(self.allocator);
         
         try url.writer().print("{s}/api/v1/topics/{}/messages/stream?", .{
             mirror_client.getBaseUrl(),
@@ -204,12 +204,12 @@ pub const TopicMessageQuery = struct {
         const messages = obj.get("messages").?.getArray() orelse return error.InvalidField;
         
         var result = std.ArrayList(TopicMessage).init(self.allocator);
-        errdefer result.deinit();
+        errdefer result.deinit(self.allocator);
         
         for (messages) |message| {
             const message_obj = message.getObject() orelse continue;
             const topic_message = try parseTopicMessage(message_obj, self.allocator);
-            try result.append(topic_message);
+            try result.append(self.allocator, topic_message);
         }
         
         return result.toOwnedSlice();

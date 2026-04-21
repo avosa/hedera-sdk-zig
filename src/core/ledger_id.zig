@@ -112,7 +112,7 @@ pub const LedgerId = struct {
 
     pub fn toProtobuf(self: *const LedgerId, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         try writer.writeBytes(1, &self.bytes);
         return writer.toOwnedSlice();

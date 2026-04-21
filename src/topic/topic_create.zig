@@ -42,8 +42,8 @@ pub const TopicCreateTransaction = struct {
             .admin_key = null,
             .submit_key = null,
             .fee_schedule_key = null,
-            .fee_exempt_keys = std.ArrayList(Key).init(allocator),
-            .custom_fees = std.ArrayList(*CustomFixedFee).init(allocator),
+            .fee_exempt_keys = std.ArrayList(Key){},
+            .custom_fees = std.ArrayList(*CustomFixedFee){},
             .memo = "",
             .auto_renew_period = Duration{ .seconds = 7776000, .nanos = 0 }, // 90 days
             .auto_renew_account_id = null,
@@ -66,10 +66,10 @@ pub const TopicCreateTransaction = struct {
         const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
         
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         var create_writer = ProtoWriter.init(self.base.allocator);
-        defer create_writer.deinit();
+        defer create_writer.deinit(self.allocator);
         
         if (self.admin_key) |key| {
             const key_bytes = try key.toProtobuf(self.base.allocator);
@@ -84,7 +84,7 @@ pub const TopicCreateTransaction = struct {
         }
         
         var period_writer = ProtoWriter.init(self.base.allocator);
-        defer period_writer.deinit();
+        defer period_writer.deinit(self.allocator);
         try period_writer.writeInt64(1, self.auto_renew_period.seconds);
         const period_bytes = try period_writer.toOwnedSlice();
         defer self.base.allocator.free(period_bytes);
@@ -92,7 +92,7 @@ pub const TopicCreateTransaction = struct {
         
         if (self.auto_renew_account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(account.shard));
             try account_writer.writeInt64(2, @intCast(account.realm));
             try account_writer.writeInt64(3, @intCast(account.account));
@@ -113,12 +113,12 @@ pub const TopicCreateTransaction = struct {
     }
     
     pub fn deinit(self: *TopicCreateTransaction) void {
-        self.base.deinit();
-        self.fee_exempt_keys.deinit();
+        self.base.deinit(self.allocator);
+        self.fee_exempt_keys.deinit(self.allocator);
         for (self.custom_fees.items) |fee| {
             self.base.allocator.destroy(fee);
         }
-        self.custom_fees.deinit();
+        self.custom_fees.deinit(self.allocator);
         self.base.allocator.destroy(self);
     }
     

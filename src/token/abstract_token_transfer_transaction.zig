@@ -21,23 +21,28 @@ pub const TokenTransferList = struct {
     transfers: std.ArrayList(TokenTransfer),
     nft_transfers: std.ArrayList(NftTransfer),
     
-    pub fn init(allocator: std.mem.Allocator, token_id: TokenId) TokenTransferList {
+    pub fn init(allocator: std.mem.Allocator, token_id: TokenId) TokenTransferList {        
+        
+        _ = allocator;
         return .{
             .token_id = token_id,
             .expected_decimals = null,
-            .transfers = std.ArrayList(TokenTransfer).init(allocator),
-            .nft_transfers = std.ArrayList(NftTransfer).init(allocator),
+            .transfers = std.ArrayList(TokenTransfer){},
+            .nft_transfers = std.ArrayList(NftTransfer){},
         };
     }
     
     pub fn deinit(self: *TokenTransferList) void {
-        self.transfers.deinit();
-        self.nft_transfers.deinit();
+        
+        
+        self.transfers.deinit(self.allocator);
+        self.nft_transfers.deinit(self.allocator);
     }
     
-    pub fn toProtobuf(self: *const TokenTransferList, allocator: std.mem.Allocator) ![]u8 {
+    pub fn toProtobuf(self: *const TokenTransferList, allocator: std.mem.Allocator) ![]u8 {        
+        
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // token = 1
         const token_bytes = try self.token_id.toProtobuf(allocator);
@@ -47,7 +52,7 @@ pub const TokenTransferList = struct {
         // expectedDecimals = 2
         if (self.expected_decimals) |decimals| {
             var decimals_writer = ProtoWriter.init(allocator);
-            defer decimals_writer.deinit();
+            defer decimals_writer.deinit(self.allocator);
             try decimals_writer.writeUint32(1, decimals);
             const decimals_bytes = try decimals_writer.toOwnedSlice();
             defer allocator.free(decimals_bytes);
@@ -80,22 +85,27 @@ pub const AbstractTokenTransferTransaction = struct {
     
     const Self = @This();
     
-    pub fn init(allocator: std.mem.Allocator) Self {
+    pub fn init(allocator: std.mem.Allocator) Self {        
+        
         return Self{
             .base = Transaction.init(allocator),
-            .token_transfers = std.ArrayList(TokenTransfer).init(allocator),
-            .nft_transfers = std.ArrayList(NftTransfer).init(allocator),
+            .token_transfers = std.ArrayList(TokenTransfer){},
+            .nft_transfers = std.ArrayList(NftTransfer){},
         };
     }
     
     pub fn deinit(self: *Self) void {
-        self.token_transfers.deinit();
-        self.nft_transfers.deinit();
-        self.base.deinit();
+        
+        
+        self.token_transfers.deinit(self.allocator);
+        self.nft_transfers.deinit(self.allocator);
+        self.base.deinit(self.allocator);
     }
     
     // Add a token transfer
     pub fn addTokenTransfer(self: *Self, token_id: TokenId, account_id: AccountId, amount: i64) HederaError!*Self {
+        
+        
         try requireNotFrozen(self.base.frozen);
         
         // Check if transfer already exists and merge amounts
@@ -107,7 +117,7 @@ pub const AbstractTokenTransferTransaction = struct {
         }
         
         // Add new transfer
-        try self.token_transfers.append(.{
+        try self.token_transfers.append(self.allocator, .{
             .token_id = token_id,
             .account_id = account_id,
             .amount = amount,
@@ -120,6 +130,8 @@ pub const AbstractTokenTransferTransaction = struct {
     
     // Add an approved token transfer
     pub fn addApprovedTokenTransfer(self: *Self, token_id: TokenId, account_id: AccountId, amount: i64) HederaError!*Self {
+        
+        
         try requireNotFrozen(self.base.frozen);
         
         // Check if transfer already exists and merge amounts
@@ -132,7 +144,7 @@ pub const AbstractTokenTransferTransaction = struct {
         }
         
         // Add new approved transfer
-        try self.token_transfers.append(.{
+        try self.token_transfers.append(self.allocator, .{
             .token_id = token_id,
             .account_id = account_id,
             .amount = amount,
@@ -145,6 +157,8 @@ pub const AbstractTokenTransferTransaction = struct {
     
     // Add a token transfer with expected decimals
     pub fn addTokenTransferWithDecimals(self: *Self, token_id: TokenId, account_id: AccountId, amount: i64, decimals: u32) HederaError!*Self {
+        
+        
         try requireNotFrozen(self.base.frozen);
         
         // Check if transfer already exists
@@ -167,7 +181,7 @@ pub const AbstractTokenTransferTransaction = struct {
         }
         
         // Add new transfer with decimals
-        try self.token_transfers.append(.{
+        try self.token_transfers.append(self.allocator, .{
             .token_id = token_id,
             .account_id = account_id,
             .amount = amount,
@@ -180,6 +194,8 @@ pub const AbstractTokenTransferTransaction = struct {
     
     // Add an NFT transfer
     pub fn addNftTransfer(self: *Self, nft_id: NftId, sender: AccountId, receiver: AccountId) HederaError!*Self {
+        
+        
         try requireNotFrozen(self.base.frozen);
         
         // Check if NFT transfer already exists and update
@@ -199,6 +215,8 @@ pub const AbstractTokenTransferTransaction = struct {
     
     // Add an approved NFT transfer
     pub fn addApprovedNftTransfer(self: *Self, nft_id: NftId, sender: AccountId, receiver: AccountId) HederaError!*Self {
+        
+        
         try requireNotFrozen(self.base.frozen);
         
         // Check if NFT transfer already exists and update
@@ -219,16 +237,22 @@ pub const AbstractTokenTransferTransaction = struct {
     
     // Get token transfers
     pub fn getTokenTransfers(self: *const Self) []const TokenTransfer {
+        
+        
         return self.token_transfers.items;
     }
     
     // Get NFT transfers
     pub fn getNftTransfers(self: *const Self) []const NftTransfer {
+        
+        
         return self.nft_transfers.items;
     }
     
     // Clear all token transfers
     pub fn clearTokenTransfers(self: *Self) HederaError!*Self {
+        
+        
         try requireNotFrozen(self.base.frozen);
         self.token_transfers.clearRetainingCapacity();
         return self;
@@ -236,19 +260,22 @@ pub const AbstractTokenTransferTransaction = struct {
     
     // Clear all NFT transfers
     pub fn clearNftTransfers(self: *Self) HederaError!*Self {
+        
+        
         try requireNotFrozen(self.base.frozen);
         self.nft_transfers.clearRetainingCapacity();
         return self;
     }
     
     // Build token transfer lists for protobuf
-    pub fn buildTokenTransferLists(self: *Self, allocator: std.mem.Allocator) !std.ArrayList(TokenTransferList) {
-        var lists = std.ArrayList(TokenTransferList).init(allocator);
+    pub fn buildTokenTransferLists(self: *Self, allocator: std.mem.Allocator) !std.ArrayList(TokenTransferList) {        
+        
+        var lists = std.ArrayList(TokenTransferList){};
         errdefer {
             for (lists.items) |*list| {
-                list.deinit();
+                list.deinit(self.allocator);
             }
-            lists.deinit();
+            lists.deinit(self.allocator);
         }
         
         // Sort token transfers by token ID and account ID
@@ -271,13 +298,13 @@ pub const AbstractTokenTransferTransaction = struct {
                     var last = &lists.items[lists.items.len - 1];
                     
                     if (last.token_id.equals(token_transfer.token_id)) {
-                        try last.transfers.append(token_transfer);
+                        try last.transfers.append(self.allocator, token_transfer);
                         i += 1;
                         continue;
                     }
                     
                     if (last.token_id.equals(nft_transfer.nft_id.token_id)) {
-                        try last.nft_transfers.append(nft_transfer);
+                        try last.nft_transfers.append(self.allocator, nft_transfer);
                         j += 1;
                         continue;
                     }
@@ -288,21 +315,21 @@ pub const AbstractTokenTransferTransaction = struct {
                 if (cmp == 0) {
                     var list = TokenTransferList.init(allocator, token_transfer.token_id);
                     list.expected_decimals = token_transfer.expected_decimals;
-                    try list.transfers.append(token_transfer);
-                    try list.nft_transfers.append(nft_transfer);
-                    try lists.append(list);
+                    try list.transfers.append(self.allocator, token_transfer);
+                    try list.nft_transfers.append(self.allocator, nft_transfer);
+                    try lists.append(self.allocator, list);
                     i += 1;
                     j += 1;
                 } else if (cmp < 0) {
                     var list = TokenTransferList.init(allocator, token_transfer.token_id);
                     list.expected_decimals = token_transfer.expected_decimals;
-                    try list.transfers.append(token_transfer);
-                    try lists.append(list);
+                    try list.transfers.append(self.allocator, token_transfer);
+                    try lists.append(self.allocator, list);
                     i += 1;
                 } else {
                     var list = TokenTransferList.init(allocator, nft_transfer.nft_id.token_id);
-                    try list.nft_transfers.append(nft_transfer);
-                    try lists.append(list);
+                    try list.nft_transfers.append(self.allocator, nft_transfer);
+                    try lists.append(self.allocator, list);
                     j += 1;
                 }
             } else if (i < self.token_transfers.items.len) {
@@ -312,7 +339,7 @@ pub const AbstractTokenTransferTransaction = struct {
                 var found = false;
                 for (lists.items) |*list| {
                     if (list.token_id.equals(token_transfer.token_id)) {
-                        try list.transfers.append(token_transfer);
+                        try list.transfers.append(self.allocator, token_transfer);
                         found = true;
                         break;
                     }
@@ -321,8 +348,8 @@ pub const AbstractTokenTransferTransaction = struct {
                 if (!found) {
                     var list = TokenTransferList.init(allocator, token_transfer.token_id);
                     list.expected_decimals = token_transfer.expected_decimals;
-                    try list.transfers.append(token_transfer);
-                    try lists.append(list);
+                    try list.transfers.append(self.allocator, token_transfer);
+                    try lists.append(self.allocator, list);
                 }
                 
                 i += 1;
@@ -333,7 +360,7 @@ pub const AbstractTokenTransferTransaction = struct {
                 var found = false;
                 for (lists.items) |*list| {
                     if (list.token_id.equals(nft_transfer.nft_id.token_id)) {
-                        try list.nft_transfers.append(nft_transfer);
+                        try list.nft_transfers.append(self.allocator, nft_transfer);
                         found = true;
                         break;
                     }
@@ -341,8 +368,8 @@ pub const AbstractTokenTransferTransaction = struct {
                 
                 if (!found) {
                     var list = TokenTransferList.init(allocator, nft_transfer.nft_id.token_id);
-                    try list.nft_transfers.append(nft_transfer);
-                    try lists.append(list);
+                    try list.nft_transfers.append(self.allocator, nft_transfer);
+                    try lists.append(self.allocator, list);
                 }
                 
                 j += 1;

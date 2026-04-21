@@ -16,9 +16,9 @@ pub const ContractCallResult = struct {
     
     pub fn init(allocator: std.mem.Allocator) ContractCallResult {
         return ContractCallResult{
-            .logs = std.ArrayList(ContractLogInfo).init(allocator),
-            .created_contract_ids = std.ArrayList(ContractId).init(allocator),
-            .state_changes = std.ArrayList(StateChange).init(allocator),
+            .logs = std.ArrayList(ContractLogInfo){},
+            .created_contract_ids = std.ArrayList(ContractId){},
+            .state_changes = std.ArrayList(StateChange){},
             .allocator = allocator,
         };
     }
@@ -35,16 +35,16 @@ pub const ContractCallResult = struct {
         }
         
         for (self.logs.items) |*log| {
-            log.deinit();
+            log.deinit(self.allocator);
         }
-        self.logs.deinit();
+        self.logs.deinit(self.allocator);
         
-        self.created_contract_ids.deinit();
+        self.created_contract_ids.deinit(self.allocator);
         
         for (self.state_changes.items) |*change| {
-            change.deinit();
+            change.deinit(self.allocator);
         }
-        self.state_changes.deinit();
+        self.state_changes.deinit(self.allocator);
     }
     
     pub const StateChange = struct {
@@ -74,7 +74,7 @@ pub const ContractLogInfo = struct {
     
     pub fn init(allocator: std.mem.Allocator) ContractLogInfo {
         return ContractLogInfo{
-            .topics = std.ArrayList([]u8).init(allocator),
+            .topics = std.ArrayList([]u8){},
             .allocator = allocator,
         };
     }
@@ -87,7 +87,7 @@ pub const ContractLogInfo = struct {
         for (self.topics.items) |topic| {
             self.allocator.free(topic);
         }
-        self.topics.deinit();
+        self.topics.deinit(self.allocator);
         
         if (self.data) |d| {
             self.allocator.free(d);

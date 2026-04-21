@@ -24,6 +24,8 @@ pub const ValidationResult = struct {
     warnings: []const []const u8,
     
     pub fn init(_: Allocator) ValidationResult {
+        
+        
         return ValidationResult{
             .valid = true,
             .errors = &[_][]const u8{},
@@ -32,6 +34,8 @@ pub const ValidationResult = struct {
     }
     
     pub fn addError(self: *ValidationResult, allocator: Allocator, error_msg: []const u8) !void {
+        
+        
         const new_errors = try allocator.alloc([]const u8, self.errors.len + 1);
         std.mem.copy([]const u8, new_errors, self.errors);
         new_errors[self.errors.len] = try allocator.dupe(u8, error_msg);
@@ -40,6 +44,8 @@ pub const ValidationResult = struct {
     }
     
     pub fn addWarning(self: *ValidationResult, allocator: Allocator, warning_msg: []const u8) !void {
+        
+        
         const new_warnings = try allocator.alloc([]const u8, self.warnings.len + 1);
         std.mem.copy([]const u8, new_warnings, self.warnings);
         new_warnings[self.warnings.len] = try allocator.dupe(u8, warning_msg);
@@ -47,6 +53,8 @@ pub const ValidationResult = struct {
     }
     
     pub fn deinit(self: ValidationResult, allocator: Allocator) void {
+        
+        
         for (self.errors) |err| {
             allocator.free(err);
         }
@@ -61,6 +69,8 @@ pub const ValidationResult = struct {
 // Account ID validation
 pub const AccountIdValidator = struct {
     pub fn validateAccountId(account_id: ?AccountId) HederaError!void {
+        
+        
         if (account_id == null) return HederaError.NullValue;
         
         const id = account_id.?;
@@ -81,6 +91,8 @@ pub const AccountIdValidator = struct {
     }
     
     pub fn validateAccountIdString(account_str: []const u8) HederaError!void {
+        
+        
         if (account_str.len == 0) return HederaError.InvalidLength;
         
         // Check format: shard.realm.account or account
@@ -110,6 +122,8 @@ pub const AccountIdValidator = struct {
     }
     
     pub fn validateDetailedAccountId(allocator: Allocator, account_id: ?AccountId) !ValidationResult {
+        
+        
         var result = ValidationResult.init(allocator);
         
         if (account_id == null) {
@@ -146,6 +160,8 @@ pub const AccountIdValidator = struct {
 // Transaction ID validation
 pub const TransactionIdValidator = struct {
     pub fn validateTransactionId(tx_id: ?TransactionId) HederaError!void {
+        
+        
         if (tx_id == null) return HederaError.NullValue;
         
         const id = tx_id.?;
@@ -167,6 +183,8 @@ pub const TransactionIdValidator = struct {
     }
     
     pub fn validateTransactionIdString(tx_str: []const u8) HederaError!void {
+        
+        
         if (tx_str.len == 0) return HederaError.InvalidLength;
         
         // Format: account_id@seconds.nanoseconds
@@ -204,6 +222,8 @@ pub const HbarValidator = struct {
     pub const MIN_HBAR: i64 = -50_000_000_000;
     
     pub fn validateHbarAmount(amount: ?Hbar) HederaError!void {
+        
+        
         if (amount == null) return HederaError.NullValue;
         
         const hbar = amount.?;
@@ -219,6 +239,8 @@ pub const HbarValidator = struct {
     }
     
     pub fn validateHbarString(hbar_str: []const u8) HederaError!void {
+        
+        
         if (hbar_str.len == 0) return HederaError.InvalidLength;
         
         var has_decimal = false;
@@ -251,6 +273,8 @@ pub const HbarValidator = struct {
 // Private key validation
 pub const PrivateKeyValidator = struct {
     pub fn validatePrivateKeyBytes(key_bytes: []const u8) HederaError!void {
+        
+        
         if (key_bytes.len == 0) return HederaError.InvalidLength;
         
         // ED25519 private keys are 32 bytes
@@ -270,6 +294,8 @@ pub const PrivateKeyValidator = struct {
     }
     
     pub fn validatePrivateKeyString(key_str: []const u8) HederaError!void {
+        
+        
         if (key_str.len == 0) return HederaError.InvalidLength;
         
         // DER encoding typically starts with specific bytes
@@ -282,6 +308,8 @@ pub const PrivateKeyValidator = struct {
     }
     
     pub fn validateKeyPair(private_key: PrivateKey, public_key: PublicKey) HederaError!void {
+        
+        
         // Verify that public key matches private key
         const derived_public = private_key.getPublicKey();
         if (!derived_public.equals(public_key)) {
@@ -301,6 +329,8 @@ pub const PrivateKeyValidator = struct {
 // Network validation
 pub const NetworkValidator = struct {
     pub fn validateNetworkEndpoint(endpoint: []const u8) HederaError!void {
+        
+        
         if (endpoint.len == 0) return HederaError.InvalidLength;
         
         // Basic format validation for host:port
@@ -324,6 +354,8 @@ pub const NetworkValidator = struct {
     }
     
     pub fn validateTlsCertificate(cert_data: []const u8) HederaError!void {
+        
+        
         if (cert_data.len == 0) return HederaError.InvalidLength;
         
         // Basic PEM format validation
@@ -343,6 +375,8 @@ pub const NetworkValidator = struct {
 // Batch validation utilities
 pub const BatchValidator = struct {
     pub fn validateAccountIds(allocator: Allocator, account_ids: []const AccountId) !ValidationResult {
+        
+        
         var result = ValidationResult.init(allocator);
         
         for (account_ids, 0..) |account_id, index| {
@@ -357,6 +391,8 @@ pub const BatchValidator = struct {
     }
     
     pub fn validateTransactionIds(allocator: Allocator, tx_ids: []const TransactionId) !ValidationResult {
+        
+        
         var result = ValidationResult.init(allocator);
         
         for (tx_ids, 0..) |tx_id, index| {
@@ -371,6 +407,8 @@ pub const BatchValidator = struct {
     }
     
     pub fn validateHbarAmounts(allocator: Allocator, amounts: []const Hbar) !ValidationResult {
+        
+        
         var result = ValidationResult.init(allocator);
         
         for (amounts, 0..) |amount, index| {
@@ -387,7 +425,9 @@ pub const BatchValidator = struct {
 
 // Comprehensive validation function
 pub fn validateAll(allocator: Allocator, comptime T: type, value: T) !ValidationResult {
-    var result = ValidationResult.init(allocator);
+    
+        
+        var result = ValidationResult.init(allocator);
     
     switch (@typeInfo(T)) {
         .Optional => |optional_info| {
@@ -408,7 +448,7 @@ pub fn validateAll(allocator: Allocator, comptime T: type, value: T) !Validation
                 try result.addWarning(allocator, warn);
             }
         },
-        .Struct => |_| {
+        .Struct => {
             if (T == AccountId) {
                 AccountIdValidator.validateAccountId(value) catch |err| {
                     const error_msg = try std.fmt.allocPrint(allocator, "Account ID validation failed: {}", .{err});

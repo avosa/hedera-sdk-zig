@@ -39,7 +39,7 @@ pub const FileContentsQuery = struct {
     }
     
     pub fn deinit(self: *FileContentsQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the file ID to query contents for
@@ -94,15 +94,15 @@ pub const FileContentsQuery = struct {
     // Build the query
     pub fn buildQuery(self: *FileContentsQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // fileGetContents = 7 (oneof query)
         var contents_query_writer = ProtoWriter.init(self.base.allocator);
-        defer contents_query_writer.deinit();
+        defer contents_query_writer.deinit(self.allocator);
         
         // header = 1 (inside the specific query)
         var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
+        defer header_writer.deinit(self.allocator);
         
         // payment = 1 (optional for free queries)
         // responseType = 2 (must be present even if 0)
@@ -116,7 +116,7 @@ pub const FileContentsQuery = struct {
         // fileID = 2
         if (self.file_id) |file| {
             var file_writer = ProtoWriter.init(self.base.allocator);
-            defer file_writer.deinit();
+            defer file_writer.deinit(self.allocator);
             try file_writer.writeInt64(1, @intCast(file.entity.shard));
             try file_writer.writeInt64(2, @intCast(file.entity.realm));
             try file_writer.writeInt64(3, @intCast(file.entity.num));

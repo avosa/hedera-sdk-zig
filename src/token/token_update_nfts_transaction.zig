@@ -18,13 +18,13 @@ pub const TokenUpdateNftsTransaction = struct {
     pub fn init(allocator: std.mem.Allocator) TokenUpdateNftsTransaction {
         return TokenUpdateNftsTransaction{
             .base = Transaction.init(allocator),
-            .serials = std.ArrayList(i64).init(allocator),
+            .serials = std.ArrayList(i64){},
         };
     }
     
     pub fn deinit(self: *TokenUpdateNftsTransaction) void {
-        self.base.deinit();
-        self.serials.deinit();
+        self.base.deinit(self.allocator);
+        self.serials.deinit(self.allocator);
         if (self.metadata) |metadata| {
             self.base.allocator.free(metadata);
         }
@@ -39,7 +39,7 @@ pub const TokenUpdateNftsTransaction = struct {
     
     // Add a serial number to update
     pub fn addSerial(self: *TokenUpdateNftsTransaction, serial: i64) !void {
-        try self.serials.append(serial);
+        try self.serials.append(self.allocator, serial);
     }
     
     // Set all serials to update
@@ -69,19 +69,19 @@ pub const TokenUpdateNftsTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *TokenUpdateNftsTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Write common transaction fields
         try self.writeCommonFields(&writer);
         
         // tokenUpdateNfts = 60 (oneof data)
         var update_writer = ProtoWriter.init(self.base.allocator);
-        defer update_writer.deinit();
+        defer update_writer.deinit(self.allocator);
         
         // token = 1
         if (self.token_id) |token_id| {
             var token_writer = ProtoWriter.init(self.base.allocator);
-            defer token_writer.deinit();
+            defer token_writer.deinit(self.allocator);
             try token_writer.writeInt64(1, @intCast(token_id.shard));
             try token_writer.writeInt64(2, @intCast(token_id.realm));
             try token_writer.writeInt64(3, @intCast(token_id.num));
@@ -99,7 +99,7 @@ pub const TokenUpdateNftsTransaction = struct {
         if (self.metadata) |metadata| {
             // Wrap metadata in google.protobuf.BytesValue
             var metadata_writer = ProtoWriter.init(self.base.allocator);
-            defer metadata_writer.deinit();
+            defer metadata_writer.deinit(self.allocator);
             try metadata_writer.writeBytes(1, metadata);
             const metadata_bytes = try metadata_writer.toOwnedSlice();
             defer self.base.allocator.free(metadata_bytes);

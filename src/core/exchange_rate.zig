@@ -115,7 +115,7 @@ pub const ExchangeRate = struct {
 
     pub fn toProtobuf(self: *const ExchangeRate, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         // hbar_equivalent = 1
         try writer.writeInt32(1, self.hbar_equivalent);
@@ -126,7 +126,7 @@ pub const ExchangeRate = struct {
         // expiration_time = 3 (optional)
         if (self.expiration_time) |expiration| {
             var time_writer = ProtoWriter.init(allocator);
-            defer time_writer.deinit();
+            defer time_writer.deinit(self.allocator);
             try time_writer.writeInt64(1, expiration.seconds);
             try time_writer.writeInt32(2, expiration.nanos);
             const time_bytes = try time_writer.toOwnedSlice();
@@ -295,7 +295,7 @@ pub const ExchangeRates = struct {
 
     pub fn toProtobuf(self: *const ExchangeRates, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         // current_rate = 1
         const current_bytes = try self.current_rate.toProtobuf(allocator);

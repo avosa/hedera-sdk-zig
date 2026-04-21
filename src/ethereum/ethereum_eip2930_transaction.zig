@@ -34,7 +34,7 @@ pub const EthereumEip2930Transaction = struct {
             .gas_limit = 21000,
             .value = &[_]u8{},
             .data = &[_]u8{},
-            .access_list = std.ArrayList(AccessListEntry).init(allocator),
+            .access_list = std.ArrayList(AccessListEntry){},
             .recovery_id = 0,
             .signature_r = &[_]u8{},
             .signature_s = &[_]u8{},
@@ -42,7 +42,7 @@ pub const EthereumEip2930Transaction = struct {
     }
     
     pub fn deinit(self: *EthereumEip2930Transaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
         if (self.chain_id.len > 0) self.base.allocator.free(self.chain_id);
         if (self.gas_price.len > 0) self.base.allocator.free(self.gas_price);
         if (self.to) |to| self.base.allocator.free(to);
@@ -53,9 +53,9 @@ pub const EthereumEip2930Transaction = struct {
             for (entry.storage_keys.items) |key| {
                 self.base.allocator.free(key);
             }
-            entry.storage_keys.deinit();
+            entry.storage_keys.deinit(self.allocator);
         }
-        self.access_list.deinit();
+        self.access_list.deinit(self.allocator);
         if (self.signature_r.len > 0) self.base.allocator.free(self.signature_r);
         if (self.signature_s.len > 0) self.base.allocator.free(self.signature_s);
     }
@@ -140,7 +140,7 @@ pub const EthereumEip2930Transaction = struct {
             for (entry.storage_keys.items) |key| {
                 self.base.allocator.free(key);
             }
-            entry.storage_keys.deinit();
+            entry.storage_keys.deinit(self.allocator);
         }
         self.access_list.clearRetainingCapacity();
     }
@@ -165,121 +165,121 @@ pub const EthereumEip2930Transaction = struct {
     
     // Build RLP-encoded transaction
     pub fn toRlp(self: *EthereumEip2930Transaction, allocator: std.mem.Allocator) ![]u8 {
-        var rlp = std.ArrayList(u8).init(allocator);
-        defer rlp.deinit();
+        var rlp = std.ArrayList(u8){};
+        defer rlp.deinit(allocator);
         
         // EIP-2930 transaction type (0x01)
-        try rlp.append(0x01);
+        try rlp.append(allocator, 0x01);
         
         // Start RLP list encoding
-        var list_data = std.ArrayList(u8).init(allocator);
-        defer list_data.deinit();
+        var list_data = std.ArrayList(u8){};
+        defer list_data.deinit(allocator);
         
         // Encode transaction fields
-        try rlpEncodeBytes(&list_data, self.chain_id);
-        try rlpEncodeUint(&list_data, self.nonce);
-        try rlpEncodeBytes(&list_data, self.gas_price);
-        try rlpEncodeUint(&list_data, self.gas_limit);
+        try rlpEncodeBytes(&list_data, allocator, self.chain_id);
+        try rlpEncodeUint(&list_data, allocator, self.nonce);
+        try rlpEncodeBytes(&list_data, allocator, self.gas_price);
+        try rlpEncodeUint(&list_data, allocator, self.gas_limit);
         
         if (self.to) |to| {
-            try rlpEncodeBytes(&list_data, to);
+            try rlpEncodeBytes(&list_data, allocator, to);
         } else {
-            try list_data.append(0x80); // Empty RLP
+            try list_data.append(allocator, 0x80); // Empty RLP
         }
         
-        try rlpEncodeBytes(&list_data, self.value);
-        try rlpEncodeBytes(&list_data, self.data);
+        try rlpEncodeBytes(&list_data, allocator, self.value);
+        try rlpEncodeBytes(&list_data, allocator, self.data);
         
         // Encode access list
-        var access_list_data = std.ArrayList(u8).init(allocator);
-        defer access_list_data.deinit();
+        var access_list_data = std.ArrayList(u8){};
+        defer access_list_data.deinit(allocator);
         
         for (self.access_list.items) |entry| {
-            var entry_data = std.ArrayList(u8).init(allocator);
-            defer entry_data.deinit();
+            var entry_data = std.ArrayList(u8){};
+            defer entry_data.deinit(allocator);
             
             // Encode address
-            try rlpEncodeBytes(&entry_data, entry.address);
+            try rlpEncodeBytes(&entry_data, allocator, entry.address);
             
             // Encode storage keys
-            var keys_data = std.ArrayList(u8).init(allocator);
-            defer keys_data.deinit();
+            var keys_data = std.ArrayList(u8){};
+            defer keys_data.deinit(allocator);
             
             for (entry.storage_keys.items) |key| {
-                try rlpEncodeBytes(&keys_data, key);
+                try rlpEncodeBytes(&keys_data, allocator, key);
             }
             
             // Encode storage keys as RLP list
             if (keys_data.items.len <= 55) {
-                try entry_data.append(@intCast(0xc0 + keys_data.items.len));
-                try entry_data.appendSlice(keys_data.items);
+                try entry_data.append(allocator, @intCast(0xc0 + keys_data.items.len));
+                try entry_data.appendSlice(allocator, keys_data.items);
             } else {
                 const len_bytes = bytesForInt(keys_data.items.len);
-                try entry_data.append(@intCast(0xf7 + len_bytes));
-                try writeInt(&entry_data, keys_data.items.len, len_bytes);
-                try entry_data.appendSlice(keys_data.items);
+                try entry_data.append(allocator, @intCast(0xf7 + len_bytes));
+                try writeInt(&entry_data, allocator, keys_data.items.len, len_bytes);
+                try entry_data.appendSlice(allocator, keys_data.items);
             }
             
             // Encode entry as RLP list
             if (entry_data.items.len <= 55) {
-                try access_list_data.append(@intCast(0xc0 + entry_data.items.len));
-                try access_list_data.appendSlice(entry_data.items);
+                try access_list_data.append(allocator, @intCast(0xc0 + entry_data.items.len));
+                try access_list_data.appendSlice(allocator, entry_data.items);
             } else {
                 const len_bytes = bytesForInt(entry_data.items.len);
-                try access_list_data.append(@intCast(0xf7 + len_bytes));
-                try writeInt(&access_list_data, entry_data.items.len, len_bytes);
-                try access_list_data.appendSlice(entry_data.items);
+                try access_list_data.append(allocator, @intCast(0xf7 + len_bytes));
+                try writeInt(&access_list_data, allocator, entry_data.items.len, len_bytes);
+                try access_list_data.appendSlice(allocator, entry_data.items);
             }
         }
         
         // Encode access list as RLP list
         if (access_list_data.items.len <= 55) {
-            try list_data.append(@intCast(0xc0 + access_list_data.items.len));
-            try list_data.appendSlice(access_list_data.items);
+            try list_data.append(allocator, @intCast(0xc0 + access_list_data.items.len));
+            try list_data.appendSlice(allocator, access_list_data.items);
         } else {
             const len_bytes = bytesForInt(access_list_data.items.len);
-            try list_data.append(@intCast(0xf7 + len_bytes));
-            try writeInt(&list_data, access_list_data.items.len, len_bytes);
-            try list_data.appendSlice(access_list_data.items);
+            try list_data.append(allocator, @intCast(0xf7 + len_bytes));
+            try writeInt(&list_data, allocator, access_list_data.items.len, len_bytes);
+            try list_data.appendSlice(allocator, access_list_data.items);
         }
         
         // Encode signature fields
-        try rlpEncodeUint(&list_data, self.recovery_id);
-        try rlpEncodeBytes(&list_data, self.signature_r);
-        try rlpEncodeBytes(&list_data, self.signature_s);
+        try rlpEncodeUint(&list_data, allocator, self.recovery_id);
+        try rlpEncodeBytes(&list_data, allocator, self.signature_r);
+        try rlpEncodeBytes(&list_data, allocator, self.signature_s);
         
         // Encode the complete list
         if (list_data.items.len <= 55) {
-            try rlp.append(@intCast(0xc0 + list_data.items.len));
-            try rlp.appendSlice(list_data.items);
+            try rlp.append(allocator, @intCast(0xc0 + list_data.items.len));
+            try rlp.appendSlice(allocator, list_data.items);
         } else {
             const len_bytes = bytesForInt(list_data.items.len);
-            try rlp.append(@intCast(0xf7 + len_bytes));
-            try writeInt(&rlp, list_data.items.len, len_bytes);
-            try rlp.appendSlice(list_data.items);
+            try rlp.append(allocator, @intCast(0xf7 + len_bytes));
+            try writeInt(&rlp, allocator, list_data.items.len, len_bytes);
+            try rlp.appendSlice(allocator, list_data.items);
         }
         
         return rlp.toOwnedSlice();
     }
     
     // RLP encoding helpers
-    fn rlpEncodeBytes(list: *std.ArrayList(u8), bytes: []const u8) !void {
+    fn rlpEncodeBytes(list: *std.ArrayList(u8), allocator: std.mem.Allocator, bytes: []const u8) !void {
         if (bytes.len == 1 and bytes[0] < 0x80) {
-            try list.append(bytes[0]);
+            try list.append(allocator, bytes[0]);
         } else if (bytes.len <= 55) {
-            try list.append(@intCast(0x80 + bytes.len));
-            try list.appendSlice(bytes);
+            try list.append(allocator, @intCast(0x80 + bytes.len));
+            try list.appendSlice(allocator, bytes);
         } else {
             const len_bytes = bytesForInt(bytes.len);
-            try list.append(@intCast(0xb7 + len_bytes));
-            try writeInt(list, bytes.len, len_bytes);
-            try list.appendSlice(bytes);
+            try list.append(allocator, @intCast(0xb7 + len_bytes));
+            try writeInt(list, allocator, bytes.len, len_bytes);
+            try list.appendSlice(allocator, bytes);
         }
     }
     
-    fn rlpEncodeUint(list: *std.ArrayList(u8), value: u64) !void {
+    fn rlpEncodeUint(list: *std.ArrayList(u8), allocator: std.mem.Allocator, value: u64) !void {
         if (value == 0) {
-            try list.append(0x80);
+            try list.append(allocator, 0x80);
         } else {
             const bytes_needed = bytesForInt(value);
             var bytes: [8]u8 = undefined;
@@ -289,7 +289,7 @@ pub const EthereumEip2930Transaction = struct {
                 bytes[i - 1] = @intCast(v & 0xFF);
                 v >>= 8;
             }
-            try rlpEncodeBytes(list, bytes[0..bytes_needed]);
+            try rlpEncodeBytes(list, allocator, bytes[0..bytes_needed]);
         }
     }
     
@@ -303,25 +303,25 @@ pub const EthereumEip2930Transaction = struct {
         return bytes;
     }
     
-    fn writeInt(list: *std.ArrayList(u8), value: u64, bytes: u8) !void {
+    fn writeInt(list: *std.ArrayList(u8), allocator: std.mem.Allocator, value: u64, bytes: u8) !void {
         var i: u8 = bytes;
         const v = value;
         while (i > 0) : (i -= 1) {
-            try list.append(@intCast((v >> @intCast((i - 1) * 8)) & 0xFF));
+            try list.append(allocator, @intCast((v >> @intCast((i - 1) * 8)) & 0xFF));
         }
     }
     
     // Build transaction body for Hedera
     pub fn buildTransactionBody(self: *EthereumEip2930Transaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
-        
+        defer writer.deinit(self.base.allocator);
+
         // Write common transaction fields
         try self.base.writeCommonFields(&writer);
-        
+
         // ethereumTransaction = 50 (oneof data)
         var eth_writer = ProtoWriter.init(self.base.allocator);
-        defer eth_writer.deinit();
+        defer eth_writer.deinit(self.base.allocator);
         
         // ethereumData = 1
         const rlp_data = try self.toRlp(self.base.allocator);
@@ -416,7 +416,7 @@ pub const EthereumEip2930Transaction = struct {
             offset += keys_info.header_size;
             const keys_end = offset + keys_info.data_len;
             
-            var storage_keys = std.ArrayList([]const u8).init(allocator);
+            var storage_keys = std.ArrayList([]const u8){};
             while (offset < keys_end) {
                 const key_info = try decodeRlpHeader(bytes[offset..]);
                 offset += key_info.header_size;

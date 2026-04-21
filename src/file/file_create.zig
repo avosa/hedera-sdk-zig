@@ -30,7 +30,7 @@ pub const FileCreateTransaction = struct {
         var tx = FileCreateTransaction{
             .base = Transaction.init(allocator),
             .expiration_time = null,
-            .keys = std.ArrayList(Key).init(allocator),
+            .keys = std.ArrayList(Key){},
             .contents = "",
             .memo = null,
         };
@@ -46,8 +46,8 @@ pub const FileCreateTransaction = struct {
     }
     
     pub fn deinit(self: *FileCreateTransaction) void {
-        self.base.deinit();
-        self.keys.deinit();
+        self.base.deinit(self.allocator);
+        self.keys.deinit(self.allocator);
     }
     
     // Set the expiration time for the file
@@ -189,19 +189,19 @@ pub const FileCreateTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *FileCreateTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Common transaction fields
         try self.writeCommonFields(&writer);
         
         // fileCreate = 19 (oneof data)
         var create_writer = ProtoWriter.init(self.base.allocator);
-        defer create_writer.deinit();
+        defer create_writer.deinit(self.allocator);
         
         // expirationTime = 2
         if (self.expiration_time) |time| {
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, time.seconds);
             try timestamp_writer.writeInt32(2, time.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -212,11 +212,11 @@ pub const FileCreateTransaction = struct {
         // keys = 3
         if (self.keys.items.len > 0) {
             var keys_writer = ProtoWriter.init(self.base.allocator);
-            defer keys_writer.deinit();
+            defer keys_writer.deinit(self.allocator);
             
             // Create KeyList
             var key_list_writer = ProtoWriter.init(self.base.allocator);
-            defer key_list_writer.deinit();
+            defer key_list_writer.deinit(self.allocator);
             
             for (self.keys.items) |key| {
                 const key_bytes = try key.toProtobuf(self.base.allocator);
@@ -256,10 +256,10 @@ pub const FileCreateTransaction = struct {
         // transactionID = 1
         if (self.base.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
-            defer tx_id_writer.deinit();
+            defer tx_id_writer.deinit(self.allocator);
             
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
             try timestamp_writer.writeInt32(2, tx_id.valid_start.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -267,7 +267,7 @@ pub const FileCreateTransaction = struct {
             try tx_id_writer.writeMessage(1, timestamp_bytes);
             
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
             try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
             try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
@@ -287,7 +287,7 @@ pub const FileCreateTransaction = struct {
         // nodeAccountID = 2
         if (self.base.node_account_ids.items.len > 0) {
             var node_writer = ProtoWriter.init(self.base.allocator);
-            defer node_writer.deinit();
+            defer node_writer.deinit(self.allocator);
             const node = self.base.node_account_ids.items[0];
             try node_writer.writeInt64(1, @intCast(node.shard));
             try node_writer.writeInt64(2, @intCast(node.realm));
@@ -304,7 +304,7 @@ pub const FileCreateTransaction = struct {
         
         // transactionValidDuration = 4
         var duration_writer = ProtoWriter.init(self.base.allocator);
-        defer duration_writer.deinit();
+        defer duration_writer.deinit(self.allocator);
         try duration_writer.writeInt64(1, self.base.transaction_valid_duration.seconds);
         const duration_bytes = try duration_writer.toOwnedSlice();
         defer self.base.allocator.free(duration_bytes);

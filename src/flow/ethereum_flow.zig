@@ -22,15 +22,15 @@ pub const EthereumFlow = struct {
     
     pub fn init(allocator: std.mem.Allocator) EthereumFlow {
         return EthereumFlow{
-            .node_account_ids = std.ArrayList(AccountId).init(allocator),
+            .node_account_ids = std.ArrayList(AccountId){},
             .allocator = allocator,
         };
     }
     
     pub fn deinit(self: *EthereumFlow) void {
-        self.node_account_ids.deinit();
+        self.node_account_ids.deinit(self.allocator);
         if (self.ethereum_data) |data| {
-            data.deinit();
+            data.deinit(self.allocator);
             self.allocator.destroy(data);
         }
     }
@@ -38,7 +38,7 @@ pub const EthereumFlow = struct {
     // Set Ethereum data
     pub fn setEthereumData(self: *EthereumFlow, data: *EthereumTransactionData) !*EthereumFlow {
         if (self.ethereum_data) |old_data| {
-            old_data.deinit();
+            old_data.deinit(self.allocator);
             self.allocator.destroy(old_data);
         }
         self.ethereum_data = data;
@@ -48,7 +48,7 @@ pub const EthereumFlow = struct {
     // Set Ethereum data from bytes
     pub fn setEthereumDataBytes(self: *EthereumFlow, data: []const u8) !*EthereumFlow {
         if (self.ethereum_data) |old_data| {
-            old_data.deinit();
+            old_data.deinit(self.allocator);
             self.allocator.destroy(old_data);
         }
         
@@ -90,13 +90,13 @@ pub const EthereumFlow = struct {
         }
         
         var file_create = FileCreateTransaction.init(self.allocator);
-        defer file_create.deinit();
+        defer file_create.deinit(self.allocator);
         
         // Set operator public key as file key
         if (client.operator_public_key) |key| {
             var keys = std.ArrayList(Key).init(self.allocator);
-            defer keys.deinit();
-            try keys.append(key);
+            defer keys.deinit(self.allocator);
+            try keys.append(self.allocator, key);
             try file_create.setKeys(keys);
         }
         
@@ -130,7 +130,7 @@ pub const EthereumFlow = struct {
         
         // Append remaining data
         var file_append = FileAppendTransaction.init(self.allocator);
-        defer file_append.deinit();
+        defer file_append.deinit(self.allocator);
         
         try file_append.setFileId(file_id);
         try file_append.setContents(hex_buffer[4097..]);
@@ -149,7 +149,7 @@ pub const EthereumFlow = struct {
         }
         
         var ethereum_transaction = EthereumTransaction.init(self.allocator);
-        defer ethereum_transaction.deinit();
+        defer ethereum_transaction.deinit(self.allocator);
         
         if (self.node_account_ids.items.len > 0) {
             ethereum_transaction.base.node_account_ids = try self.node_account_ids.clone();

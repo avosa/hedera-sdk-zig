@@ -123,8 +123,8 @@ pub const Stream = struct {
             .id = id,
             .state = .idle,
             .window_size = @intCast(DEFAULT_WINDOW_SIZE),
-            .headers = std.ArrayList(Header).init(allocator),
-            .data = std.ArrayList(u8).init(allocator),
+            .headers = std.ArrayList(Header){},
+            .data = std.ArrayList(u8){},
             .allocator = allocator,
         };
     }
@@ -134,8 +134,8 @@ pub const Stream = struct {
             self.allocator.free(header.name);
             self.allocator.free(header.value);
         }
-        self.headers.deinit();
-        self.data.deinit();
+        self.headers.deinit(self.allocator);
+        self.data.deinit(self.allocator);
     }
 };
 
@@ -148,7 +148,7 @@ pub const HpackContext = struct {
     
     pub fn init(allocator: std.mem.Allocator) HpackContext {
         return HpackContext{
-            .dynamic_table = std.ArrayList(Header).init(allocator),
+            .dynamic_table = std.ArrayList(Header){},
             .table_size = 0,
             .max_table_size = 4096,
             .allocator = allocator,
@@ -160,7 +160,7 @@ pub const HpackContext = struct {
             self.allocator.free(header.name);
             self.allocator.free(header.value);
         }
-        self.dynamic_table.deinit();
+        self.dynamic_table.deinit(self.allocator);
     }
     
     pub fn encodeHeaders(self: *HpackContext, headers: []const Header) ![]u8 {
@@ -170,7 +170,7 @@ pub const HpackContext = struct {
         
         for (headers) |header| {
             // Literal header field without indexing (0x00)
-            try result.append(0x00);
+            try result.append(self.allocator, 0x00);
             
             // Name length and name
             try result.append(@as(u8, @intCast(header.name.len)));
@@ -255,8 +255,8 @@ pub const Connection = struct {
             .hpack = HpackContext.init(allocator),
             .window_size = @intCast(DEFAULT_WINDOW_SIZE),
             .max_frame_size = DEFAULT_MAX_FRAME_SIZE,
-            .read_buffer = std.ArrayList(u8).init(allocator),
-            .write_buffer = std.ArrayList(u8).init(allocator),
+            .read_buffer = std.ArrayList(u8){},
+            .write_buffer = std.ArrayList(u8){},
         };
         
         // Initialize default settings
@@ -273,14 +273,14 @@ pub const Connection = struct {
     pub fn deinit(self: *Connection) void {
         var stream_it = self.streams.iterator();
         while (stream_it.next()) |entry| {
-            entry.value_ptr.deinit();
+            entry.value_ptr.deinit(self.allocator);
         }
-        self.streams.deinit();
-        self.settings.deinit();
-        self.hpack.deinit();
-        self.read_buffer.deinit();
-        self.write_buffer.deinit();
-        self.tls_client.deinit();
+        self.streams.deinit(self.allocator);
+        self.settings.deinit(self.allocator);
+        self.hpack.deinit(self.allocator);
+        self.read_buffer.deinit(self.allocator);
+        self.write_buffer.deinit(self.allocator);
+        self.tls_client.deinit(self.allocator);
     }
     
     pub fn handshake(self: *Connection) !void {
@@ -354,7 +354,7 @@ pub const Connection = struct {
     pub fn sendGoaway(self: *Connection, last_stream_id: u31, error_code: ErrorCode, debug_data: []const u8) !void {
         // Create GOAWAY payload in a temporary buffer
         var payload = std.ArrayList(u8).init(self.allocator);
-        defer payload.deinit();
+        defer payload.deinit(self.allocator);
         
         var writer = payload.writer();
         try writer.writeInt(u32, last_stream_id, .big);
@@ -435,7 +435,7 @@ pub const Connection = struct {
     fn sendSettings(self: *Connection, settings: []const Setting) !void {
         // Create settings payload in a temporary buffer
         var payload = std.ArrayList(u8).init(self.allocator);
-        defer payload.deinit();
+        defer payload.deinit(self.allocator);
         
         var writer = payload.writer();
         for (settings) |setting| {

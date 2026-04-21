@@ -57,8 +57,8 @@ pub const Transaction = struct {
     pub fn init(allocator: std.mem.Allocator) Self {
         return Self{
             .allocator = allocator,
-            .node_account_ids = std.ArrayList(AccountId).init(allocator),
-            .signatures = std.ArrayList(SignaturePair).init(allocator),
+            .node_account_ids = std.ArrayList(AccountId){},
+            .signatures = std.ArrayList(SignaturePair){},
             .transaction_valid_duration = Duration.fromSeconds(120),
             .grpc_service_name = "proto.CryptoService",
             .grpc_method_name = "createAccount",
@@ -66,11 +66,11 @@ pub const Transaction = struct {
     }
     
     pub fn deinit(self: *Self) void {
-        self.node_account_ids.deinit();
+        self.node_account_ids.deinit(self.allocator);
         for (self.signatures.items) |*sig| {
             sig.deinit(self.allocator);
         }
-        self.signatures.deinit();
+        self.signatures.deinit(self.allocator);
     }
     
     pub fn setTransactionMemo(self: *Self, memo: []const u8) !*Self {
@@ -106,7 +106,7 @@ pub const Transaction = struct {
         if (self.frozen) return error.TransactionFrozen;
         self.node_account_ids.clearRetainingCapacity();
         for (nodes) |node| {
-            try self.node_account_ids.append(node);
+            try self.node_account_ids.append(self.allocator, node);
         }
         return self;
     }
@@ -168,7 +168,7 @@ pub const Transaction = struct {
                 const nodes = try client.selectNodesForRequest(client.config.max_nodes_per_request);
                 defer client.allocator.free(nodes);
                 for (nodes) |node| {
-                    try self.node_account_ids.append(node.account_id);
+                    try self.node_account_ids.append(self.allocator, node.account_id);
                 }
             } else if (@typeInfo(T) == .optional or @typeInfo(T) == .null) {
                 if (@typeInfo(T) == .null or client == null) {
@@ -178,7 +178,7 @@ pub const Transaction = struct {
                     const nodes = try c.selectNodesForRequest(c.config.max_nodes_per_request);
                     defer c.allocator.free(nodes);
                     for (nodes) |node| {
-                        try self.node_account_ids.append(node.account_id);
+                        try self.node_account_ids.append(self.allocator, node.account_id);
                     }
                 }
             }
@@ -206,7 +206,7 @@ pub const Transaction = struct {
             .public_key = try self.allocator.dupe(u8, public_key),
             .signature = try self.allocator.dupe(u8, signature),
         };
-        try self.signatures.append(sig_pair);
+        try self.signatures.append(self.allocator, sig_pair);
     }
     
     // Sign transaction with operator
@@ -271,7 +271,7 @@ pub const Transaction = struct {
         } else return error.UnsupportedKeyType;
         
         // Store signature
-        try self.signatures.append(sig_pair);
+        try self.signatures.append(self.allocator, sig_pair);
         return self;
     }
     
@@ -287,16 +287,16 @@ pub const Transaction = struct {
         } else {
             // Return a minimal transaction body for testing
             var writer = ProtoWriter.init(self.allocator);
-            defer writer.deinit();
+            defer writer.deinit(self.allocator);
             
             // transactionID
             if (self.transaction_id) |tx_id| {
                 var id_writer = ProtoWriter.init(self.allocator);
-                defer id_writer.deinit();
+                defer id_writer.deinit(self.allocator);
                 
                 // accountID = 1
                 var account_writer = ProtoWriter.init(self.allocator);
-                defer account_writer.deinit();
+                defer account_writer.deinit(self.allocator);
                 try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
                 const account_bytes = try account_writer.toOwnedSlice();
                 defer self.allocator.free(account_bytes);
@@ -317,7 +317,7 @@ pub const Transaction = struct {
         
         // Build TransactionList with all nodes
         var list_writer = ProtoWriter.init(self.allocator);
-        defer list_writer.deinit();
+        defer list_writer.deinit(self.allocator);
         
         for (self.node_account_ids.items) |node| {
             // Build body for this node
@@ -329,7 +329,7 @@ pub const Transaction = struct {
             
             // Build SignedTransaction
             var signed_writer = ProtoWriter.init(self.allocator);
-            defer signed_writer.deinit();
+            defer signed_writer.deinit(self.allocator);
             
             // bodyBytes = 1
             try signed_writer.writeMessage(1, body);
@@ -337,11 +337,11 @@ pub const Transaction = struct {
             // sigMap = 2
             if (self.signatures.items.len > 0) {
                 var sig_map_writer = ProtoWriter.init(self.allocator);
-                defer sig_map_writer.deinit();
+                defer sig_map_writer.deinit(self.allocator);
                 
                 for (self.signatures.items) |sig| {
                     var pair_writer = ProtoWriter.init(self.allocator);
-                    defer pair_writer.deinit();
+                    defer pair_writer.deinit(self.allocator);
                     
                     // pubKeyPrefix = 1
                     try pair_writer.writeBytesField(1, sig.public_key);
@@ -379,7 +379,7 @@ pub const Transaction = struct {
         
         // Wrap in Transaction message
         var wrapper = ProtoWriter.init(self.allocator);
-        defer wrapper.deinit();
+        defer wrapper.deinit(self.allocator);
         
         // transactionList = 5
         try wrapper.writeMessage(5, transaction_list);

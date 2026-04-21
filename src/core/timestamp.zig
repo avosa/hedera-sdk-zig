@@ -223,7 +223,7 @@ pub const Timestamp = struct {
     // Serialize Timestamp to protobuf bytes
     pub fn toProtobuf(self: Timestamp, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         if (self.seconds != 0) {
             try writer.writeInt64(1, self.seconds);

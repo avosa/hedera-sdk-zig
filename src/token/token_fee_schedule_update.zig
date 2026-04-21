@@ -18,14 +18,14 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
         return TokenFeeScheduleUpdateTransaction{
             .base = Transaction.init(allocator),
             .token_id = null,
-            .custom_fees = std.ArrayList(CustomFee).init(allocator),
+            .custom_fees = std.ArrayList(CustomFee){},
         };
     }
     
     pub fn deinit(self: *TokenFeeScheduleUpdateTransaction) void {
         // CustomFee is now a union, no deinit needed
-        self.custom_fees.deinit();
-        self.base.deinit();
+        self.custom_fees.deinit(self.allocator);
+        self.base.deinit(self.allocator);
     }
     
     // Set the token ID for fee schedule update
@@ -46,7 +46,7 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
         // Copy new fees
         for (fees) |fee| {
             const cloned_fee = fee.clone();
-            try self.custom_fees.append(cloned_fee);
+            try self.custom_fees.append(self.allocator, cloned_fee);
         }
         return self;
     }
@@ -57,7 +57,7 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
         if (self.custom_fees.items.len >= 10) return error.InvalidParameter;
         
         const cloned_fee = fee.clone();
-        try self.custom_fees.append(cloned_fee);
+        try self.custom_fees.append(self.allocator, cloned_fee);
         return self;
     }
     
@@ -82,19 +82,19 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *TokenFeeScheduleUpdateTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Common transaction fields
         try self.writeCommonFields(&writer);
         
         // tokenFeeScheduleUpdate = 45 (oneof data)
         var update_writer = ProtoWriter.init(self.base.allocator);
-        defer update_writer.deinit();
+        defer update_writer.deinit(self.allocator);
         
         // tokenId = 1
         if (self.token_id) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
-            defer token_writer.deinit();
+            defer token_writer.deinit(self.allocator);
             try token_writer.writeInt64(1, @intCast(token.shard));
             try token_writer.writeInt64(2, @intCast(token.realm));
             try token_writer.writeInt64(3, @intCast(token.num));
@@ -121,10 +121,10 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
         // transactionID = 1
         if (self.base.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
-            defer tx_id_writer.deinit();
+            defer tx_id_writer.deinit(self.allocator);
             
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
             try timestamp_writer.writeInt32(2, tx_id.valid_start.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -132,7 +132,7 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
             try tx_id_writer.writeMessage(1, timestamp_bytes);
             
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
             try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
             try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
@@ -152,7 +152,7 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
         // nodeAccountID = 2
         if (self.base.node_account_ids.items.len > 0) {
             var node_writer = ProtoWriter.init(self.base.allocator);
-            defer node_writer.deinit();
+            defer node_writer.deinit(self.allocator);
             const node = self.base.node_account_ids.items[0];
             try node_writer.writeInt64(1, @intCast(node.shard));
             try node_writer.writeInt64(2, @intCast(node.realm));
@@ -169,7 +169,7 @@ pub const TokenFeeScheduleUpdateTransaction = struct {
         
         // transactionValidDuration = 4
         var duration_writer = ProtoWriter.init(self.base.allocator);
-        defer duration_writer.deinit();
+        defer duration_writer.deinit(self.allocator);
         try duration_writer.writeInt64(1, self.base.transaction_valid_duration.seconds);
         const duration_bytes = try duration_writer.toOwnedSlice();
         defer self.base.allocator.free(duration_bytes);

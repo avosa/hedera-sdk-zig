@@ -90,11 +90,11 @@ pub const ProxyStaker = struct {
 
     pub fn toProtobuf(self: *const ProxyStaker, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         // staker_id = 1
         var staker_writer = ProtoWriter.init(allocator);
-        defer staker_writer.deinit();
+        defer staker_writer.deinit(self.allocator);
         try staker_writer.writeInt64(1, @intCast(self.staker_id.shard));
         try staker_writer.writeInt64(2, @intCast(self.staker_id.realm));
         try staker_writer.writeInt64(3, @intCast(self.staker_id.account));
@@ -104,7 +104,7 @@ pub const ProxyStaker = struct {
 
         // proxy_account_id = 2
         var proxy_writer = ProtoWriter.init(allocator);
-        defer proxy_writer.deinit();
+        defer proxy_writer.deinit(self.allocator);
         try proxy_writer.writeInt64(1, @intCast(self.proxy_account_id.shard));
         try proxy_writer.writeInt64(2, @intCast(self.proxy_account_id.realm));
         try proxy_writer.writeInt64(3, @intCast(self.proxy_account_id.account));
@@ -342,7 +342,7 @@ pub const StakingInfo = struct {
 
     pub fn toProtobuf(self: *const StakingInfo, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         // staked_to_me = 1
         try writer.writeInt64(1, self.staked_to_me.toTinybars());
@@ -355,7 +355,7 @@ pub const StakingInfo = struct {
         // staked_account_id = 3 (optional)
         if (self.staked_account_id) |account_id| {
             var account_writer = ProtoWriter.init(allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(account_id.shard));
             try account_writer.writeInt64(2, @intCast(account_id.realm));
             try account_writer.writeInt64(3, @intCast(account_id.account));

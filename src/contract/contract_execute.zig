@@ -53,13 +53,13 @@ pub const ContractFunctionParameters = struct {
     pub fn init(allocator: std.mem.Allocator) ContractFunctionParameters {
         return ContractFunctionParameters{
             .allocator = allocator,
-            .arguments = std.ArrayList(Argument).init(allocator),
+            .arguments = std.ArrayList(Argument){},
             .function_selector = .{ 0, 0, 0, 0 },
         };
     }
     
     pub fn deinit(self: *ContractFunctionParameters) void {
-        self.arguments.deinit();
+        self.arguments.deinit(self.allocator);
     }
     
     // Sets the function selector for the contract call
@@ -77,49 +77,49 @@ pub const ContractFunctionParameters = struct {
     
     // Appends a uint256 parameter to the contract call (as bytes)
     pub fn addUint256Bytes(self: *ContractFunctionParameters, value: [32]u8) !void {
-        try self.arguments.append(.{ .uint256 = value });
+        try self.arguments.append(self.allocator, .{ .uint256 = value });
     }
     
     // Appends a uint256 parameter to the contract call (as integer)
     pub fn addUint256(self: *ContractFunctionParameters, value: u256) !void {
         var bytes: [32]u8 = [_]u8{0} ** 32;
         std.mem.writeInt(u256, &bytes, value, .big);
-        try self.arguments.append(.{ .uint256 = bytes });
+        try self.arguments.append(self.allocator, .{ .uint256 = bytes });
     }
     
     // Appends an int256 parameter to the contract call
     pub fn addInt256(self: *ContractFunctionParameters, value: [32]u8) !void {
-        try self.arguments.append(.{ .int256 = value });
+        try self.arguments.append(self.allocator, .{ .int256 = value });
     }
     
     // Appends a uint64 parameter to the contract call
     pub fn addUint64(self: *ContractFunctionParameters, value: u64) !void {
-        try self.arguments.append(.{ .uint64 = value });
+        try self.arguments.append(self.allocator, .{ .uint64 = value });
     }
     
     // Appends an int64 parameter to the contract call
     pub fn addInt64(self: *ContractFunctionParameters, value: i64) !void {
-        try self.arguments.append(.{ .int64 = value });
+        try self.arguments.append(self.allocator, .{ .int64 = value });
     }
     
     // Appends a uint32 parameter to the contract call
     pub fn addUint32(self: *ContractFunctionParameters, value: u32) !void {
-        try self.arguments.append(.{ .uint32 = value });
+        try self.arguments.append(self.allocator, .{ .uint32 = value });
     }
     
     // Appends an int32 parameter to the contract call
     pub fn addInt32(self: *ContractFunctionParameters, value: i32) !void {
-        try self.arguments.append(.{ .int32 = value });
+        try self.arguments.append(self.allocator, .{ .int32 = value });
     }
     
     // Appends a uint8 parameter to the contract call
     pub fn addUint8(self: *ContractFunctionParameters, value: u8) !void {
-        try self.arguments.append(.{ .uint8 = value });
+        try self.arguments.append(self.allocator, .{ .uint8 = value });
     }
     
     // Appends an int8 parameter to the contract call
     pub fn addInt8(self: *ContractFunctionParameters, value: i8) !void {
-        try self.arguments.append(.{ .int8 = value });
+        try self.arguments.append(self.allocator, .{ .int8 = value });
     }
     
     // Appends an address parameter to the contract call
@@ -146,27 +146,27 @@ pub const ContractFunctionParameters = struct {
             return error.InvalidAddressLength;
         }
         
-        try self.arguments.append(.{ .address = addr });
+        try self.arguments.append(self.allocator, .{ .address = addr });
     }
     
     // Appends a boolean parameter to the contract call
     pub fn addBool(self: *ContractFunctionParameters, value: bool) !void {
-        try self.arguments.append(.{ .bool_val = value });
+        try self.arguments.append(self.allocator, .{ .bool_val = value });
     }
     
     // Appends a bytes parameter to the contract call
     pub fn addBytes(self: *ContractFunctionParameters, value: []const u8) !void {
-        try self.arguments.append(.{ .bytes_val = value });
+        try self.arguments.append(self.allocator, .{ .bytes_val = value });
     }
     
     // Appends a bytes32 parameter to the contract call
     pub fn addBytes32(self: *ContractFunctionParameters, value: [32]u8) !void {
-        try self.arguments.append(.{ .bytes32 = value });
+        try self.arguments.append(self.allocator, .{ .bytes32 = value });
     }
     
     // Appends a string parameter to the contract call
     pub fn addString(self: *ContractFunctionParameters, value: []const u8) !void {
-        try self.arguments.append(.{ .string_val = value });
+        try self.arguments.append(self.allocator, .{ .string_val = value });
     }
     
     // Build function call data as bytes
@@ -183,7 +183,7 @@ pub const ContractFunctionParameters = struct {
     // Build function call data
     pub fn build(self: ContractFunctionParameters) ![]u8 {
         var data = std.ArrayList(u8).init(self.allocator);
-        defer data.deinit();
+        defer data.deinit(self.allocator);
         
         // Encode function selector into call data
         try data.appendSlice(&self.function_selector);
@@ -191,7 +191,7 @@ pub const ContractFunctionParameters = struct {
         // Encode arguments according to Solidity ABI encoding
         const head_size: usize = self.arguments.items.len * 32;
         var tail = std.ArrayList(u8).init(self.allocator);
-        defer tail.deinit();
+        defer tail.deinit(self.allocator);
         
         for (self.arguments.items) |arg| {
             switch (arg) {
@@ -304,7 +304,7 @@ pub const ContractExecuteTransaction = struct {
     }
     
     pub fn deinit(self: *ContractExecuteTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // SetContractID sets the contract ID to execute
@@ -406,19 +406,19 @@ pub const ContractExecuteTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *ContractExecuteTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Common transaction fields
         try self.writeCommonFields(&writer);
         
         // contractCall = 7 (oneof data)
         var call_writer = ProtoWriter.init(self.base.allocator);
-        defer call_writer.deinit();
+        defer call_writer.deinit(self.allocator);
         
         // contractID = 1
         if (self.contract_id) |contract| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
-            defer contract_writer.deinit();
+            defer contract_writer.deinit(self.allocator);
             try contract_writer.writeInt64(1, @intCast(contract.entity.shard));
             try contract_writer.writeInt64(2, @intCast(contract.entity.realm));
             try contract_writer.writeInt64(3, @intCast(contract.entity.num));
@@ -454,10 +454,10 @@ pub const ContractExecuteTransaction = struct {
         // transactionID = 1
         if (self.base.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
-            defer tx_id_writer.deinit();
+            defer tx_id_writer.deinit(self.allocator);
             
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
             try timestamp_writer.writeInt32(2, tx_id.valid_start.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -465,7 +465,7 @@ pub const ContractExecuteTransaction = struct {
             try tx_id_writer.writeMessage(1, timestamp_bytes);
             
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
             try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
             try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
@@ -481,7 +481,7 @@ pub const ContractExecuteTransaction = struct {
         // nodeAccountID = 2
         if (self.base.node_account_ids.items.len > 0) {
             var node_writer = ProtoWriter.init(self.base.allocator);
-            defer node_writer.deinit();
+            defer node_writer.deinit(self.allocator);
             const node = self.base.node_account_ids.items[0];
             try node_writer.writeInt64(1, @intCast(node.shard));
             try node_writer.writeInt64(2, @intCast(node.realm));
@@ -498,7 +498,7 @@ pub const ContractExecuteTransaction = struct {
         
         // transactionValidDuration = 4
         var duration_writer = ProtoWriter.init(self.base.allocator);
-        defer duration_writer.deinit();
+        defer duration_writer.deinit(self.allocator);
         try duration_writer.writeInt64(1, self.base.transaction_valid_duration.seconds);
         const duration_bytes = try duration_writer.toOwnedSlice();
         defer self.base.allocator.free(duration_bytes);
@@ -549,15 +549,15 @@ pub const ContractFunctionResult = struct {
             .error_message = "",
             .bloom = "",
             .gas_used = 0,
-            .logs = std.ArrayList(ContractLogInfo).init(allocator),
-            .created_contract_ids = std.ArrayList(ContractId).init(allocator),
+            .logs = std.ArrayList(ContractLogInfo){},
+            .created_contract_ids = std.ArrayList(ContractId){},
             .evm_address = null,
             .gas = 0,
             .gas_consumed = 0,
             .amount = 0,
             .function_parameters = "",
             .sender_id = null,
-            .contract_nonces = std.ArrayList(ContractNonceInfo).init(allocator),
+            .contract_nonces = std.ArrayList(ContractNonceInfo){},
             .signer_nonce = null,
             .allocator = allocator,
         };
@@ -565,11 +565,11 @@ pub const ContractFunctionResult = struct {
     
     pub fn deinit(self: *ContractFunctionResult) void {
         for (self.logs.items) |*log| {
-            log.topics.deinit();
+            log.topics.deinit(self.allocator);
         }
-        self.logs.deinit();
-        self.created_contract_ids.deinit();
-        self.contract_nonces.deinit();
+        self.logs.deinit(self.allocator);
+        self.created_contract_ids.deinit(self.allocator);
+        self.contract_nonces.deinit(self.allocator);
     }
     
     // Get uint256 result
@@ -646,15 +646,15 @@ pub const ContractFunctionResult = struct {
             .error_message = &[_]u8{},
             .bloom = &[_]u8{},
             .gas_used = 0,
-            .logs = std.ArrayList(ContractLogInfo).init(allocator),
-            .created_contract_ids = std.ArrayList(ContractId).init(allocator),
+            .logs = std.ArrayList(ContractLogInfo){},
+            .created_contract_ids = std.ArrayList(ContractId){},
             .evm_address = null,
             .gas = 0,
             .amount = 0,
             .function_parameters = &[_]u8{},
             .sender_id = null,
             .gas_consumed = 0,
-            .contract_nonces = std.ArrayList(ContractNonceInfo).init(allocator),
+            .contract_nonces = std.ArrayList(ContractNonceInfo){},
             .signer_nonce = null,
             .allocator = allocator,
         };

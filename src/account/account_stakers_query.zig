@@ -19,14 +19,15 @@ pub const AccountStakers = struct {
     stakers: std.ArrayList(ProxyStaker),
     
     pub fn init(allocator: std.mem.Allocator) AccountStakers {
+        _ = allocator;
         return AccountStakers{
             .account_id = AccountId.init(0, 0, 0),
-            .stakers = std.ArrayList(ProxyStaker).init(allocator),
+            .stakers = std.ArrayList(ProxyStaker){},
         };
     }
     
     pub fn deinit(self: *AccountStakers) void {
-        self.stakers.deinit();
+        self.stakers.deinit(self.allocator);
     }
 };
 
@@ -35,15 +36,14 @@ pub const AccountStakersQuery = struct {
     base: Query,
     account_id: ?AccountId,
     
-    pub fn init(allocator: std.mem.Allocator) AccountStakersQuery {
-        return AccountStakersQuery{
+    pub fn init(allocator: std.mem.Allocator) AccountStakersQuery {        return AccountStakersQuery{
             .base = Query.init(allocator),
             .account_id = null,
         };
     }
     
     pub fn deinit(self: *AccountStakersQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the account ID to query
@@ -70,16 +70,16 @@ pub const AccountStakersQuery = struct {
     // Build the query
     pub fn buildQuery(self: *AccountStakersQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // cryptoGetProxyStakers = 14
         var stakers_writer = ProtoWriter.init(self.base.allocator);
-        defer stakers_writer.deinit();
+        defer stakers_writer.deinit(self.allocator);
         
         // accountID = 1
         if (self.account_id) |id| {
             var id_writer = ProtoWriter.init(self.base.allocator);
-            defer id_writer.deinit();
+            defer id_writer.deinit(self.allocator);
             try id_writer.writeInt64(1, @intCast(id.shard));
             try id_writer.writeInt64(2, @intCast(id.realm));
             try id_writer.writeInt64(3, @intCast(id.account));

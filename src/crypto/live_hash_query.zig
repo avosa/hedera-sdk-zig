@@ -24,7 +24,7 @@ pub const LiveHashQuery = struct {
         if (self.hash) |hash| {
             self.base.allocator.free(hash);
         }
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the account ID that owns the live hash
@@ -57,15 +57,15 @@ pub const LiveHashQuery = struct {
         if (self.hash == null) return error.HashRequired;
         
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // cryptoGetLiveHash = 51 (oneof query)
         var query_writer = ProtoWriter.init(self.base.allocator);
-        defer query_writer.deinit();
+        defer query_writer.deinit(self.allocator);
         
         // accountID = 1
         var account_writer = ProtoWriter.init(self.base.allocator);
-        defer account_writer.deinit();
+        defer account_writer.deinit(self.allocator);
         try account_writer.writeInt64(1, @intCast(self.account_id.?.shard));
         try account_writer.writeInt64(2, @intCast(self.account_id.?.realm));
         try account_writer.writeInt64(3, @intCast(self.account_id.?.account));
@@ -173,7 +173,7 @@ pub const LiveHashQuery = struct {
                 1 => {
                     // keys (repeated)
                     const key = try parseKey(field.data, allocator);
-                    try keys.append(key);
+                    try keys.append(allocator, key);
                 },
                 else => {},
             }

@@ -114,7 +114,7 @@ pub const Keystore = struct {
         const opts = options orelse KeystoreOptions{};
         
         var keystore = Keystore.init(allocator);
-        errdefer keystore.deinit();
+        errdefer keystore.deinit(self.allocator);
 
         // Generate random UUID
         keystore.id = try generateUuid(allocator);
@@ -168,8 +168,8 @@ pub const Keystore = struct {
         defer allocator.free(ciphertext);
 
         // Compute MAC
-        var mac_data = std.ArrayList(u8).init(allocator);
-        defer mac_data.deinit();
+        var mac_data = std.ArrayList(u8){};
+        defer mac_data.deinit(self.allocator);
         
         try mac_data.appendSlice(derived_key[16..32]);
         try mac_data.appendSlice(ciphertext);
@@ -235,7 +235,7 @@ pub const Keystore = struct {
 
         // Verify MAC
         var mac_data = std.ArrayList(u8).init(self.allocator);
-        defer mac_data.deinit();
+        defer mac_data.deinit(self.allocator);
         
         try mac_data.appendSlice(derived_key[16..32]);
         try mac_data.appendSlice(ciphertext);
@@ -286,8 +286,8 @@ pub const Keystore = struct {
 
     // Serialize keystore to JSON
     pub fn toJson(self: *const Keystore, allocator: std.mem.Allocator) ![]u8 {
-        var json = std.ArrayList(u8).init(allocator);
-        defer json.deinit();
+        var json = std.ArrayList(u8){};
+        defer json.deinit(self.allocator);
         
         try json.appendSlice("{\n");
         try json.appendSlice("  \"version\": ");
@@ -374,7 +374,7 @@ pub const Keystore = struct {
     // Parse keystore from JSON
     pub fn fromJson(allocator: std.mem.Allocator, json_data: []const u8) !Keystore {
         var parser = JsonParser.init(allocator);
-        defer parser.deinit();
+        defer parser.deinit(self.allocator);
 
         var root = try parser.parse(json_data);
         defer root.deinit(allocator);
@@ -382,7 +382,7 @@ pub const Keystore = struct {
         const obj = root.getObject() orelse return error.InvalidJson;
         
         var keystore = Keystore.init(allocator);
-        errdefer keystore.deinit();
+        errdefer keystore.deinit(self.allocator);
 
         keystore.version = @intCast(obj.get("version").?.getInt() orelse 3);
         keystore.id = try allocator.dupe(u8, obj.get("id").?.getString() orelse "");

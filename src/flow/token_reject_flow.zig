@@ -24,15 +24,15 @@ pub const TokenRejectFlow = struct {
     
     pub fn init(allocator: std.mem.Allocator) TokenRejectFlow {
         return TokenRejectFlow{
-            .token_ids = std.ArrayList(TokenId).init(allocator),
-            .nft_ids = std.ArrayList(NftId).init(allocator),
+            .token_ids = std.ArrayList(TokenId){},
+            .nft_ids = std.ArrayList(NftId){},
             .allocator = allocator,
         };
     }
     
     pub fn deinit(self: *TokenRejectFlow) void {
-        self.token_ids.deinit();
-        self.nft_ids.deinit();
+        self.token_ids.deinit(self.allocator);
+        self.nft_ids.deinit(self.allocator);
     }
     
     // Set owner ID
@@ -50,7 +50,7 @@ pub const TokenRejectFlow = struct {
     
     // Add token ID
     pub fn addTokenId(self: *TokenRejectFlow, id: TokenId) !*TokenRejectFlow {
-        try self.token_ids.append(id);
+        try self.token_ids.append(self.allocator, id);
         return self;
     }
     
@@ -63,7 +63,7 @@ pub const TokenRejectFlow = struct {
     
     // Add NFT ID
     pub fn addNftId(self: *TokenRejectFlow, id: NftId) !*TokenRejectFlow {
-        try self.nft_ids.append(id);
+        try self.nft_ids.append(self.allocator, id);
         return self;
     }
     
@@ -96,7 +96,7 @@ pub const TokenRejectFlow = struct {
         
         // Collect all unique token IDs from both token_ids and nft_ids
         var token_ids_set = std.AutoHashMap(TokenId, void).init(self.allocator);
-        defer token_ids_set.deinit();
+        defer token_ids_set.deinit(self.allocator);
         
         // Add regular token IDs
         for (self.token_ids.items) |token_id| {
@@ -110,11 +110,11 @@ pub const TokenRejectFlow = struct {
         
         // Convert set to array
         var unique_token_ids = std.ArrayList(TokenId).init(self.allocator);
-        defer unique_token_ids.deinit();
+        defer unique_token_ids.deinit(self.allocator);
         
         var iter = token_ids_set.iterator();
         while (iter.next()) |entry| {
-            try unique_token_ids.append(entry.key_ptr.*);
+            try unique_token_ids.append(self.allocator, entry.key_ptr.*);
         }
         
         if (unique_token_ids.items.len > 0) {
@@ -179,14 +179,14 @@ pub const TokenRejectFlow = struct {
     pub fn execute(self: *TokenRejectFlow, client: *Client) !TransactionResponse {
         // First reject the tokens
         var token_reject = try self.createTokenRejectTransaction(client);
-        defer token_reject.deinit();
+        defer token_reject.deinit(self.allocator);
         
         const token_reject_response = try token_reject.execute(client);
         _ = try token_reject_response.getReceipt(client);
         
         // Then dissociate the tokens
         var token_dissociate = try self.createTokenDissociateTransaction(client);
-        defer token_dissociate.deinit();
+        defer token_dissociate.deinit(self.allocator);
         
         const token_dissociate_response = try token_dissociate.execute(client);
         _ = try token_dissociate_response.getReceipt(client);

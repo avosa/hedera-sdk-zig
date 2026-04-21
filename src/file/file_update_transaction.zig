@@ -24,9 +24,9 @@ pub const FileUpdateTransaction = struct {
     }
     
     pub fn deinit(self: *FileUpdateTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
         if (self.keys) |*keys| {
-            keys.deinit();
+            keys.deinit(self.allocator);
         }
         if (self.contents) |contents| {
             self.base.allocator.free(contents);
@@ -48,7 +48,7 @@ pub const FileUpdateTransaction = struct {
         if (self.base.frozen) return error.TransactionFrozen;
         
         if (self.keys) |*old_keys| {
-            old_keys.deinit();
+            old_keys.deinit(self.allocator);
         }
         
         self.keys = keys;
@@ -60,7 +60,7 @@ pub const FileUpdateTransaction = struct {
         if (self.base.frozen) return error.TransactionFrozen;
         
         if (self.keys) |*old_keys| {
-            old_keys.deinit();
+            old_keys.deinit(self.allocator);
         }
         
         var keys = std.ArrayList(Key).init(self.base.allocator);
@@ -113,19 +113,19 @@ pub const FileUpdateTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *FileUpdateTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Write common transaction fields
         try self.base.writeCommonFields(&writer);
         
         // fileUpdate = 16 (oneof data)
         var file_writer = ProtoWriter.init(self.base.allocator);
-        defer file_writer.deinit();
+        defer file_writer.deinit(self.allocator);
         
         // fileID = 1
         if (self.file_id) |file_id| {
             var id_writer = ProtoWriter.init(self.base.allocator);
-            defer id_writer.deinit();
+            defer id_writer.deinit(self.allocator);
             try id_writer.writeInt64(1, @intCast(file_id.shard));
             try id_writer.writeInt64(2, @intCast(file_id.realm));
             try id_writer.writeInt64(3, @intCast(file_id.num));
@@ -137,7 +137,7 @@ pub const FileUpdateTransaction = struct {
         // expirationTime = 2
         if (self.expiration_time) |expiration| {
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, expiration.seconds);
             try timestamp_writer.writeInt32(2, expiration.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -148,7 +148,7 @@ pub const FileUpdateTransaction = struct {
         // keys = 3
         if (self.keys) |keys| {
             var key_list_writer = ProtoWriter.init(self.base.allocator);
-            defer key_list_writer.deinit();
+            defer key_list_writer.deinit(self.allocator);
             
             for (keys.items) |key| {
                 const key_bytes = try key.toProtobuf(self.base.allocator);
@@ -170,7 +170,7 @@ pub const FileUpdateTransaction = struct {
         if (self.memo) |memo| {
             // Wrap in StringValue
             var memo_writer = ProtoWriter.init(self.base.allocator);
-            defer memo_writer.deinit();
+            defer memo_writer.deinit(self.allocator);
             try memo_writer.writeString(1, memo);
             const memo_bytes = try memo_writer.toOwnedSlice();
             defer self.base.allocator.free(memo_bytes);

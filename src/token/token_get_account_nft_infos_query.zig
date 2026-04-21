@@ -48,7 +48,7 @@ pub const TokenGetAccountNftInfosQuery = struct {
     }
 
     pub fn deinit(self: *Self) void {
-        self.query.deinit();
+        self.query.deinit(self.allocator);
     }
 
     /// Set the account to query NFTs for
@@ -135,7 +135,7 @@ pub const TokenGetAccountNftInfosQuery = struct {
 
     fn buildQuery(self: *const Self) ![]u8 {
         var writer = ProtoWriter.init(self.query.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         // header
         const header = try self.query.buildHeader();
@@ -167,7 +167,7 @@ pub const TokenGetAccountNftInfosQuery = struct {
     fn parseResponse(self: *Self, response: []const u8) ![]NftInfo {
         var reader = ProtoReader.init(response);
         var nfts = std.ArrayList(NftInfo).init(self.query.allocator);
-        defer nfts.deinit();
+        defer nfts.deinit(self.allocator);
 
         while (try reader.next()) |field| {
             switch (field.number) {
@@ -181,7 +181,7 @@ pub const TokenGetAccountNftInfosQuery = struct {
                     defer self.query.allocator.free(nft_bytes);
                     
                     const nft_info = try self.parseNftInfo(nft_bytes);
-                    try nfts.append(nft_info);
+                    try nfts.append(self.allocator, nft_info);
                 },
                 else => try reader.skip(),
             }
@@ -248,8 +248,8 @@ pub const TokenGetAccountNftInfosQuery = struct {
 
     /// Get string representation
     pub fn toString(self: *const Self, allocator: std.mem.Allocator) ![]u8 {
-        var list = std.ArrayList(u8).init(allocator);
-        errdefer list.deinit();
+        var list = std.ArrayList(u8){};
+        errdefer list.deinit(self.allocator);
 
         try list.appendSlice("TokenGetAccountNftInfosQuery{");
         
@@ -268,7 +268,7 @@ pub const TokenGetAccountNftInfosQuery = struct {
             try std.fmt.format(list.writer(), ", end={}", .{self.end});
         }
         
-        try list.append('}');
+        try list.append(self.allocator, '}');
         
         return list.toOwnedSlice();
     }
@@ -281,7 +281,7 @@ test "TokenGetAccountNftInfosQuery initialization" {
     const allocator = testing.allocator;
 
     var query = TokenGetAccountNftInfosQuery.init(allocator);
-    defer query.deinit();
+    defer query.deinit(self.allocator);
 
     try testing.expect(query.account_id == null);
     try testing.expectEqual(@as(i64, 0), query.start);
@@ -293,7 +293,7 @@ test "TokenGetAccountNftInfosQuery setters" {
     const allocator = testing.allocator;
 
     var query = TokenGetAccountNftInfosQuery.init(allocator);
-    defer query.deinit();
+    defer query.deinit(self.allocator);
 
     const account = AccountId.init(0, 0, 100);
     _ = query.setAccountId(account);
@@ -310,7 +310,7 @@ test "TokenGetAccountNftInfosQuery validation" {
     const allocator = testing.allocator;
 
     var query = TokenGetAccountNftInfosQuery.init(allocator);
-    defer query.deinit();
+    defer query.deinit(self.allocator);
 
     // Should fail without account ID
     try testing.expectError(error.AccountIdRequired, query.validate());

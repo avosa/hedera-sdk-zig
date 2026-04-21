@@ -48,7 +48,7 @@ pub const AccountUpdateTransaction = struct {
     }
     
     pub fn deinit(self: *AccountUpdateTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the account ID to update
@@ -246,19 +246,19 @@ pub const AccountUpdateTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *AccountUpdateTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Common transaction fields
         try self.writeCommonFields(&writer);
         
         // cryptoUpdateAccount = 15 (oneof data)
         var update_writer = ProtoWriter.init(self.base.allocator);
-        defer update_writer.deinit();
+        defer update_writer.deinit(self.allocator);
         
         // accountIDToUpdate = 2
         if (self.account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(account.shard));
             try account_writer.writeInt64(2, @intCast(account.realm));
             try account_writer.writeInt64(3, @intCast(account.account));
@@ -277,7 +277,7 @@ pub const AccountUpdateTransaction = struct {
         // autoRenewPeriod = 6
         if (self.auto_renew_period) |period| {
             var duration_writer = ProtoWriter.init(self.base.allocator);
-            defer duration_writer.deinit();
+            defer duration_writer.deinit(self.allocator);
             try duration_writer.writeInt64(1, period.seconds);
             const duration_bytes = try duration_writer.toOwnedSlice();
             defer self.base.allocator.free(duration_bytes);
@@ -287,7 +287,7 @@ pub const AccountUpdateTransaction = struct {
         // expirationTime = 8
         if (self.expiration_time) |time| {
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, time.seconds);
             try timestamp_writer.writeInt32(2, time.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -298,7 +298,7 @@ pub const AccountUpdateTransaction = struct {
         // receiverSigRequiredWrapper = 10
         if (self.receiver_sig_required) |required| {
             var bool_writer = ProtoWriter.init(self.base.allocator);
-            defer bool_writer.deinit();
+            defer bool_writer.deinit(self.allocator);
             try bool_writer.writeBool(1, required);
             const bool_bytes = try bool_writer.toOwnedSlice();
             defer self.base.allocator.free(bool_bytes);
@@ -308,7 +308,7 @@ pub const AccountUpdateTransaction = struct {
         // memo = 11
         if (self.memo) |memo| {
             var memo_writer = ProtoWriter.init(self.base.allocator);
-            defer memo_writer.deinit();
+            defer memo_writer.deinit(self.allocator);
             try memo_writer.writeString(1, memo);
             const memo_bytes = try memo_writer.toOwnedSlice();
             defer self.base.allocator.free(memo_bytes);
@@ -318,7 +318,7 @@ pub const AccountUpdateTransaction = struct {
         // max_automatic_token_associations = 12
         if (self.max_automatic_token_associations) |max| {
             var int_writer = ProtoWriter.init(self.base.allocator);
-            defer int_writer.deinit();
+            defer int_writer.deinit(self.allocator);
             try int_writer.writeInt32(1, max);
             const int_bytes = try int_writer.toOwnedSlice();
             defer self.base.allocator.free(int_bytes);
@@ -328,7 +328,7 @@ pub const AccountUpdateTransaction = struct {
         // staked_account_id = 13 or staked_node_id = 14
         if (self.staked_account_id) |staked| {
             var staked_writer = ProtoWriter.init(self.base.allocator);
-            defer staked_writer.deinit();
+            defer staked_writer.deinit(self.allocator);
             try staked_writer.writeInt64(1, @intCast(staked.shard));
             try staked_writer.writeInt64(2, @intCast(staked.realm));
             try staked_writer.writeInt64(3, @intCast(staked.account));
@@ -342,7 +342,7 @@ pub const AccountUpdateTransaction = struct {
         // decline_reward = 15
         if (self.decline_staking_reward) |decline| {
             var bool_writer = ProtoWriter.init(self.base.allocator);
-            defer bool_writer.deinit();
+            defer bool_writer.deinit(self.allocator);
             try bool_writer.writeBool(1, decline);
             const bool_bytes = try bool_writer.toOwnedSlice();
             defer self.base.allocator.free(bool_bytes);
@@ -360,10 +360,10 @@ pub const AccountUpdateTransaction = struct {
         // transactionID = 1
         if (self.base.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
-            defer tx_id_writer.deinit();
+            defer tx_id_writer.deinit(self.allocator);
             
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
             try timestamp_writer.writeInt32(2, tx_id.valid_start.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -371,7 +371,7 @@ pub const AccountUpdateTransaction = struct {
             try tx_id_writer.writeMessage(1, timestamp_bytes);
             
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
             try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
             try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
@@ -391,7 +391,7 @@ pub const AccountUpdateTransaction = struct {
         // nodeAccountID = 2
         if (self.base.node_account_ids.items.len > 0) {
             var node_writer = ProtoWriter.init(self.base.allocator);
-            defer node_writer.deinit();
+            defer node_writer.deinit(self.allocator);
             const node = self.base.node_account_ids.items[0];
             try node_writer.writeInt64(1, @intCast(node.shard));
             try node_writer.writeInt64(2, @intCast(node.realm));
@@ -408,7 +408,7 @@ pub const AccountUpdateTransaction = struct {
         
         // transactionValidDuration = 4
         var duration_writer = ProtoWriter.init(self.base.allocator);
-        defer duration_writer.deinit();
+        defer duration_writer.deinit(self.allocator);
         try duration_writer.writeInt64(1, self.base.transaction_valid_duration.seconds);
         const duration_bytes = try duration_writer.toOwnedSlice();
         defer self.base.allocator.free(duration_bytes);

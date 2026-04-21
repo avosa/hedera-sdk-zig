@@ -22,6 +22,12 @@ pub const HbarTransfer = struct {
     is_approved: bool = false,
     
     pub fn init(account_id: AccountId, amount: Hbar) HbarTransfer {
+        
+        
+        
+        
+        
+        
         return HbarTransfer{
             .account_id = account_id,
             .amount = amount,
@@ -30,6 +36,12 @@ pub const HbarTransfer = struct {
     }
     
     pub fn initApproved(account_id: AccountId, amount: Hbar) HbarTransfer {
+        
+        
+        
+        
+        
+        
         return HbarTransfer{
             .account_id = account_id,
             .amount = amount,
@@ -38,7 +50,12 @@ pub const HbarTransfer = struct {
     }
     
     // Parse HbarTransfer from protobuf bytes
-    pub fn fromProtobuf(allocator: std.mem.Allocator, bytes: []const u8) !HbarTransfer {
+    pub fn fromProtobuf(allocator: std.mem.Allocator, bytes: []const u8) !HbarTransfer {        
+        
+        
+        
+        
+        
         var reader = @import("../protobuf/encoding.zig").ProtoReader.init(bytes);
         
         var result = HbarTransfer{
@@ -88,21 +105,31 @@ pub const TokenTransfer = struct {
     expected_decimals: ?u32 = null,
     transfers: std.ArrayList(AccountAmount),  
     
-    pub fn init(token_id: TokenId, account_id: AccountId, amount: i64, allocator: std.mem.Allocator) TokenTransfer {
+    pub fn init(token_id: TokenId, account_id: AccountId, amount: i64) TokenTransfer {
+        
+        
+        
+        
+        
         return TokenTransfer{
             .token_id = token_id,
             .account_id = account_id,
             .amount = amount,
             .is_approved = false,
             .expected_decimals = null,
-            .transfers = std.ArrayList(AccountAmount).init(allocator),
+            .transfers = std.ArrayList(AccountAmount){},
         };
     }
     
-    pub fn fromProtobuf(allocator: std.mem.Allocator, data: []const u8) !TokenTransfer {
+    pub fn fromProtobuf(allocator: std.mem.Allocator, data: []const u8) !TokenTransfer {        
+        
+        
+        
+        
+        
         var reader = ProtoReader.init(data);
         var token_id: ?TokenId = null;
-        var transfers = std.ArrayList(AccountAmount).init(allocator);
+        var transfers = std.ArrayList(AccountAmount){};
         var expected_decimals: ?u32 = null;
         
         while (reader.hasMore()) {
@@ -158,7 +185,7 @@ pub const TokenTransfer = struct {
                                 }
                                 
                                 const amount = try transfer_reader.readInt64();
-                                try transfers.append(AccountAmount{
+                                try transfers.append(allocator, AccountAmount{
                                     .account_id = AccountId{
                                         .shard = account_shard,
                                         .realm = account_realm,
@@ -203,34 +230,55 @@ pub const TokenTransfer = struct {
     }
     
     pub fn deinit(self: *TokenTransfer) void {
-        self.transfers.deinit();
+        
+        
+        
+        
+        
+        
+        self.transfers.deinit(self.allocator);
     }
     
-    pub fn initWithDecimals(token_id: TokenId, account_id: AccountId, amount: i64, decimals: u32, allocator: std.mem.Allocator) TokenTransfer {
+    pub fn initWithDecimals(token_id: TokenId, account_id: AccountId, amount: i64, decimals: u32) TokenTransfer {
+        
+        
+        
+        
+        
         return TokenTransfer{
             .token_id = token_id,
             .account_id = account_id,
             .amount = amount,
             .is_approved = false,
             .expected_decimals = decimals,
-            .transfers = std.ArrayList(AccountAmount).init(allocator),
+            .transfers = std.ArrayList(AccountAmount){},
         };
     }
     
-    pub fn initApproved(token_id: TokenId, account_id: AccountId, amount: i64, allocator: std.mem.Allocator) TokenTransfer {
+    pub fn initApproved(token_id: TokenId, account_id: AccountId, amount: i64) TokenTransfer {
+        
+        
+        
+        
+        
         return TokenTransfer{
             .token_id = token_id,
             .account_id = account_id,
             .amount = amount,
             .is_approved = true,
             .expected_decimals = null,
-            .transfers = std.ArrayList(AccountAmount).init(allocator),
+            .transfers = std.ArrayList(AccountAmount){},
         };
     }
     
-    pub fn toProtobuf(self: *const TokenTransfer, allocator: std.mem.Allocator) ![]u8 {
+    pub fn toProtobuf(self: *const TokenTransfer, allocator: std.mem.Allocator) ![]u8 {        
+        
+        
+        
+        
+        
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(allocator);
         
         // accountID = 1
         const account_bytes = try self.account_id.toProtobuf(allocator);
@@ -257,6 +305,12 @@ pub const NftTransfer = struct {
     is_approved: bool = false,
     
     pub fn init(nft_id: NftId, sender: AccountId, receiver: AccountId) NftTransfer {
+        
+        
+        
+        
+        
+        
         return NftTransfer{
             .nft_id = nft_id,
             .sender_account_id = sender,
@@ -266,6 +320,12 @@ pub const NftTransfer = struct {
     }
     
     pub fn initApproved(nft_id: NftId, sender: AccountId, receiver: AccountId) NftTransfer {
+        
+        
+        
+        
+        
+        
         return NftTransfer{
             .nft_id = nft_id,
             .sender_account_id = sender,
@@ -274,7 +334,12 @@ pub const NftTransfer = struct {
         };
     }
     
-    pub fn fromProtobuf(allocator: std.mem.Allocator, data: []const u8) !NftTransfer {
+    pub fn fromProtobuf(allocator: std.mem.Allocator, data: []const u8) !NftTransfer {        
+        
+        
+        
+        
+        
         var reader = ProtoReader.init(data);
         var transfer = NftTransfer{
             .nft_id = NftId.init(TokenId.init(0, 0, 0), 0),
@@ -308,9 +373,14 @@ pub const NftTransfer = struct {
         return transfer;
     }
     
-    pub fn toProtobuf(self: *const NftTransfer, allocator: std.mem.Allocator) ![]u8 {
+    pub fn toProtobuf(self: *const NftTransfer, allocator: std.mem.Allocator) ![]u8 {        
+        
+        
+        
+        
+        
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(allocator);
         
         // senderAccountID = 1
         const sender_bytes = try self.sender_account_id.toProtobuf(allocator);
@@ -342,12 +412,17 @@ pub const TransferTransaction = struct {
     nft_transfers: std.ArrayList(NftTransfer),
     token_decimals: std.AutoHashMap(TokenId, u32),
     
-    pub fn init(allocator: std.mem.Allocator) TransferTransaction {
+    pub fn init(allocator: std.mem.Allocator) TransferTransaction {        
+        
+        
+        
+        
+        
         var transfer = TransferTransaction{
             .base = Transaction.init(allocator),
-            .hbar_transfers = std.ArrayList(HbarTransfer).init(allocator),
-            .token_transfers = std.ArrayList(TokenTransfer).init(allocator),
-            .nft_transfers = std.ArrayList(NftTransfer).init(allocator),
+            .hbar_transfers = std.ArrayList(HbarTransfer){},
+            .token_transfers = std.ArrayList(TokenTransfer){},
+            .nft_transfers = std.ArrayList(NftTransfer){},
             .token_decimals = std.AutoHashMap(TokenId, u32).init(allocator),
         };
         // Set the function pointer for building transaction body
@@ -356,15 +431,27 @@ pub const TransferTransaction = struct {
     }
     
     pub fn deinit(self: *TransferTransaction) void {
-        self.base.deinit();
-        self.hbar_transfers.deinit();
-        self.token_transfers.deinit();
-        self.nft_transfers.deinit();
-        self.token_decimals.deinit();
+        
+        
+        
+        
+        
+        
+        self.base.deinit(self.allocator);
+        self.hbar_transfers.deinit(self.allocator);
+        self.token_transfers.deinit(self.allocator);
+        self.nft_transfers.deinit(self.allocator);
+        self.token_decimals.deinit(self.allocator);
     }
     
     // Add HBAR transfer to the transaction
     pub fn addHbarTransfer(self: *TransferTransaction, account_id: AccountId, amount: Hbar) HederaError!*TransferTransaction {
+        
+        
+        
+        
+        
+        
         if (self.base.frozen) return error.TransactionFrozen;
         
         // Check if account already has a transfer
@@ -383,6 +470,12 @@ pub const TransferTransaction = struct {
     
     // Add approved HBAR transfer to the transaction
     pub fn addApprovedHbarTransfer(self: *TransferTransaction, account_id: AccountId, amount: Hbar) HederaError!*TransferTransaction {
+        
+        
+        
+        
+        
+        
         if (self.base.frozen) return error.TransactionFrozen;
         
         // Check if account already has a transfer
@@ -401,6 +494,12 @@ pub const TransferTransaction = struct {
     
     // Add token transfer to the transaction
     pub fn addTokenTransfer(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64) HederaError!*TransferTransaction {
+        
+        
+        
+        
+        
+        
         if (self.base.frozen) return error.TransactionFrozen;
         
         // Check if this token-account pair already has a transfer
@@ -418,6 +517,12 @@ pub const TransferTransaction = struct {
     
     // Add token transfer with decimals to the transaction
     pub fn addTokenTransferWithDecimals(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64, decimals: u32) HederaError!*TransferTransaction {
+        
+        
+        
+        
+        
+        
         if (self.base.frozen) return error.TransactionFrozen;
         
         // Store expected decimals
@@ -439,6 +544,12 @@ pub const TransferTransaction = struct {
     
     // Add approved token transfer to the transaction
     pub fn addApprovedTokenTransfer(self: *TransferTransaction, token_id: TokenId, account_id: AccountId, amount: i64) HederaError!*TransferTransaction {
+        
+        
+        
+        
+        
+        
         if (self.base.frozen) return error.TransactionFrozen;
         
         // Check if this token-account pair already has a transfer
@@ -457,6 +568,12 @@ pub const TransferTransaction = struct {
     
     // Add NFT transfer to the transaction
     pub fn addNftTransfer(self: *TransferTransaction, nft_id: NftId, sender: AccountId, receiver: AccountId) HederaError!*TransferTransaction {
+        
+        
+        
+        
+        
+        
         if (self.base.frozen) return error.TransactionFrozen;
         
         // Check for duplicate (same NFT with same sender/receiver)
@@ -474,6 +591,12 @@ pub const TransferTransaction = struct {
     
     // Add approved NFT transfer to the transaction
     pub fn addApprovedNftTransfer(self: *TransferTransaction, nft_id: NftId, sender: AccountId, receiver: AccountId) HederaError!*TransferTransaction {
+        
+        
+        
+        
+        
+        
         if (self.base.frozen) return error.TransactionFrozen;
         
         // Check for duplicate (same NFT with same sender/receiver)
@@ -502,7 +625,7 @@ pub const TransferTransaction = struct {
         
         // Validate token transfers per token
         var token_sums = std.AutoHashMap(TokenId, i64).init(self.base.allocator);
-        defer token_sums.deinit();
+        defer token_sums.deinit(self.allocator);
         
         for (self.token_transfers.items) |transfer| {
             const current = token_sums.get(transfer.token_id) orelse 0;
@@ -519,6 +642,12 @@ pub const TransferTransaction = struct {
     
     // Freeze the transaction
     pub fn freeze(self: *TransferTransaction) HederaError!*TransferTransaction {
+        
+        
+        
+        
+        
+        
         try self.validateTransfers();
         self.base.freeze() catch return error.InvalidParameter;
         return self;
@@ -561,6 +690,12 @@ pub const TransferTransaction = struct {
     }
     
     pub fn freezeWith(self: *TransferTransaction, client: *Client) HederaError!*TransferTransaction {
+        
+        
+        
+        
+        
+        
         try self.validateTransfers();
         _ = self.base.freezeWith(client) catch return error.InvalidParameter;
         return self;
@@ -574,12 +709,24 @@ pub const TransferTransaction = struct {
     
     // Sign with operator
     pub fn signWithOperator(self: *TransferTransaction, client: *Client) HederaError!*TransferTransaction {
+        
+        
+        
+        
+        
+        
         self.base.signWithOperator(client) catch return error.InvalidParameter;
         return self;
     }
     
     // Execute the transaction
     pub fn execute(self: *TransferTransaction, client: *Client) HederaError!TransactionResponse {
+        
+        
+        
+        
+        
+        
         if (self.hbar_transfers.items.len == 0 and 
             self.token_transfers.items.len == 0 and 
             self.nft_transfers.items.len == 0) {
@@ -616,8 +763,14 @@ pub const TransferTransaction = struct {
     
     // Build transaction body
     pub fn buildTransactionBody(self: *TransferTransaction) ![]u8 {
+        
+        
+        
+        
+        
+        
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // TransactionBody message
         
@@ -626,21 +779,21 @@ pub const TransferTransaction = struct {
         
         // cryptoTransfer = 14 (oneof data)
         var transfer_writer = ProtoWriter.init(self.base.allocator);
-        defer transfer_writer.deinit();
+        defer transfer_writer.deinit(self.allocator);
         
         // transfers = 1 (TransferList)
         if (self.hbar_transfers.items.len > 0) {
             var transfer_list_writer = ProtoWriter.init(self.base.allocator);
-            defer transfer_list_writer.deinit();
+            defer transfer_list_writer.deinit(self.allocator);
             
             // accountAmounts = 1 (repeated)
             for (self.hbar_transfers.items) |transfer| {
                 var amount_writer = ProtoWriter.init(self.base.allocator);
-                defer amount_writer.deinit();
+                defer amount_writer.deinit(self.allocator);
                 
                 // accountID = 1
                 var account_writer = ProtoWriter.init(self.base.allocator);
-                defer account_writer.deinit();
+                defer account_writer.deinit(self.allocator);
                 try account_writer.writeInt64(1, @intCast(transfer.account_id.shard));
                 try account_writer.writeInt64(2, @intCast(transfer.account_id.realm));
                 try account_writer.writeInt64(3, @intCast(transfer.account_id.account));
@@ -675,7 +828,7 @@ pub const TransferTransaction = struct {
                 while (iter.next()) |entry| {
                     entry.value_ptr.*.deinit();
                 }
-                token_groups.deinit();
+                token_groups.deinit(self.allocator);
             }
             
             for (self.token_transfers.items) |transfer| {
@@ -684,17 +837,17 @@ pub const TransferTransaction = struct {
                     try token_groups.put(transfer.token_id, new_list);
                     break :blk token_groups.get(transfer.token_id).?;
                 };
-                try list.append(transfer);
+                try list.append(self.allocator, transfer);
             }
             
             var token_iter = token_groups.iterator();
             while (token_iter.next()) |entry| {
                 var token_list_writer = ProtoWriter.init(self.base.allocator);
-                defer token_list_writer.deinit();
+                defer token_list_writer.deinit(self.allocator);
                 
                 // token = 1
                 var token_writer = ProtoWriter.init(self.base.allocator);
-                defer token_writer.deinit();
+                defer token_writer.deinit(self.allocator);
                 try token_writer.writeInt64(1, @intCast(entry.key_ptr.*.entity.shard));
                 try token_writer.writeInt64(2, @intCast(entry.key_ptr.*.entity.realm));
                 try token_writer.writeInt64(3, @intCast(entry.key_ptr.*.entity.num));
@@ -705,11 +858,11 @@ pub const TransferTransaction = struct {
                 // transfers = 2 (repeated)
                 for (entry.value_ptr.*.items) |transfer| {
                     var amount_writer = ProtoWriter.init(self.base.allocator);
-                    defer amount_writer.deinit();
+                    defer amount_writer.deinit(self.allocator);
                     
                     // accountID = 1
                     var account_writer = ProtoWriter.init(self.base.allocator);
-                    defer account_writer.deinit();
+                    defer account_writer.deinit(self.allocator);
                     try account_writer.writeInt64(1, @intCast(transfer.account_id.shard));
                     try account_writer.writeInt64(2, @intCast(transfer.account_id.realm));
                     try account_writer.writeInt64(3, @intCast(transfer.account_id.account));
@@ -750,7 +903,7 @@ pub const TransferTransaction = struct {
                 while (iter.next()) |entry| {
                     entry.value_ptr.*.deinit();
                 }
-                nft_groups.deinit();
+                nft_groups.deinit(self.allocator);
             }
             
             for (self.nft_transfers.items) |transfer| {
@@ -760,17 +913,17 @@ pub const TransferTransaction = struct {
                     try nft_groups.put(token_id, new_list);
                     break :blk nft_groups.get(token_id).?;
                 };
-                try list.append(transfer);
+                try list.append(self.allocator, transfer);
             }
             
             var nft_iter = nft_groups.iterator();
             while (nft_iter.next()) |entry| {
                 var nft_list_writer = ProtoWriter.init(self.base.allocator);
-                defer nft_list_writer.deinit();
+                defer nft_list_writer.deinit(self.allocator);
                 
                 // token = 1
                 var token_writer = ProtoWriter.init(self.base.allocator);
-                defer token_writer.deinit();
+                defer token_writer.deinit(self.allocator);
                 try token_writer.writeInt64(1, @intCast(entry.key_ptr.*.entity.shard));
                 try token_writer.writeInt64(2, @intCast(entry.key_ptr.*.entity.realm));
                 try token_writer.writeInt64(3, @intCast(entry.key_ptr.*.entity.num));
@@ -781,11 +934,11 @@ pub const TransferTransaction = struct {
                 // nftTransfers = 4 (repeated)
                 for (entry.value_ptr.*.items) |transfer| {
                     var nft_transfer_writer = ProtoWriter.init(self.base.allocator);
-                    defer nft_transfer_writer.deinit();
+                    defer nft_transfer_writer.deinit(self.allocator);
                     
                     // senderAccountID = 1
                     var sender_writer = ProtoWriter.init(self.base.allocator);
-                    defer sender_writer.deinit();
+                    defer sender_writer.deinit(self.allocator);
                     try sender_writer.writeInt64(1, @intCast(transfer.sender_account_id.shard));
                     try sender_writer.writeInt64(2, @intCast(transfer.sender_account_id.realm));
                     try sender_writer.writeInt64(3, @intCast(transfer.sender_account_id.account));
@@ -795,7 +948,7 @@ pub const TransferTransaction = struct {
                     
                     // receiverAccountID = 2
                     var receiver_writer = ProtoWriter.init(self.base.allocator);
-                    defer receiver_writer.deinit();
+                    defer receiver_writer.deinit(self.allocator);
                     try receiver_writer.writeInt64(1, @intCast(transfer.receiver_account_id.shard));
                     try receiver_writer.writeInt64(2, @intCast(transfer.receiver_account_id.realm));
                     try receiver_writer.writeInt64(3, @intCast(transfer.receiver_account_id.account));
@@ -833,10 +986,10 @@ pub const TransferTransaction = struct {
         // transactionID = 1
         if (self.base.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
-            defer tx_id_writer.deinit();
+            defer tx_id_writer.deinit(self.allocator);
             
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
             try timestamp_writer.writeInt32(2, tx_id.valid_start.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -844,7 +997,7 @@ pub const TransferTransaction = struct {
             try tx_id_writer.writeMessage(1, timestamp_bytes);
             
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
             try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
             try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
@@ -860,7 +1013,7 @@ pub const TransferTransaction = struct {
         // nodeAccountID = 2
         if (self.base.node_account_ids.items.len > 0) {
             var node_writer = ProtoWriter.init(self.base.allocator);
-            defer node_writer.deinit();
+            defer node_writer.deinit(self.allocator);
             const node = self.base.node_account_ids.items[0];
             try node_writer.writeInt64(1, @intCast(node.shard));
             try node_writer.writeInt64(2, @intCast(node.realm));
@@ -877,7 +1030,7 @@ pub const TransferTransaction = struct {
         
         // transactionValidDuration = 4
         var duration_writer = ProtoWriter.init(self.base.allocator);
-        defer duration_writer.deinit();
+        defer duration_writer.deinit(self.allocator);
         try duration_writer.writeInt64(1, self.base.transaction_valid_duration.toSeconds());
         const duration_bytes = try duration_writer.toOwnedSlice();
         defer self.base.allocator.free(duration_bytes);
@@ -891,6 +1044,12 @@ pub const TransferTransaction = struct {
     
     // Wrapper function for Transaction base class function pointer
     pub fn buildTransactionBodyForNode(transaction: *Transaction, node: AccountId) anyerror![]u8 {
+        
+        
+        
+        
+        
+        
         const self = @as(*TransferTransaction, @fieldParentPtr("base", transaction));
         _ = node; // Node parameter not needed for transfer transactions
         return self.buildTransactionBody();

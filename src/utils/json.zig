@@ -35,7 +35,7 @@ pub const JsonParser = struct {
                         allocator.free(entry.key_ptr.*);
                         entry.value_ptr.deinit(allocator);
                     }
-                    obj.deinit();
+                    obj.deinit(self.allocator);
                 },
                 else => {},
             }
@@ -304,7 +304,7 @@ pub const JsonParser = struct {
                 self.allocator.free(entry.key_ptr.*);
                 entry.value_ptr.deinit(self.allocator);
             }
-            object.deinit();
+            object.deinit(self.allocator);
         }
         
         var token = try lexer.nextToken();
@@ -352,7 +352,7 @@ pub const JsonParser = struct {
             for (array.items) |*item| {
                 item.deinit(self.allocator);
             }
-            array.deinit();
+            array.deinit(self.allocator);
         }
         
         var token = try lexer.nextToken();
@@ -367,7 +367,7 @@ pub const JsonParser = struct {
             var value = try self.parseValue(lexer);
             errdefer value.deinit(self.allocator);
             
-            try array.append(value);
+            try array.append(self.allocator, value);
             
             token = try lexer.nextToken();
             if (token.type == .right_bracket) {
@@ -384,7 +384,7 @@ pub const JsonParser = struct {
     
     fn parseStringLiteral(self: *JsonParser, value: []const u8) ![]const u8 {
         var result = std.ArrayList(u8).init(self.allocator);
-        errdefer result.deinit();
+        errdefer result.deinit(self.allocator);
         
         var i: usize = 0;
         while (i < value.len) {
@@ -422,7 +422,7 @@ pub const JsonParser = struct {
                     else => return error.InvalidEscapeSequence,
                 }
             } else {
-                try result.append(value[i]);
+                try result.append(self.allocator, value[i]);
             }
             i += 1;
         }

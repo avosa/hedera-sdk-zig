@@ -20,6 +20,8 @@ pub const MirrorNodeContractQuery = struct {
     const Self = @This();
 
     pub fn init(allocator: std.mem.Allocator) Self {
+        
+        
         return .{
             .allocator = allocator,
             .contract_id = null,
@@ -35,6 +37,8 @@ pub const MirrorNodeContractQuery = struct {
     }
 
     pub fn deinit(self: *Self) void {
+        
+        
         if (self.contract_evm_address) |addr| {
             if (addr.len > 0) self.allocator.free(addr);
         }
@@ -48,28 +52,38 @@ pub const MirrorNodeContractQuery = struct {
 
     /// Get the contract ID
     pub fn getContractId(self: *const Self) ?ContractId {
+        
+        
         return self.contract_id;
     }
 
     /// Get the contract EVM address
     pub fn getContractEvmAddress(self: *const Self) ?[]const u8 {
+        
+        
         return self.contract_evm_address;
     }
 
     /// Get the sender account ID
     pub fn getSender(self: *const Self) ?AccountId {
+        
+        
         return self.sender;
     }
 
     /// Get the sender EVM address
     pub fn getSenderEvmAddress(self: *const Self) ?[]const u8 {
+        
+        
         return self.sender_evm_address;
     }
 
     /// Set function to call with parameters
     pub fn setFunction(self: *Self, name: []const u8, params: ?*ContractFunctionParameters) !*Self {
+        
+        
         const parameters = params orelse try ContractFunctionParameters.init(self.allocator);
-        defer if (params == null) parameters.deinit();
+        defer if (params == null) parameters.deinit(self.allocator);
 
         if (self.call_data.len > 0) {
             self.allocator.free(self.call_data);
@@ -79,26 +93,36 @@ pub const MirrorNodeContractQuery = struct {
 
     /// Get the call data
     pub fn getCallData(self: *const Self) []const u8 {
+        
+        
         return self.call_data;
     }
 
     /// Get the value to send
     pub fn getValue(self: *const Self) i64 {
+        
+        
         return self.value orelse 0;
     }
 
     /// Get the gas limit
     pub fn getGasLimit(self: *const Self) i64 {
+        
+        
         return self.gas_limit orelse 0;
     }
 
     /// Get the gas price
     pub fn getGasPrice(self: *const Self) i64 {
+        
+        
         return self.gas_price orelse 0;
     }
 
     /// Get the block number
     pub fn getBlockNumber(self: *const Self) i64 {
+        
+        
         return self.block_number orelse 0;
     }
 
@@ -123,7 +147,7 @@ pub const MirrorNodeContractQuery = struct {
     /// Create JSON payload for mirror node request
     fn createJsonPayload(self: *Self, estimate: bool, block_number_str: []const u8) ![]u8 {
         var list = std.ArrayList(u8).init(self.allocator);
-        errdefer list.deinit();
+        errdefer list.deinit(self.allocator);
 
         try list.appendSlice("{");
         
@@ -179,7 +203,7 @@ pub const MirrorNodeContractQuery = struct {
         const port = if (client.getLedgerId() == null) ":8545" else "";
         
         var url = std.ArrayList(u8).init(self.allocator);
-        defer url.deinit();
+        defer url.deinit(self.allocator);
         try std.fmt.format(url.writer(), "{s}://{s}{s}/api/v1/contracts/call", .{ protocol, base_url, port });
 
         // Make HTTP POST request
@@ -209,19 +233,21 @@ pub const MirrorNodeContractQuery = struct {
         const body = try req.reader().readAllAlloc(self.allocator, 1024 * 1024);
         defer self.allocator.free(body);
 
-        const parsed = try std.json.parseFromSlice(std.json.Value, self.allocator, body, .{});
+        const parsed = try std.json.parseFromSlice(std.json.Value, self.body, .{});
         return parsed.value;
     }
 
     /// Estimate gas for the contract call
     pub fn estimateGas(self: *Self, client: *Client) !u64 {
+        
+        
         try self.fillEvmAddresses();
         
         const json_payload = try self.createJsonPayload(true, "latest");
         defer self.allocator.free(json_payload);
 
         const result = try self.performContractCallToMirrorNode(client, json_payload);
-        defer result.deinit();
+        defer result.deinit(self.allocator);
 
         const result_str = result.object.get("result") orelse return error.NoResult;
         if (result_str != .string) return error.InvalidResultType;
@@ -236,6 +262,8 @@ pub const MirrorNodeContractQuery = struct {
 
     /// Perform contract call and return result
     pub fn call(self: *Self, client: *Client) ![]u8 {
+        
+        
         try self.fillEvmAddresses();
 
         const block_number_str = if (self.block_number) |num|
@@ -248,7 +276,7 @@ pub const MirrorNodeContractQuery = struct {
         defer self.allocator.free(json_payload);
 
         const result = try self.performContractCallToMirrorNode(client, json_payload);
-        defer result.deinit();
+        defer result.deinit(self.allocator);
 
         const result_str = result.object.get("result") orelse return error.NoResult;
         if (result_str != .string) return error.InvalidResultType;
@@ -258,9 +286,9 @@ pub const MirrorNodeContractQuery = struct {
 
 test "MirrorNodeContractQuery initialization" {
     const testing = std.testing;
-    const allocator = testing.allocator;
+    _ = testing.allocator;
 
-    var query = MirrorNodeContractQuery.init(allocator);
+    var query = MirrorNodeContractQuery.init();
     defer query.deinit();
 
     try testing.expect(query.contract_id == null);

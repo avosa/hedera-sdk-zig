@@ -110,7 +110,7 @@ pub const FeeComponents = struct {
 
     pub fn toProtobuf(self: *const FeeComponents, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         try writer.writeInt64(1, self.min);
         try writer.writeInt64(2, self.max);
@@ -255,7 +255,7 @@ pub const FeeData = struct {
 
     pub fn toProtobuf(self: *const FeeData, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         try writer.writeInt64(1, self.bytes_used);
         try writer.writeInt64(2, self.verifications_used);
@@ -367,7 +367,7 @@ pub const FeeSchedule = struct {
 
     pub fn toProtobuf(self: *const FeeSchedule, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         const node_bytes = try self.node_data.toProtobuf(allocator);
         defer allocator.free(node_bytes);

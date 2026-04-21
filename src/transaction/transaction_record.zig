@@ -65,9 +65,9 @@ pub const TransactionRecord = struct {
             .schedule_ref = null,
             .transaction_memo = "",
             .transaction_fee = Hbar.fromTinybars(0) catch Hbar.zero(),
-            .transfers = std.ArrayList(HbarTransfer).init(allocator),
-            .token_transfers = std.ArrayList(TokenTransfer).init(allocator),
-            .nft_transfers = std.ArrayList(TokenNftTransfer).init(allocator),
+            .transfers = std.ArrayList(HbarTransfer){},
+            .token_transfers = std.ArrayList(TokenTransfer){},
+            .nft_transfers = std.ArrayList(TokenNftTransfer){},
             .call_result = null,
             .call_result_is_create = false,
             .assessed_custom_fees = &[_]AssessedCustomFee{},
@@ -90,7 +90,7 @@ pub const TransactionRecord = struct {
     }
     
     pub fn deinit(self: *Self) void {
-        self.receipt.deinit();
+        self.receipt.deinit(self.allocator);
         
         if (self.transaction_hash.len > 0) {
             self.allocator.free(self.transaction_hash);
@@ -98,7 +98,7 @@ pub const TransactionRecord = struct {
         if (self.transaction_memo.len > 0) {
             self.allocator.free(self.transaction_memo);
         }
-        self.transfers.deinit();
+        self.transfers.deinit(self.allocator);
         if (self.assessed_custom_fees.len > 0) {
             self.allocator.free(self.assessed_custom_fees);
         }
@@ -142,10 +142,10 @@ pub const TransactionRecord = struct {
         }
         
         // Deinit ArrayLists
-        self.token_transfers.deinit();
-        self.nft_transfers.deinit();
+        self.token_transfers.deinit(self.allocator);
+        self.nft_transfers.deinit(self.allocator);
         
-        self.paid_staking_rewards.deinit();
+        self.paid_staking_rewards.deinit(self.allocator);
     }
     
     pub fn setTransactionHash(self: *Self, allocator: Allocator, hash: []const u8) !*Self {
@@ -323,8 +323,8 @@ pub const TransactionRecord = struct {
     }
     
     pub fn toString(self: *const Self, allocator: Allocator) ![]u8 {
-        var buffer = std.ArrayList(u8).init(allocator);
-        defer buffer.deinit();
+        var buffer = std.ArrayList(u8){};
+        defer buffer.deinit(allocator);
         
         const tx_id_str = try self.transaction_id.toString(allocator);
         defer allocator.free(tx_id_str);
@@ -379,8 +379,8 @@ pub const TransactionRecord = struct {
     }
     
     pub fn toJson(self: *const Self, allocator: Allocator) ![]u8 {
-        var buffer = std.ArrayList(u8).init(allocator);
-        defer buffer.deinit();
+        var buffer = std.ArrayList(u8){};
+        defer buffer.deinit(allocator);
         
         try buffer.appendSlice("{");
         
@@ -568,7 +568,7 @@ pub const TransactionRecord = struct {
                                     .amount = try Hbar.fromTinybars(amount),
                                     .is_approval = is_approval,
                                 };
-                                try record.transfers.append(transfer);
+                                try record.transfers.append(allocator, transfer);
                             },
                             else => try transfer_reader.skipField(transfer_tag.wire_type),
                         }
@@ -619,7 +619,7 @@ pub const TransactionRecord = struct {
                                                 .expected_decimals = null,
                                                 .is_approval = is_approval,
                                             };
-                                            try record.token_transfers.append(token_transfer);
+                                            try record.token_transfers.append(allocator, token_transfer);
                                         },
                                         else => try token_reader.skipField(inner_tag.wire_type),
                                     }
@@ -714,7 +714,7 @@ pub const TransactionRecord = struct {
     pub fn toProtobuf(self: *const Self, allocator: Allocator) ![]u8 {
         const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(allocator);
         
         // Receipt (field 1)
         const receipt_bytes = try self.receipt.toProtobufBytes(allocator);
@@ -728,7 +728,7 @@ pub const TransactionRecord = struct {
         
         // ConsensusTimestamp (field 3)
         var timestamp_writer = ProtoWriter.init(allocator);
-        defer timestamp_writer.deinit();
+        defer timestamp_writer.deinit(allocator);
         try timestamp_writer.writeInt64(1, self.consensus_timestamp.seconds);
         try timestamp_writer.writeInt32(2, self.consensus_timestamp.nanos);
         const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -751,11 +751,11 @@ pub const TransactionRecord = struct {
         // TransferList (field 10) - HBAR transfers
         if (self.transfers.items.len > 0) {
             var transfer_writer = ProtoWriter.init(allocator);
-            defer transfer_writer.deinit();
+            defer transfer_writer.deinit(allocator);
             
             for (self.transfers.items) |transfer| {
                 var account_amount_writer = ProtoWriter.init(allocator);
-                defer account_amount_writer.deinit();
+                defer account_amount_writer.deinit(allocator);
                 
                 // AccountID
                 const account_bytes = try transfer.account_id.toProtobuf(allocator);
@@ -787,9 +787,9 @@ pub const TransactionRecord = struct {
             defer {
                 var iterator = token_map.iterator();
                 while (iterator.next()) |entry| {
-                    entry.value_ptr.deinit();
+                    entry.value_ptr.deinit(allocator);
                 }
-                token_map.deinit();
+                token_map.deinit(allocator);
             }
             
             // Group transfers by token ID (simplified - would need proper token grouping)
@@ -798,13 +798,13 @@ pub const TransactionRecord = struct {
                 const transfer_token = TokenId.init(0, 0, 1);
                 const result = try token_map.getOrPut(transfer_token);
                 if (!result.found_existing) {
-                    result.value_ptr.* = std.ArrayList(TokenTransfer).init(allocator);
+                    result.value_ptr.* = std.ArrayList(TokenTransfer){};
                 }
-                try result.value_ptr.append(transfer);
+                try result.value_ptr.append(allocator, transfer);
             }
             
             var token_transfer_writer = ProtoWriter.init(allocator);
-            defer token_transfer_writer.deinit();
+            defer token_transfer_writer.deinit(allocator);
             
             var token_iterator = token_map.iterator();
             while (token_iterator.next()) |entry| {
@@ -816,7 +816,7 @@ pub const TransactionRecord = struct {
                 // Transfers for this token
                 for (entry.value_ptr.items) |transfer| {
                     var transfer_entry_writer = ProtoWriter.init(allocator);
-                    defer transfer_entry_writer.deinit();
+                    defer transfer_entry_writer.deinit(allocator);
                     
                     // AccountID
                     const acc_bytes = try transfer.account_id.toProtobuf(allocator);
@@ -852,7 +852,7 @@ pub const TransactionRecord = struct {
         // ParentConsensusTimestamp (field 15)
         if (self.parent_consensus_timestamp) |parent_timestamp| {
             var parent_writer = ProtoWriter.init(allocator);
-            defer parent_writer.deinit();
+            defer parent_writer.deinit(allocator);
             try parent_writer.writeInt64(1, parent_timestamp.seconds);
             try parent_writer.writeInt32(2, parent_timestamp.nanos);
             const parent_bytes = try parent_writer.toOwnedSlice();
@@ -1020,7 +1020,7 @@ pub const TokenTransfer = struct {
     pub fn toProtobuf(self: *const TokenTransfer, allocator: Allocator) ![]u8 {
         const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(allocator);
         
         // AccountID (field 1)
         const account_bytes = try self.account_id.toProtobuf(allocator);
@@ -1108,7 +1108,7 @@ pub const TokenNftTransfer = struct {
     pub fn toProtobuf(self: *const TokenNftTransfer, allocator: Allocator) ![]u8 {
         const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(allocator);
         
         // SenderAccountID (field 1)
         const sender_bytes = try self.sender_account_id.toProtobuf(allocator);

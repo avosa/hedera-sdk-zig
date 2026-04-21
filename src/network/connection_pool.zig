@@ -249,8 +249,8 @@ pub const ConnectionPool = struct {
             self.allocator.destroy(connection);
         }
         
-        self.connections.deinit();
-        self.available_connections.deinit();
+        self.connections.deinit(self.allocator);
+        self.available_connections.deinit(self.allocator);
         self.allocator.free(self.endpoint);
     }
     
@@ -375,8 +375,8 @@ pub const ConnectionPool = struct {
         self.mutex.lock();
         defer self.mutex.unlock();
         
-        try self.connections.append(pooled_connection);
-        try self.available_connections.append(pooled_connection);
+        try self.connections.append(self.allocator, pooled_connection);
+        try self.available_connections.append(self.allocator, pooled_connection);
         _ = self.total_connections.fetchAdd(1, .Acquire);
         
         return pooled_connection;
@@ -413,7 +413,7 @@ pub const ConnectionPool = struct {
         defer self.mutex.unlock();
         
         var unhealthy_connections = ArrayList(*PooledConnection).init(self.allocator);
-        defer unhealthy_connections.deinit();
+        defer unhealthy_connections.deinit(self.allocator);
         
         for (self.connections.items) |connection| {
             if (!connection.isHealthy(self.config.idle_timeout_ms, self.config.max_error_rate)) {
@@ -490,7 +490,7 @@ pub const ConnectionPoolManager = struct {
             entry.value_ptr.*.deinit();
             self.allocator.destroy(entry.value_ptr.*);
         }
-        self.pools.deinit();
+        self.pools.deinit(self.allocator);
     }
     
     pub fn getPool(self: *ConnectionPoolManager, endpoint: []const u8) !*ConnectionPool {
@@ -541,7 +541,7 @@ pub const ConnectionPoolManager = struct {
                 .stats = stats,
             };
             
-            try stats_list.append(stats_with_endpoint);
+            try stats_list.append(self.allocator, stats_with_endpoint);
         }
         
         return stats_list.toOwnedSlice();

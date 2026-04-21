@@ -221,14 +221,14 @@ const SimpleLZ77 = struct {
             
             if (match.length >= MIN_MATCH_LENGTH) {
                 // Encode as (distance, length)
-                try compressed.append(0xFF); // Marker for match
+                try compressed.append(allocator, 0xFF); // Marker for match
                 try compressed.append(@intCast(match.distance & 0xFF));
                 try compressed.append(@intCast((match.distance >> 8) & 0xFF));
                 try compressed.append(@intCast(match.length));
                 pos += match.length;
             } else {
                 // Encode as literal
-                try compressed.append(data[pos]);
+                try compressed.append(allocator, data[pos]);
                 pos += 1;
             }
         }
@@ -252,13 +252,13 @@ const SimpleLZ77 = struct {
                 const start_pos = decompressed.items.len - distance;
                 for (0..length) |_| {
                     const byte = decompressed.items[start_pos + (decompressed.items.len - start_pos) % distance];
-                    try decompressed.append(byte);
+                    try decompressed.append(allocator, byte);
                 }
                 
                 pos += 4;
             } else {
                 // This is a literal
-                try decompressed.append(compressed_data[pos]);
+                try decompressed.append(allocator, compressed_data[pos]);
                 pos += 1;
             }
         }

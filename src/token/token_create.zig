@@ -57,7 +57,7 @@ pub const CustomFee = struct {
         pub fn encode(self: FixedFee, writer: *ProtoWriter) !void {
             // fixedFee = 1
             var fee_writer = ProtoWriter.init(writer.buffer.allocator);
-            defer fee_writer.deinit();
+            defer fee_writer.deinit(self.allocator);
             
             // amount = 1
             try fee_writer.writeInt64(1, self.amount);
@@ -65,7 +65,7 @@ pub const CustomFee = struct {
             // denominatingTokenId = 2
             if (self.denominating_token_id) |token| {
                 var token_writer = ProtoWriter.init(writer.buffer.allocator);
-                defer token_writer.deinit();
+                defer token_writer.deinit(self.allocator);
                 try token_writer.writeInt64(1, @intCast(token.entity.shard));
                 try token_writer.writeInt64(2, @intCast(token.entity.realm));
                 try token_writer.writeInt64(3, @intCast(token.entity.num));
@@ -80,7 +80,7 @@ pub const CustomFee = struct {
             
             // feeCollectorAccountId = 2
             var collector_writer = ProtoWriter.init(writer.buffer.allocator);
-            defer collector_writer.deinit();
+            defer collector_writer.deinit(self.allocator);
             try collector_writer.writeInt64(1, @intCast(self.fee_collector_account_id.shard));
             try collector_writer.writeInt64(2, @intCast(self.fee_collector_account_id.realm));
             try collector_writer.writeInt64(3, @intCast(self.fee_collector_account_id.account));
@@ -111,11 +111,11 @@ pub const CustomFee = struct {
         pub fn encode(self: FractionalFee, writer: *ProtoWriter) !void {
             // fractionalFee = 2
             var fee_writer = ProtoWriter.init(writer.buffer.allocator);
-            defer fee_writer.deinit();
+            defer fee_writer.deinit(self.allocator);
             
             // fractionalAmount = 1
             var fraction_writer = ProtoWriter.init(writer.buffer.allocator);
-            defer fraction_writer.deinit();
+            defer fraction_writer.deinit(self.allocator);
             try fraction_writer.writeInt64(1, self.fractional_amount.numerator);
             try fraction_writer.writeInt64(2, self.fractional_amount.denominator);
             const fraction_bytes = try fraction_writer.toOwnedSlice();
@@ -139,7 +139,7 @@ pub const CustomFee = struct {
             
             // feeCollectorAccountId = 2
             var collector_writer = ProtoWriter.init(writer.buffer.allocator);
-            defer collector_writer.deinit();
+            defer collector_writer.deinit(self.allocator);
             try collector_writer.writeInt64(1, @intCast(self.fee_collector_account_id.shard));
             try collector_writer.writeInt64(2, @intCast(self.fee_collector_account_id.realm));
             try collector_writer.writeInt64(3, @intCast(self.fee_collector_account_id.account));
@@ -164,11 +164,11 @@ pub const CustomFee = struct {
         pub fn encode(self: RoyaltyFee, writer: *ProtoWriter) !void {
             // royaltyFee = 4
             var fee_writer = ProtoWriter.init(writer.buffer.allocator);
-            defer fee_writer.deinit();
+            defer fee_writer.deinit(self.allocator);
             
             // exchangeValueFraction = 1
             var fraction_writer = ProtoWriter.init(writer.buffer.allocator);
-            defer fraction_writer.deinit();
+            defer fraction_writer.deinit(self.allocator);
             try fraction_writer.writeInt64(1, self.numerator);
             try fraction_writer.writeInt64(2, self.denominator);
             const fraction_bytes = try fraction_writer.toOwnedSlice();
@@ -178,7 +178,7 @@ pub const CustomFee = struct {
             // fallbackFee = 2
             if (self.fallback_fee) |fallback| {
                 var fallback_writer = ProtoWriter.init(writer.buffer.allocator);
-                defer fallback_writer.deinit();
+                defer fallback_writer.deinit(self.allocator);
                 try fallback.encode(&fallback_writer);
                 const fallback_bytes = try fallback_writer.toOwnedSlice();
                 defer writer.buffer.allocator.free(fallback_bytes);
@@ -191,7 +191,7 @@ pub const CustomFee = struct {
             
             // feeCollectorAccountId = 2
             var collector_writer = ProtoWriter.init(writer.buffer.allocator);
-            defer collector_writer.deinit();
+            defer collector_writer.deinit(self.allocator);
             try collector_writer.writeInt64(1, @intCast(self.fee_collector_account_id.shard));
             try collector_writer.writeInt64(2, @intCast(self.fee_collector_account_id.realm));
             try collector_writer.writeInt64(3, @intCast(self.fee_collector_account_id.account));
@@ -273,7 +273,7 @@ pub const TokenCreateTransaction = struct {
             .supply_type = .infinite,
             .max_supply = 0,
             .fee_schedule_key = null,
-            .custom_fees = std.ArrayList(CustomFee).init(allocator),
+            .custom_fees = std.ArrayList(CustomFee){},
             .pause_key = null,
             .metadata = "",
             .metadata_key = null,
@@ -291,8 +291,8 @@ pub const TokenCreateTransaction = struct {
     }
     
     pub fn deinit(self: *TokenCreateTransaction) void {
-        self.base.deinit();
-        self.custom_fees.deinit();
+        self.base.deinit(self.allocator);
+        self.custom_fees.deinit(self.allocator);
     }
     
     // Set token name
@@ -723,14 +723,14 @@ pub const TokenCreateTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *TokenCreateTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Common transaction fields
         try self.writeCommonTransactionFields(&writer);
         
         // tokenCreation = 11 (oneof data)
         var create_writer = ProtoWriter.init(self.base.allocator);
-        defer create_writer.deinit();
+        defer create_writer.deinit(self.allocator);
         
         // name = 1
         try create_writer.writeString(1, self.name);
@@ -747,7 +747,7 @@ pub const TokenCreateTransaction = struct {
         // treasury = 5
         if (self.treasury_account_id) |treasury| {
             var treasury_writer = ProtoWriter.init(self.base.allocator);
-            defer treasury_writer.deinit();
+            defer treasury_writer.deinit(self.allocator);
             try treasury_writer.writeInt64(1, @intCast(treasury.shard));
             try treasury_writer.writeInt64(2, @intCast(treasury.realm));
             try treasury_writer.writeInt64(3, @intCast(treasury.account));
@@ -799,7 +799,7 @@ pub const TokenCreateTransaction = struct {
         // expiry = 13
         if (self.expiration_time) |expiry| {
             var expiry_writer = ProtoWriter.init(self.base.allocator);
-            defer expiry_writer.deinit();
+            defer expiry_writer.deinit(self.allocator);
             try expiry_writer.writeInt64(1, expiry.seconds);
             try expiry_writer.writeInt32(2, expiry.nanos);
             const expiry_bytes = try expiry_writer.toOwnedSlice();
@@ -810,7 +810,7 @@ pub const TokenCreateTransaction = struct {
         // autoRenewAccount = 14
         if (self.auto_renew_account) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(account.shard));
             try account_writer.writeInt64(2, @intCast(account.realm));
             try account_writer.writeInt64(3, @intCast(account.account));
@@ -822,7 +822,7 @@ pub const TokenCreateTransaction = struct {
         // autoRenewPeriod = 15
         if (self.auto_renew_period) |period| {
             var period_writer = ProtoWriter.init(self.base.allocator);
-            defer period_writer.deinit();
+            defer period_writer.deinit(self.allocator);
             try period_writer.writeInt64(1, period.seconds);
             const period_bytes = try period_writer.toOwnedSlice();
             defer self.base.allocator.free(period_bytes);
@@ -855,7 +855,7 @@ pub const TokenCreateTransaction = struct {
         // customFees = 21 (repeated)
         for (self.custom_fees.items) |fee| {
             var fee_writer = ProtoWriter.init(self.base.allocator);
-            defer fee_writer.deinit();
+            defer fee_writer.deinit(self.allocator);
             try fee.encode(&fee_writer);
             const fee_bytes = try fee_writer.toOwnedSlice();
             defer self.base.allocator.free(fee_bytes);

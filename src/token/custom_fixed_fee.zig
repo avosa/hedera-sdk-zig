@@ -85,13 +85,13 @@ pub const CustomFixedFee = struct {
 
     pub fn toProtobuf(self: *const CustomFixedFee, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         try writer.writeUInt64(1, self.amount);
 
         if (self.denomination_token_id) |token_id| {
             var token_writer = ProtoWriter.init(allocator);
-            defer token_writer.deinit();
+            defer token_writer.deinit(self.allocator);
             
             try token_writer.writeInt64(1, @intCast(token_id.shard));
             try token_writer.writeInt64(2, @intCast(token_id.realm));
@@ -104,7 +104,7 @@ pub const CustomFixedFee = struct {
 
         if (self.fee_collector_account_id) |collector_id| {
             var collector_writer = ProtoWriter.init(allocator);
-            defer collector_writer.deinit();
+            defer collector_writer.deinit(self.allocator);
             
             try collector_writer.writeInt64(1, @intCast(collector_id.shard));
             try collector_writer.writeInt64(2, @intCast(collector_id.realm));

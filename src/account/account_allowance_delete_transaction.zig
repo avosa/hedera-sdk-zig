@@ -22,22 +22,22 @@ pub const AccountAllowanceDeleteTransaction = struct {
     pub fn init(allocator: std.mem.Allocator) AccountAllowanceDeleteTransaction {
         return AccountAllowanceDeleteTransaction{
             .base = Transaction.init(allocator),
-            .nft_allowances = std.ArrayList(NftRemoveAllowance).init(allocator),
-            .nft_allowance_deletions = std.ArrayList(NftRemoveAllowance).init(allocator),
+            .nft_allowances = std.ArrayList(NftRemoveAllowance){},
+            .nft_allowance_deletions = std.ArrayList(NftRemoveAllowance){},
         };
     }
     
     pub fn deinit(self: *AccountAllowanceDeleteTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
         for (self.nft_allowances.items) |*nft| {
-            nft.serials.deinit();
+            nft.serials.deinit(self.allocator);
         }
-        self.nft_allowances.deinit();
+        self.nft_allowances.deinit(self.allocator);
         
         for (self.nft_allowance_deletions.items) |*nft| {
-            nft.serials.deinit();
+            nft.serials.deinit(self.allocator);
         }
-        self.nft_allowance_deletions.deinit();
+        self.nft_allowance_deletions.deinit(self.allocator);
     }
     
     // Delete NFT allowance
@@ -55,7 +55,7 @@ pub const AccountAllowanceDeleteTransaction = struct {
         var serials = std.ArrayList(i64).init(self.base.allocator);
         try serials.append(@intCast(nft_id.serial_number));
         
-        try self.nft_allowances.append(NftRemoveAllowance{
+        try self.nft_allowances.append(self.allocator, NftRemoveAllowance{
             .token_id = nft_id.token_id,
             .owner = owner,
             .serials = serials,
@@ -83,23 +83,23 @@ pub const AccountAllowanceDeleteTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *AccountAllowanceDeleteTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Write common transaction fields
         try self.writeCommonFields(&writer);
         
         // cryptoDeleteAllowance = 49 (oneof data)
         var delete_writer = ProtoWriter.init(self.base.allocator);
-        defer delete_writer.deinit();
+        defer delete_writer.deinit(self.allocator);
         
         // nftAllowances = 1 (repeated)
         for (self.nft_allowances.items) |nft| {
             var nft_writer = ProtoWriter.init(self.base.allocator);
-            defer nft_writer.deinit();
+            defer nft_writer.deinit(self.allocator);
             
             // tokenId = 1
             var token_writer = ProtoWriter.init(self.base.allocator);
-            defer token_writer.deinit();
+            defer token_writer.deinit(self.allocator);
             try token_writer.writeInt64(1, @intCast(nft.token_id.shard));
             try token_writer.writeInt64(2, @intCast(nft.token_id.realm));
             try token_writer.writeInt64(3, @intCast(nft.token_id.num));
@@ -109,7 +109,7 @@ pub const AccountAllowanceDeleteTransaction = struct {
             
             // owner = 2
             var owner_writer = ProtoWriter.init(self.base.allocator);
-            defer owner_writer.deinit();
+            defer owner_writer.deinit(self.allocator);
             try owner_writer.writeInt64(1, @intCast(nft.owner.shard));
             try owner_writer.writeInt64(2, @intCast(nft.owner.realm));
             try owner_writer.writeInt64(3, @intCast(nft.owner.account));

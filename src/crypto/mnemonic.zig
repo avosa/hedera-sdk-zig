@@ -104,12 +104,12 @@ pub const Mnemonic = struct {
 
     // Create mnemonic from string
     pub fn fromString(mnemonic_str: []const u8, allocator: std.mem.Allocator) !Mnemonic {
-        var words = std.ArrayList([]const u8).init(allocator);
-        defer words.deinit();
+        var words = std.ArrayList([]const u8){};
+        defer words.deinit(allocator);
 
         var iter = std.mem.tokenizeAny(u8, mnemonic_str, " ");
         while (iter.next()) |word| {
-            try words.append(try allocator.dupe(u8, word));
+            try words.append(allocator, try allocator.dupe(u8, word));
         }
 
         if (words.items.len != 12 and words.items.len != 24) {
@@ -128,11 +128,12 @@ pub const Mnemonic = struct {
 
     // Convert mnemonic to string
     pub fn toString(self: *const Mnemonic, allocator: std.mem.Allocator) ![]u8 {
-        var result = std.ArrayList(u8).init(allocator);
-        defer result.deinit();
+        _ = allocator;
+        var result = std.ArrayList(u8){};
+        defer result.deinit(self.allocator);
 
         for (self.words, 0..) |word, i| {
-            if (i > 0) try result.append(' ');
+            if (i > 0) try result.append(self.allocator, ' ');
             try result.appendSlice(word);
         }
 

@@ -36,8 +36,8 @@ pub const TopicUpdateTransaction = struct {
             .admin_key = null,
             .submit_key = null,
             .fee_schedule_key = null,
-            .fee_exempt_keys = std.ArrayList(Key).init(allocator),
-            .custom_fees = std.ArrayList(*CustomFixedFee).init(allocator),
+            .fee_exempt_keys = std.ArrayList(Key){},
+            .custom_fees = std.ArrayList(*CustomFixedFee){},
             .memo = null,
             .auto_renew_period = null,
             .auto_renew_account_id = null,
@@ -52,12 +52,12 @@ pub const TopicUpdateTransaction = struct {
     }
     
     pub fn deinit(self: *TopicUpdateTransaction) void {
-        self.fee_exempt_keys.deinit();
+        self.fee_exempt_keys.deinit(self.allocator);
         for (self.custom_fees.items) |fee| {
             self.allocator.destroy(fee);
         }
-        self.custom_fees.deinit();
-        self.transaction.deinit();
+        self.custom_fees.deinit(self.allocator);
+        self.transaction.deinit(self.allocator);
         self.allocator.destroy(self);
     }
     

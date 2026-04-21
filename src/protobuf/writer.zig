@@ -10,13 +10,13 @@ pub const ProtoWriter = struct {
 
     pub fn init(allocator: Allocator) Self {
         return Self{
-            .buffer = std.ArrayList(u8).init(allocator),
+            .buffer = std.ArrayList(u8){},
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *Self) void {
-        self.buffer.deinit();
+        self.buffer.deinit(self.allocator);
     }
 
     pub fn writeVarint(self: *Self, value: u64) !void {
@@ -243,7 +243,7 @@ pub const ProtoWriter = struct {
         var iterator = map.iterator();
         while (iterator.next()) |entry| {
             var map_entry = ProtoWriter.init(self.allocator);
-            defer map_entry.deinit();
+            defer map_entry.deinit(self.allocator);
 
             // Write key (field 1)
             switch (@typeInfo(K)) {
@@ -403,7 +403,7 @@ pub const MessageBuilder = struct {
     }
 
     pub fn deinit(self: *Self) void {
-        self.writer.deinit();
+        self.writer.deinit(self.allocator);
     }
 
     pub fn addField(self: *Self, field_number: u32, value: anytype) !void {
