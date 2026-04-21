@@ -193,7 +193,7 @@ pub const MirrorNodeRestClient = struct {
                 .{ .name = "user-agent", .value = "hedera-sdk-zig/1.0.0" },
             },
         });
-        defer request.deinit(self.allocator);
+        defer request.deinit();
         
         try request.send();
         try request.finish();

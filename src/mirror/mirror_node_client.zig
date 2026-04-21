@@ -763,7 +763,7 @@ pub const MirrorNodeClient = struct {
         defer client.deinit(self.allocator);
         
         var request = try client.open(.GET, uri, .{ .server_header_buffer = try self.allocator.alloc(u8, 16 * 1024) });
-        defer request.deinit(self.allocator);
+        defer request.deinit();
         
         try request.send();
         try request.finish();
@@ -816,7 +816,7 @@ pub const MirrorNodeClient = struct {
         defer client.deinit(self.allocator);
         
         var request = try client.open(.GET, uri, .{ .server_header_buffer = try self.allocator.alloc(u8, 16 * 1024) });
-        defer request.deinit(self.allocator);
+        defer request.deinit();
         
         try request.send();
         try request.finish();
