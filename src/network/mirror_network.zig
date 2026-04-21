@@ -7,7 +7,7 @@ pub const MirrorNetwork = struct {
     
     pub fn init(allocator: std.mem.Allocator) MirrorNetwork {
         return MirrorNetwork{
-            .nodes = std.ArrayList([]const u8).init(allocator),
+            .nodes = std.ArrayList([]const u8){},
             .network_name = "",
             .allocator = allocator,
         };
@@ -17,12 +17,12 @@ pub const MirrorNetwork = struct {
         for (self.nodes.items) |node| {
             self.allocator.free(node);
         }
-        self.nodes.deinit();
+        self.nodes.deinit(self.allocator);
     }
     
     pub fn addNode(self: *MirrorNetwork, node_url: []const u8) !void {
         const owned_url = try self.allocator.dupe(u8, node_url);
-        try self.nodes.append(owned_url);
+        try self.nodes.append(self.allocator, owned_url);
     }
     
     pub fn getNodes(self: *const MirrorNetwork) []const []const u8 {

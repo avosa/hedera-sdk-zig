@@ -12,23 +12,39 @@ pub const MirrorNodeContractEstimateGasQuery = struct {
     const Self = @This();
 
     pub fn init(allocator: std.mem.Allocator) Self {
+        
+        
+        
+        
         return .{
             .query = MirrorNodeContractQuery.init(allocator),
         };
     }
 
     pub fn deinit(self: *Self) void {
-        self.query.deinit();
+        
+        
+        
+        
+        self.query.deinit(self.allocator);
     }
 
     /// Set the contract instance to call
     pub fn setContractId(self: *Self, contract_id: ContractId) !*Self {
+        
+        
+        
+        
         self.query.contract_id = contract_id;
         return self;
     }
 
     /// Set the 20-byte EVM address of the contract to call
     pub fn setContractEvmAddress(self: *Self, contract_evm_address: []const u8) !*Self {
+        
+        
+        
+        
         if (self.query.contract_evm_address) |addr| {
             if (addr.len > 0) self.query.allocator.free(addr);
         }
@@ -39,12 +55,20 @@ pub const MirrorNodeContractEstimateGasQuery = struct {
 
     /// Set the sender of the transaction simulation
     pub fn setSender(self: *Self, sender: AccountId) !*Self {
+        
+        
+        
+        
         self.query.sender = sender;
         return self;
     }
 
     /// Set the 20-byte EVM address of the sender
     pub fn setSenderEvmAddress(self: *Self, sender_evm_address: []const u8) !*Self {
+        
+        
+        
+        
         if (self.query.sender_evm_address) |addr| {
             if (addr.len > 0) self.query.allocator.free(addr);
         }
@@ -55,12 +79,20 @@ pub const MirrorNodeContractEstimateGasQuery = struct {
 
     /// Set the function to call with parameters
     pub fn setFunction(self: *Self, name: []const u8, params: ?*ContractFunctionParameters) !*Self {
+        
+        
+        
+        
         try self.query.setFunction(name, params);
         return self;
     }
 
     /// Set the function parameters as raw bytes
     pub fn setFunctionParameters(self: *Self, byte_array: []const u8) !*Self {
+        
+        
+        
+        
         if (self.query.call_data.len > 0) {
             self.query.allocator.free(self.query.call_data);
         }
@@ -70,24 +102,40 @@ pub const MirrorNodeContractEstimateGasQuery = struct {
 
     /// Set the amount of value to send to the contract
     pub fn setValue(self: *Self, value: i64) !*Self {
+        
+        
+        
+        
         self.query.value = value;
         return self;
     }
 
     /// Set the gas limit for the contract call
     pub fn setGasLimit(self: *Self, gas_limit: i64) !*Self {
+        
+        
+        
+        
         self.query.gas_limit = gas_limit;
         return self;
     }
 
     /// Set the gas price for the contract call
     pub fn setGasPrice(self: *Self, gas_price: i64) !*Self {
+        
+        
+        
+        
         self.query.gas_price = gas_price;
         return self;
     }
 
     /// Execute the query and return gas estimate
     pub fn execute(self: *Self, client: *Client) !u64 {
+        
+        
+        
+        
         return self.query.estimateGas(client);
     }
 };
@@ -97,7 +145,7 @@ test "MirrorNodeContractEstimateGasQuery initialization" {
     const allocator = testing.allocator;
 
     var query = MirrorNodeContractEstimateGasQuery.init(allocator);
-    defer query.deinit();
+    defer query.deinit(allocator);
 
     try testing.expect(query.query.contract_id == null);
     try testing.expect(query.query.sender == null);
@@ -108,7 +156,7 @@ test "MirrorNodeContractEstimateGasQuery setters" {
     const allocator = testing.allocator;
 
     var query = MirrorNodeContractEstimateGasQuery.init(allocator);
-    defer query.deinit();
+    defer query.deinit(allocator);
 
     const contract_id = ContractId.init(0, 0, 100);
     const sender = AccountId.init(0, 0, 200);

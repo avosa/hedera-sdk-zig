@@ -36,7 +36,7 @@ pub const TokenBalanceMap = struct {
     }
     
     pub fn deinit(self: *TokenBalanceMap) void {
-        self.balances.deinit();
+        self.balances.deinit(self.allocator);
     }
     
     pub fn get(self: *const TokenBalanceMap, token_id: TokenId) ?u64 {
@@ -63,7 +63,7 @@ pub const TokenBalanceQuery = struct {
     }
     
     pub fn deinit(self: *TokenBalanceQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the account ID to query
@@ -99,16 +99,16 @@ pub const TokenBalanceQuery = struct {
     // Build the query
     pub fn buildQuery(self: *TokenBalanceQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // tokenGetBalance = 50 (hypothetical field number)
         var balance_writer = ProtoWriter.init(self.base.allocator);
-        defer balance_writer.deinit();
+        defer balance_writer.deinit(self.allocator);
         
         // accountID = 1
         if (self.account_id) |id| {
             var id_writer = ProtoWriter.init(self.base.allocator);
-            defer id_writer.deinit();
+            defer id_writer.deinit(self.allocator);
             try id_writer.writeInt64(1, @intCast(id.shard));
             try id_writer.writeInt64(2, @intCast(id.realm));
             try id_writer.writeInt64(3, @intCast(id.account));
@@ -120,7 +120,7 @@ pub const TokenBalanceQuery = struct {
         // tokenID = 2
         if (self.token_id) |id| {
             var id_writer = ProtoWriter.init(self.base.allocator);
-            defer id_writer.deinit();
+            defer id_writer.deinit(self.allocator);
             try id_writer.writeInt64(1, @intCast(id.shard));
             try id_writer.writeInt64(2, @intCast(id.realm));
             try id_writer.writeInt64(3, @intCast(id.num));

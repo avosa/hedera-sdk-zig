@@ -105,11 +105,11 @@ pub const ReceiptValidator = struct {
         
         // First validate the embedded receipt
         const receipt_result = try self.validateReceipt(&record.receipt, expected_tx_id);
-        defer receipt_result.deinit();
+        defer receipt_result.deinit(self.allocator);
         
         // Copy receipt issues to record result
         for (receipt_result.issues.items) |issue| {
-            try result.issues.append(issue);
+            try result.issues.append(self.allocator, issue);
         }
         
         // Validate record-specific fields
@@ -142,7 +142,7 @@ pub const ReceiptValidator = struct {
                 batch_result.invalid_count += 1;
             }
             
-            try batch_result.results.append(result);
+            try batch_result.results.append(self.allocator, result);
         }
         
         return batch_result;
@@ -366,7 +366,7 @@ pub const ValidationResult = struct {
         for (self.issues.items) |*issue| {
             issue.deinit(allocator);
         }
-        self.issues.deinit();
+        self.issues.deinit(self.allocator);
     }
     
     pub fn hasErrors(self: ValidationResult) bool {
@@ -411,7 +411,7 @@ pub const BatchValidationResult = struct {
         for (self.results.items) |*result| {
             result.deinit(allocator);
         }
-        self.results.deinit();
+        self.results.deinit(self.allocator);
     }
     
     pub fn getSuccessRate(self: BatchValidationResult) f64 {

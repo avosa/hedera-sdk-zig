@@ -144,15 +144,15 @@ pub const PerformanceMonitor = struct {
         self.mutex.lock();
         defer self.mutex.unlock();
         
-        self.operation_metrics.deinit();
-        self.node_metrics.deinit();
+        self.operation_metrics.deinit(self.allocator);
+        self.node_metrics.deinit(self.allocator);
         
         // Free sample string references
         for (self.samples.items) |sample| {
             self.allocator.free(sample.operation_type);
             self.allocator.free(sample.node_endpoint);
         }
-        self.samples.deinit();
+        self.samples.deinit(self.allocator);
     }
     
     pub fn setEnabled(self: *PerformanceMonitor, enabled: bool) void {
@@ -202,7 +202,7 @@ pub const PerformanceMonitor = struct {
             error_code,
         );
         
-        try self.samples.append(sample);
+        try self.samples.append(self.allocator, sample);
         
         // Trim samples if needed
         if (self.samples.items.len > self.max_samples) {
@@ -251,7 +251,7 @@ pub const PerformanceMonitor = struct {
         
         for (self.samples.items) |sample| {
             if (sample.timestamp >= cutoff_time) {
-                try recent_samples.append(sample);
+                try recent_samples.append(allocator, sample);
             }
         }
         
@@ -273,10 +273,10 @@ pub const PerformanceMonitor = struct {
         }
         
         var durations = ArrayList(u64).init(allocator);
-        defer durations.deinit();
+        defer durations.deinit(allocator);
         
         for (self.samples.items) |sample| {
-            try durations.append(sample.duration_ms);
+            try durations.append(allocator, sample.duration_ms);
         }
         
         std.mem.sort(u64, durations.items, {}, comptime std.sort.asc(u64));
@@ -470,7 +470,7 @@ pub fn deinitGlobalMonitor(allocator: Allocator) void {
     defer global_monitor_mutex.unlock();
     
     if (global_monitor) |monitor| {
-        monitor.deinit();
+        monitor.deinit(allocator);
         allocator.destroy(monitor);
         global_monitor = null;
     }
@@ -505,7 +505,7 @@ test "PerformanceTimer functionality" {
 test "PerformanceMonitor thread safety" {
     const allocator = testing.allocator;
     var monitor = PerformanceMonitor.init(allocator, 100);
-    defer monitor.deinit();
+    defer monitor.deinit(allocator);
     
     try monitor.recordOperation(100, true, 1024, 512, "test_op", "node1", null);
     try monitor.recordOperation(150, false, 2048, 0, "test_op", "node2", 500);
@@ -521,7 +521,7 @@ test "PerformanceMonitor thread safety" {
 test "PerformanceMonitor percentile calculation" {
     const allocator = testing.allocator;
     var monitor = PerformanceMonitor.init(allocator, 100);
-    defer monitor.deinit();
+    defer monitor.deinit(allocator);
     
     // Add samples with known durations
     try monitor.recordOperation(100, true, 1024, 512, "test", "node1", null);

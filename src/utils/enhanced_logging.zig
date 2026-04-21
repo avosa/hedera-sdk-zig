@@ -68,7 +68,7 @@ pub const LogContext = struct {
             allocator.free(entry.key_ptr.*);
             allocator.free(entry.value_ptr.*);
         }
-        self.custom_fields.deinit();
+        self.custom_fields.deinit(allocator);
     }
     
     pub fn setField(self: *LogContext, allocator: Allocator, key: []const u8, value: []const u8) !void {
@@ -490,12 +490,12 @@ pub const Logger = struct {
     
     pub fn deinit(self: *Logger) void {
         self.allocator.free(self.name);
-        self.appenders.deinit();
+        self.appenders.deinit(self.allocator);
         self.context.deinit(self.allocator);
     }
     
     pub fn addAppender(self: *Logger, appender: LogAppender) !void {
-        try self.appenders.append(appender);
+        try self.appenders.append(self.allocator, appender);
     }
     
     pub fn setLevel(self: *Logger, level: LogLevel) void {
@@ -609,7 +609,7 @@ pub const LoggerRegistry = struct {
             entry.value_ptr.*.deinit();
             self.allocator.destroy(entry.value_ptr.*);
         }
-        self.loggers.deinit();
+        self.loggers.deinit(self.allocator);
     }
     
     pub fn getLogger(self: *LoggerRegistry, name: []const u8, level: LogLevel, formatter: LogFormatter) !*Logger {
@@ -662,7 +662,7 @@ pub fn deinitGlobalRegistry(allocator: Allocator) void {
     defer global_registry_mutex.unlock();
     
     if (global_registry) |registry| {
-        registry.deinit();
+        registry.deinit(allocator);
         allocator.destroy(registry);
         global_registry = null;
     }
@@ -722,7 +722,7 @@ test "Logger basic operations" {
     const log_formatter = formatter.formatter();
     
     var logger = try Logger.init(allocator, "test", .info, log_formatter);
-    defer logger.deinit();
+    defer logger.deinit(allocator);
     
     try testing.expect(logger.isEnabled(.info));
     try testing.expect(logger.isEnabled(.@"error"));

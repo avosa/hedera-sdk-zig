@@ -24,18 +24,18 @@ pub const FunctionSelector = struct {
     }
 
     pub fn fromFunctionName(name: []const u8, params: []const []const u8, allocator: std.mem.Allocator) !FunctionSelector {
-        var signature = std.ArrayList(u8).init(allocator);
-        defer signature.deinit();
-        
-        try signature.appendSlice(name);
-        try signature.append('(');
-        
+        var signature = std.ArrayList(u8){};
+        defer signature.deinit(allocator);
+
+        try signature.appendSlice(allocator, name);
+        try signature.append(allocator, '(');
+
         for (params, 0..) |param, i| {
-            if (i > 0) try signature.append(',');
-            try signature.appendSlice(param);
+            if (i > 0) try signature.append(allocator, ',');
+            try signature.appendSlice(allocator, param);
         }
         
-        try signature.append(')');
+        try signature.append(allocator, ')');
         
         return try fromSignature(signature.items);
     }
@@ -127,13 +127,13 @@ pub const FunctionParameters = struct {
 
     pub fn init(allocator: std.mem.Allocator) FunctionParameters {
         return FunctionParameters{
-            .data = std.ArrayList(u8).init(allocator),
+            .data = std.ArrayList(u8){},
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *FunctionParameters) void {
-        self.data.deinit();
+        self.data.deinit(self.allocator);
     }
 
     pub fn addUint256(self: *FunctionParameters, value: u256) !void {
@@ -294,7 +294,7 @@ pub const ContractFunctionCall = struct {
     }
 
     pub fn deinit(self: *ContractFunctionCall) void {
-        self.parameters.deinit();
+        self.parameters.deinit(self.allocator);
     }
 
     pub fn encode(self: *const ContractFunctionCall, allocator: std.mem.Allocator) ![]u8 {

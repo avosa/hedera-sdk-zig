@@ -54,13 +54,13 @@ pub const ABI = struct {
         
         pub fn init(allocator: std.mem.Allocator) Encoder {
             return Encoder{
-                .buffer = std.ArrayList(u8).init(allocator),
+                .buffer = std.ArrayList(u8){},
                 .allocator = allocator,
             };
         }
         
         pub fn deinit(self: *Encoder) void {
-            self.buffer.deinit();
+            self.buffer.deinit(self.allocator);
         }
         
         // Encode uint256
@@ -309,8 +309,8 @@ pub const ABI = struct {
         signature: []const u8,
         args: []const []const u8,
     ) ![]u8 {
-        var result = std.ArrayList(u8).init(allocator);
-        defer result.deinit();
+        var result = std.ArrayList(u8){};
+        defer result.deinit(allocator);
         
         // Add function selector
         const selector = functionSelector(signature);
@@ -333,12 +333,12 @@ pub const ABI = struct {
         const name = signature[0..paren_start];
         const params_str = signature[paren_start + 1..paren_end];
         
-        var params = std.ArrayList([]const u8).init(std.heap.page_allocator);
-        defer params.deinit();
-        
+        var params = std.ArrayList([]const u8){};
+        defer params.deinit(std.heap.page_allocator);
+
         var iter = std.mem.tokenize(u8, params_str, ",");
         while (iter.next()) |param| {
-            try params.append(param);
+            try params.append(std.heap.page_allocator, param);
         }
         
         return FunctionSignature{

@@ -11,19 +11,19 @@ pub const AccountRecords = struct {
     pub fn init(allocator: std.mem.Allocator, account_id: AccountId) AccountRecords {
         return AccountRecords{
             .account_id = account_id,
-            .records = std.ArrayList(TransactionRecord).init(allocator),
+            .records = std.ArrayList(TransactionRecord){},
             .allocator = allocator,
         };
     }
     
     pub fn deinit(self: *AccountRecords) void {
         for (self.records.items) |*record| {
-            record.deinit();
+            record.deinit(self.allocator);
         }
-        self.records.deinit();
+        self.records.deinit(self.allocator);
     }
     
     pub fn addRecord(self: *AccountRecords, record: TransactionRecord) !void {
-        try self.records.append(record);
+        try self.records.append(self.allocator, record);
     }
 };

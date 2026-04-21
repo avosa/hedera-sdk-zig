@@ -137,10 +137,10 @@ pub const CustomFractionalFee = struct {
 
     pub fn toProtobuf(self: *const CustomFractionalFee, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         var fraction_writer = ProtoWriter.init(allocator);
-        defer fraction_writer.deinit();
+        defer fraction_writer.deinit(self.allocator);
         try fraction_writer.writeUInt64(1, self.numerator);
         try fraction_writer.writeUInt64(2, self.denominator);
         const fraction_bytes = try fraction_writer.toOwnedSlice();
@@ -159,7 +159,7 @@ pub const CustomFractionalFee = struct {
 
         if (self.fee_collector_account_id) |collector_id| {
             var collector_writer = ProtoWriter.init(allocator);
-            defer collector_writer.deinit();
+            defer collector_writer.deinit(self.allocator);
             
             try collector_writer.writeInt64(1, @intCast(collector_id.shard));
             try collector_writer.writeInt64(2, @intCast(collector_id.realm));

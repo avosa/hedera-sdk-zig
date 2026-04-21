@@ -24,7 +24,7 @@ pub const LiveHash = struct {
         return LiveHash{
             .account_id = account_id,
             .hash = try allocator.dupe(u8, hash),
-            .keys = std.ArrayList(Key).init(allocator),
+            .keys = std.ArrayList(Key){},
             .duration = duration,
             .allocator = allocator,
         };
@@ -35,7 +35,7 @@ pub const LiveHash = struct {
             self.allocator.free(self.hash);
         }
         // Keys don't need individual deinit
-        self.keys.deinit();
+        self.keys.deinit(self.allocator);
     }
     
     pub fn addKey(self: *LiveHash, key: Key) !void {
@@ -56,18 +56,18 @@ pub const LiveHashAddTransaction = struct {
             .base = Transaction.init(allocator),
             .account_id = null,
             .hash = "",
-            .keys = std.ArrayList(Key).init(allocator),
+            .keys = std.ArrayList(Key){},
             .duration = null,
         };
     }
     
     pub fn deinit(self: *LiveHashAddTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
         if (self.hash.len > 0) {
             self.base.allocator.free(self.hash);
         }
         // Keys don't need individual deinit
-        self.keys.deinit();
+        self.keys.deinit(self.allocator);
     }
     
     // Set the account ID for the live hash
@@ -124,23 +124,23 @@ pub const LiveHashAddTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *LiveHashAddTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Common transaction fields
         try self.writeCommonFields(&writer);
         
         // cryptoAddLiveHash = 17 (oneof data)
         var add_writer = ProtoWriter.init(self.base.allocator);
-        defer add_writer.deinit();
+        defer add_writer.deinit(self.allocator);
         
         // liveHash = 1
         var live_hash_writer = ProtoWriter.init(self.base.allocator);
-        defer live_hash_writer.deinit();
+        defer live_hash_writer.deinit(self.allocator);
         
         // accountId = 1
         if (self.account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(account.shard));
             try account_writer.writeInt64(2, @intCast(account.realm));
             try account_writer.writeInt64(3, @intCast(account.account));
@@ -157,7 +157,7 @@ pub const LiveHashAddTransaction = struct {
         // keys = 3
         if (self.keys.items.len > 0) {
             var key_list_writer = ProtoWriter.init(self.base.allocator);
-            defer key_list_writer.deinit();
+            defer key_list_writer.deinit(self.allocator);
             
             for (self.keys.items) |key| {
                 const key_bytes = try key.toProtobuf(self.base.allocator);
@@ -173,7 +173,7 @@ pub const LiveHashAddTransaction = struct {
         // duration = 4
         if (self.duration) |duration| {
             var duration_writer = ProtoWriter.init(self.base.allocator);
-            defer duration_writer.deinit();
+            defer duration_writer.deinit(self.allocator);
             try duration_writer.writeInt64(1, duration.seconds);
             const duration_bytes = try duration_writer.toOwnedSlice();
             defer self.base.allocator.free(duration_bytes);
@@ -195,10 +195,10 @@ pub const LiveHashAddTransaction = struct {
         // transactionID = 1
         if (self.base.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
-            defer tx_id_writer.deinit();
+            defer tx_id_writer.deinit(self.allocator);
             
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
             try timestamp_writer.writeInt32(2, tx_id.valid_start.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -206,7 +206,7 @@ pub const LiveHashAddTransaction = struct {
             try tx_id_writer.writeMessage(1, timestamp_bytes);
             
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
             try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
             try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
@@ -226,7 +226,7 @@ pub const LiveHashAddTransaction = struct {
         // nodeAccountID = 2
         if (self.base.node_account_ids.items.len > 0) {
             var node_writer = ProtoWriter.init(self.base.allocator);
-            defer node_writer.deinit();
+            defer node_writer.deinit(self.allocator);
             const node = self.base.node_account_ids.items[0];
             try node_writer.writeInt64(1, @intCast(node.shard));
             try node_writer.writeInt64(2, @intCast(node.realm));
@@ -243,7 +243,7 @@ pub const LiveHashAddTransaction = struct {
         
         // transactionValidDuration = 4
         var duration_writer = ProtoWriter.init(self.base.allocator);
-        defer duration_writer.deinit();
+        defer duration_writer.deinit(self.allocator);
         try duration_writer.writeInt64(1, self.base.transaction_valid_duration.seconds);
         const duration_bytes = try duration_writer.toOwnedSlice();
         defer self.base.allocator.free(duration_bytes);
@@ -271,7 +271,7 @@ pub const LiveHashDeleteTransaction = struct {
     }
     
     pub fn deinit(self: *LiveHashDeleteTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
         if (self.hash.len > 0) {
             self.base.allocator.free(self.hash);
         }
@@ -311,19 +311,19 @@ pub const LiveHashDeleteTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *LiveHashDeleteTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Common transaction fields
         try self.writeCommonFields(&writer);
         
         // cryptoDeleteLiveHash = 18 (oneof data)
         var delete_writer = ProtoWriter.init(self.base.allocator);
-        defer delete_writer.deinit();
+        defer delete_writer.deinit(self.allocator);
         
         // accountOfLiveHash = 1
         if (self.account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(account.shard));
             try account_writer.writeInt64(2, @intCast(account.realm));
             try account_writer.writeInt64(3, @intCast(account.account));
@@ -348,10 +348,10 @@ pub const LiveHashDeleteTransaction = struct {
         // transactionID = 1
         if (self.base.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
-            defer tx_id_writer.deinit();
+            defer tx_id_writer.deinit(self.allocator);
             
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
             try timestamp_writer.writeInt32(2, tx_id.valid_start.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -359,7 +359,7 @@ pub const LiveHashDeleteTransaction = struct {
             try tx_id_writer.writeMessage(1, timestamp_bytes);
             
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
             try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
             try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
@@ -379,7 +379,7 @@ pub const LiveHashDeleteTransaction = struct {
         // nodeAccountID = 2
         if (self.base.node_account_ids.items.len > 0) {
             var node_writer = ProtoWriter.init(self.base.allocator);
-            defer node_writer.deinit();
+            defer node_writer.deinit(self.allocator);
             const node = self.base.node_account_ids.items[0];
             try node_writer.writeInt64(1, @intCast(node.shard));
             try node_writer.writeInt64(2, @intCast(node.realm));
@@ -396,7 +396,7 @@ pub const LiveHashDeleteTransaction = struct {
         
         // transactionValidDuration = 4
         var duration_writer = ProtoWriter.init(self.base.allocator);
-        defer duration_writer.deinit();
+        defer duration_writer.deinit(self.allocator);
         try duration_writer.writeInt64(1, self.base.transaction_valid_duration.seconds);
         const duration_bytes = try duration_writer.toOwnedSlice();
         defer self.base.allocator.free(duration_bytes);

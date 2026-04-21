@@ -36,7 +36,7 @@ pub const TransactionReceiptQuery = struct {
     }
     
     pub fn deinit(self: *TransactionReceiptQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the transaction ID
@@ -66,15 +66,15 @@ pub const TransactionReceiptQuery = struct {
     // Build query protobuf
     pub fn buildQuery(self: *TransactionReceiptQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // transactionGetReceipt = 4 (oneof query)
         var receipt_query_writer = ProtoWriter.init(self.base.allocator);
-        defer receipt_query_writer.deinit();
+        defer receipt_query_writer.deinit(self.allocator);
         
         // header = 1 (inside the specific query)
         var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
+        defer header_writer.deinit(self.allocator);
         
         // payment = 1 (optional for free queries - Receipt queries are free)
         // responseType = 2 (must be present even if 0)
@@ -111,11 +111,11 @@ pub const TransactionReceiptQuery = struct {
     
     fn encodeTransactionId(self: *TransactionReceiptQuery, tx_id: TransactionId) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // transactionValidStart = 1
         var timestamp_writer = ProtoWriter.init(self.base.allocator);
-        defer timestamp_writer.deinit();
+        defer timestamp_writer.deinit(self.allocator);
         try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
         try timestamp_writer.writeInt32(2, tx_id.valid_start.nanos);
         const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -124,7 +124,7 @@ pub const TransactionReceiptQuery = struct {
         
         // accountID = 2
         var account_writer = ProtoWriter.init(self.base.allocator);
-        defer account_writer.deinit();
+        defer account_writer.deinit(self.allocator);
         try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
         try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
         try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));

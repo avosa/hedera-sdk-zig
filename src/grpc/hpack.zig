@@ -86,7 +86,7 @@ pub const HPACK = struct {
         pub fn init(allocator: std.mem.Allocator) Encoder {
             return Encoder{
                 .allocator = allocator,
-                .dynamic_table = std.ArrayList(HeaderField).init(allocator),
+                .dynamic_table = std.ArrayList(HeaderField){},
             };
         }
         
@@ -95,12 +95,12 @@ pub const HPACK = struct {
                 self.allocator.free(field.name);
                 self.allocator.free(field.value);
             }
-            self.dynamic_table.deinit();
+            self.dynamic_table.deinit(self.allocator);
         }
         
         pub fn encode(self: *Encoder, headers: []const HeaderField) ![]u8 {
             var output = std.ArrayList(u8).init(self.allocator);
-            defer output.deinit();
+            defer output.deinit(self.allocator);
             
             for (headers) |header| {
                 try self.encodeHeader(&output, header);
@@ -149,7 +149,7 @@ pub const HPACK = struct {
                 try self.encodeInteger(output, index, 6);
                 output.items[output.items.len - 1] |= 0x40;
             } else {
-                try output.append(0x40);
+                try output.append(self.allocator, 0x40);
                 try self.encodeString(output, header.name);
             }
             try self.encodeString(output, header.value);
@@ -215,7 +215,7 @@ pub const HPACK = struct {
         pub fn init(allocator: std.mem.Allocator) Decoder {
             return Decoder{
                 .allocator = allocator,
-                .dynamic_table = std.ArrayList(HeaderField).init(allocator),
+                .dynamic_table = std.ArrayList(HeaderField){},
             };
         }
         
@@ -224,7 +224,7 @@ pub const HPACK = struct {
                 self.allocator.free(field.name);
                 self.allocator.free(field.value);
             }
-            self.dynamic_table.deinit();
+            self.dynamic_table.deinit(self.allocator);
         }
         
         pub fn decode(self: *Decoder, data: []const u8) !std.ArrayList(HeaderField) {
@@ -233,7 +233,7 @@ pub const HPACK = struct {
             
             while (offset < data.len) {
                 const header = try self.decodeHeader(data, &offset);
-                try headers.append(header);
+                try headers.append(self.allocator, header);
             }
             
             return headers;
@@ -344,7 +344,7 @@ pub const HPACK = struct {
         fn decodeHuffman(self: *Decoder, data: []const u8) ![]u8 {
             // Full Huffman decoding implementation
             var output = std.ArrayList(u8).init(self.allocator);
-            defer output.deinit();
+            defer output.deinit(self.allocator);
             
             var bits: u32 = 0;
             var bits_count: u5 = 0;
@@ -356,7 +356,7 @@ pub const HPACK = struct {
                 while (bits_count >= 5) {
                     const symbol = @as(u8, @intCast((bits >> (bits_count - 5)) & 0x1F));
                     const decoded_char = if (symbol < 26) symbol + 'a' else if (symbol < 52) symbol - 26 + 'A' else if (symbol < 62) symbol - 52 + '0' else if (symbol == 62) '-' else '/';
-                    try output.append(decoded_char);
+                    try output.append(self.allocator, decoded_char);
                     bits_count -= 5;
                 }
             }

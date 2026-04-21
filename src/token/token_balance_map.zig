@@ -9,9 +9,8 @@ pub const TokenBalanceMap = struct {
     allocator: std.mem.Allocator,
 
     const TokenContext = struct {
-        pub fn hash(self: @This(), token_id: TokenId) u64 {
-            _ = self;
-            var hasher = std.hash.Wyhash.init(0);
+        pub fn hash(self: @This(), token_id: TokenId) u64 {            var hasher = std.hash.Wyhash.init(0);
+        _ = self;
             hasher.update(std.mem.asBytes(&token_id.shard));
             hasher.update(std.mem.asBytes(&token_id.realm));
             hasher.update(std.mem.asBytes(&token_id.num));
@@ -26,42 +25,57 @@ pub const TokenBalanceMap = struct {
         }
     };
 
-    pub fn init(allocator: std.mem.Allocator) TokenBalanceMap {
-        return TokenBalanceMap{
+    pub fn init(allocator: std.mem.Allocator) TokenBalanceMap {        return TokenBalanceMap{
             .balances = std.HashMap(TokenId, u64, TokenContext, std.hash_map.default_max_load_percentage).init(allocator),
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *TokenBalanceMap) void {
-        self.balances.deinit();
+        
+        
+        self.balances.deinit(self.allocator);
     }
 
     pub fn put(self: *TokenBalanceMap, token_id: TokenId, balance: u64) !void {
+        
+        
         try self.balances.put(token_id, balance);
     }
 
     pub fn get(self: *const TokenBalanceMap, token_id: TokenId) ?u64 {
+        
+        
         return self.balances.get(token_id);
     }
 
     pub fn remove(self: *TokenBalanceMap, token_id: TokenId) bool {
+        
+        
         return self.balances.remove(token_id);
     }
 
     pub fn contains(self: *const TokenBalanceMap, token_id: TokenId) bool {
+        
+        
         return self.balances.contains(token_id);
     }
 
     pub fn isEmpty(self: *const TokenBalanceMap) bool {
+        
+        
         return self.balances.count() == 0;
     }
 
     pub fn size(self: *const TokenBalanceMap) u32 {
+        
+        
         return @intCast(self.balances.count());
     }
 
     pub fn clear(self: *TokenBalanceMap) void {
+        
+        
         self.balances.clearRetainingCapacity();
     }
 
@@ -69,7 +83,9 @@ pub const TokenBalanceMap = struct {
     pub const Iterator = struct {
         inner: std.HashMap(TokenId, u64, TokenContext, std.hash_map.default_max_load_percentage).Iterator,
 
-        pub fn next(self: *Iterator) ?struct { token_id: TokenId, balance: u64 } {
+        pub fn next(self: *Iterator) ?struct { 
+        
+        token_id: TokenId, balance: u64 } {
             if (self.inner.next()) |entry| {
                 return .{ .token_id = entry.key_ptr.*, .balance = entry.value_ptr.* };
             }
@@ -78,12 +94,14 @@ pub const TokenBalanceMap = struct {
     };
 
     pub fn iterator(self: *const TokenBalanceMap) Iterator {
+        
+        
         return Iterator{ .inner = self.balances.iterator() };
     }
 
     // Get all tokens with non-zero balances
-    pub fn getNonZeroBalances(self: *const TokenBalanceMap, allocator: std.mem.Allocator) ![]struct { token_id: TokenId, balance: u64 } {
-        var result = std.ArrayList(struct { token_id: TokenId, balance: u64 }).init(allocator);
+    pub fn getNonZeroBalances(self: *const TokenBalanceMap) ![]struct { token_id: TokenId, balance: u64 } {
+        var result = std.ArrayList(struct { token_id: TokenId, balance: u64 }){};
         defer result.deinit();
 
         var iter = self.iterator();
@@ -93,11 +111,13 @@ pub const TokenBalanceMap = struct {
             }
         }
 
-        return result.toOwnedSlice();
+        return result.toOwnedSlice(self.allocator);
     }
 
     // Get total number of different tokens held
     pub fn getTokenCount(self: *const TokenBalanceMap) u32 {
+        
+        
         var count: u32 = 0;
         var iter = self.iterator();
         while (iter.next()) |entry| {
@@ -110,6 +130,8 @@ pub const TokenBalanceMap = struct {
 
     // Update balance by adding/subtracting amount
     pub fn updateBalance(self: *TokenBalanceMap, token_id: TokenId, delta: i64) !void {
+        
+        
         const current_balance = self.get(token_id) orelse 0;
         const new_balance = if (delta < 0) 
             current_balance -| @as(u64, @intCast(-delta))
@@ -120,8 +142,7 @@ pub const TokenBalanceMap = struct {
     }
 
     // Create from token transfer list
-    pub fn fromTransfers(allocator: std.mem.Allocator, transfers: []const TokenTransfer) !TokenBalanceMap {
-        var map = TokenBalanceMap.init(allocator);
+    pub fn fromTransfers(allocator: std.mem.Allocator, transfers: []const TokenTransfer) !TokenBalanceMap {        var map = TokenBalanceMap.init(allocator);
         errdefer map.deinit();
 
         for (transfers) |transfer| {
@@ -139,6 +160,8 @@ pub const TokenBalanceMap = struct {
 
     // Merge another balance map into this one
     pub fn merge(self: *TokenBalanceMap, other: *const TokenBalanceMap) !void {
+        
+        
         var iter = other.iterator();
         while (iter.next()) |entry| {
             const current = self.get(entry.token_id) orelse 0;
@@ -147,8 +170,7 @@ pub const TokenBalanceMap = struct {
     }
 
     // Clone the balance map
-    pub fn clone(self: *const TokenBalanceMap, allocator: std.mem.Allocator) !TokenBalanceMap {
-        var result = TokenBalanceMap.init(allocator);
+    pub fn clone(self: *const TokenBalanceMap, allocator: std.mem.Allocator) !TokenBalanceMap {        var result = TokenBalanceMap.init(allocator);
         errdefer result.deinit();
 
         var iter = self.iterator();
@@ -183,22 +205,25 @@ pub const AccountBalanceMap = struct {
         }
     };
 
-    pub fn init(allocator: std.mem.Allocator) AccountBalanceMap {
-        return AccountBalanceMap{
+    pub fn init(allocator: std.mem.Allocator) AccountBalanceMap {        return AccountBalanceMap{
             .balances = std.HashMap(AccountId, TokenBalanceMap, AccountContext, std.hash_map.default_max_load_percentage).init(allocator),
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *AccountBalanceMap) void {
+        
+        
         var iter = self.balances.iterator();
         while (iter.next()) |entry| {
-            entry.value_ptr.deinit();
+            entry.value_ptr.deinit(self.allocator);
         }
-        self.balances.deinit();
+        self.balances.deinit(self.allocator);
     }
 
     pub fn getOrCreate(self: *AccountBalanceMap, account_id: AccountId) !*TokenBalanceMap {
+        
+        
         const result = try self.balances.getOrPut(account_id);
         if (!result.found_existing) {
             result.value_ptr.* = TokenBalanceMap.init(self.allocator);
@@ -207,15 +232,21 @@ pub const AccountBalanceMap = struct {
     }
 
     pub fn get(self: *const AccountBalanceMap, account_id: AccountId) ?*const TokenBalanceMap {
+        
+        
         return self.balances.getPtr(account_id);
     }
 
     pub fn updateBalance(self: *AccountBalanceMap, account_id: AccountId, token_id: TokenId, delta: i64) !void {
+        
+        
         const balance_map = try self.getOrCreate(account_id);
         try balance_map.updateBalance(token_id, delta);
     }
 
     pub fn getTokenBalance(self: *const AccountBalanceMap, account_id: AccountId, token_id: TokenId) u64 {
+        
+        
         if (self.get(account_id)) |balance_map| {
             return balance_map.get(token_id) orelse 0;
         }
@@ -230,6 +261,8 @@ pub const TokenTransfer = struct {
     amount: i64,
     
     pub fn init(account_id: AccountId, token_id: TokenId, amount: i64) TokenTransfer {
+        
+        
         return TokenTransfer{
             .account_id = account_id,
             .token_id = token_id,

@@ -30,7 +30,7 @@ pub const RLP = struct {
             }
             if (self.children) |children| {
                 for (children) |*child| {
-                    child.deinit();
+                    child.deinit(self.allocator);
                 }
                 self.allocator.free(children);
             }

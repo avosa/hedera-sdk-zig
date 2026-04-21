@@ -33,7 +33,7 @@ pub const EthereumLegacyTransaction = struct {
     }
     
     pub fn deinit(self: *EthereumLegacyTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
         if (self.gas_price.len > 0) self.base.allocator.free(self.gas_price);
         if (self.to) |to| self.base.allocator.free(to);
         if (self.value.len > 0) self.base.allocator.free(self.value);
@@ -110,60 +110,61 @@ pub const EthereumLegacyTransaction = struct {
     
     // Build RLP-encoded transaction
     pub fn toRlp(self: *EthereumLegacyTransaction, allocator: std.mem.Allocator) ![]u8 {
-        var list_data = std.ArrayList(u8).init(allocator);
-        defer list_data.deinit();
+        var list_data = std.ArrayList(u8){};
+        defer list_data.deinit(allocator);
         
         // Encode all fields in order
-        try rlpEncodeUint(&list_data, self.nonce);
-        try rlpEncodeBytes(&list_data, self.gas_price);
-        try rlpEncodeUint(&list_data, self.gas_limit);
+        try rlpEncodeUint(&list_data, allocator, self.nonce);
+        try rlpEncodeBytes(&list_data, allocator, self.gas_price);
+        try rlpEncodeUint(&list_data, allocator, self.gas_limit);
         
         if (self.to) |to| {
-            try rlpEncodeBytes(&list_data, to);
+            try rlpEncodeBytes(&list_data, allocator, to);
         } else {
-            try list_data.append(0x80); // Empty RLP
+            try list_data.append(allocator, 0x80); // Empty RLP
         }
         
-        try rlpEncodeBytes(&list_data, self.value);
-        try rlpEncodeBytes(&list_data, self.data);
-        try rlpEncodeBytes(&list_data, self.v);
-        try rlpEncodeBytes(&list_data, self.r);
-        try rlpEncodeBytes(&list_data, self.s);
+        try rlpEncodeBytes(&list_data, allocator, self.value);
+        try rlpEncodeBytes(&list_data, allocator, self.data);
+        try rlpEncodeBytes(&list_data, allocator, self.v);
+        try rlpEncodeBytes(&list_data, allocator, self.r);
+        try rlpEncodeBytes(&list_data, allocator, self.s);
         
         // Encode as RLP list
-        var rlp = std.ArrayList(u8).init(allocator);
-        
+        var rlp = std.ArrayList(u8){};
+        defer rlp.deinit(allocator);
+
         if (list_data.items.len <= 55) {
-            try rlp.append(@intCast(0xc0 + list_data.items.len));
-            try rlp.appendSlice(list_data.items);
+            try rlp.append(allocator, @intCast(0xc0 + list_data.items.len));
+            try rlp.appendSlice(allocator, list_data.items);
         } else {
             const len_bytes = bytesForInt(list_data.items.len);
-            try rlp.append(@intCast(0xf7 + len_bytes));
-            try writeInt(&rlp, list_data.items.len, len_bytes);
-            try rlp.appendSlice(list_data.items);
+            try rlp.append(allocator, @intCast(0xf7 + len_bytes));
+            try writeInt(&rlp, allocator, list_data.items.len, len_bytes);
+            try rlp.appendSlice(allocator, list_data.items);
         }
         
         return rlp.toOwnedSlice();
     }
     
     // RLP encoding helpers
-    fn rlpEncodeBytes(list: *std.ArrayList(u8), bytes: []const u8) !void {
+    fn rlpEncodeBytes(list: *std.ArrayList(u8), allocator: std.mem.Allocator, bytes: []const u8) !void {
         if (bytes.len == 1 and bytes[0] < 0x80) {
-            try list.append(bytes[0]);
+            try list.append(allocator, bytes[0]);
         } else if (bytes.len <= 55) {
-            try list.append(@intCast(0x80 + bytes.len));
-            try list.appendSlice(bytes);
+            try list.append(allocator, @intCast(0x80 + bytes.len));
+            try list.appendSlice(allocator, bytes);
         } else {
             const len_bytes = bytesForInt(bytes.len);
-            try list.append(@intCast(0xb7 + len_bytes));
-            try writeInt(list, bytes.len, len_bytes);
-            try list.appendSlice(bytes);
+            try list.append(allocator, @intCast(0xb7 + len_bytes));
+            try writeInt(list, allocator, bytes.len, len_bytes);
+            try list.appendSlice(allocator, bytes);
         }
     }
     
-    fn rlpEncodeUint(list: *std.ArrayList(u8), value: u64) !void {
+    fn rlpEncodeUint(list: *std.ArrayList(u8), allocator: std.mem.Allocator, value: u64) !void {
         if (value == 0) {
-            try list.append(0x80);
+            try list.append(allocator, 0x80);
         } else {
             const bytes_needed = bytesForInt(value);
             var bytes: [8]u8 = undefined;
@@ -173,7 +174,7 @@ pub const EthereumLegacyTransaction = struct {
                 bytes[i - 1] = @intCast(v & 0xFF);
                 v >>= 8;
             }
-            try rlpEncodeBytes(list, bytes[0..bytes_needed]);
+            try rlpEncodeBytes(list, allocator, bytes[0..bytes_needed]);
         }
     }
     
@@ -187,25 +188,26 @@ pub const EthereumLegacyTransaction = struct {
         return bytes;
     }
     
-    fn writeInt(list: *std.ArrayList(u8), value: u64, bytes: u8) !void {
+    fn writeInt(list: *std.ArrayList(u8), allocator: std.mem.Allocator, value: u64, bytes: u8) !void {
         var i: u8 = bytes;
         const v = value;
         while (i > 0) : (i -= 1) {
-            try list.append(@intCast((v >> @intCast((i - 1) * 8)) & 0xFF));
+            try list.append(allocator, @intCast((v >> @intCast((i - 1) * 8)) & 0xFF));
         }
     }
     
     // Build transaction body for Hedera
-    pub fn buildTransactionBody(self: *EthereumLegacyTransaction) ![]u8 {
+    pub fn buildTransactionBody(self: *EthereumLegacyTransaction, allocator: std.mem.Allocator) ![]u8 {
+        _ = allocator;
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
-        
+        defer writer.deinit(self.base.allocator);
+
         // Write common transaction fields
         try self.base.writeCommonFields(&writer);
-        
+
         // ethereumTransaction = 50 (oneof data)
         var eth_writer = ProtoWriter.init(self.base.allocator);
-        defer eth_writer.deinit();
+        defer eth_writer.deinit(self.base.allocator);
         
         // ethereumData = 1
         const rlp_data = try self.toRlp(self.base.allocator);

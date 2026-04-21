@@ -23,13 +23,13 @@ pub const TokenRejectTransaction = struct {
     pub fn init(allocator: std.mem.Allocator) TokenRejectTransaction {
         return TokenRejectTransaction{
             .base = Transaction.init(allocator),
-            .token_references = std.ArrayList(TokenReference).init(allocator),
+            .token_references = std.ArrayList(TokenReference){},
         };
     }
     
     pub fn deinit(self: *TokenRejectTransaction) void {
-        self.base.deinit();
-        self.token_references.deinit();
+        self.base.deinit(self.allocator);
+        self.token_references.deinit(self.allocator);
     }
     
     // Set the owner account
@@ -46,7 +46,7 @@ pub const TokenRejectTransaction = struct {
     
     // Add a fungible token to reject
     pub fn addTokenId(self: *TokenRejectTransaction, token_id: TokenId) !void {
-        try self.token_references.append(TokenReference{
+        try self.token_references.append(self.allocator, TokenReference{
             .token_id = token_id,
         });
     }
@@ -58,7 +58,7 @@ pub const TokenRejectTransaction = struct {
         // Clear existing references and add new ones
         self.token_references.clearRetainingCapacity();
         for (token_ids) |token_id| {
-            try self.token_references.append(TokenReference{
+            try self.token_references.append(self.allocator, TokenReference{
                 .token_id = token_id,
             });
         }
@@ -67,7 +67,7 @@ pub const TokenRejectTransaction = struct {
     
     // Add an NFT to reject
     pub fn addNftId(self: *TokenRejectTransaction, nft_id: NftId) !void {
-        try self.token_references.append(TokenReference{
+        try self.token_references.append(self.allocator, TokenReference{
             .nft_id = nft_id,
         });
     }
@@ -79,7 +79,7 @@ pub const TokenRejectTransaction = struct {
         // Clear existing references and add NFT references
         self.token_references.clearRetainingCapacity();
         for (nft_ids) |nft_id| {
-            try self.token_references.append(TokenReference{
+            try self.token_references.append(self.allocator, TokenReference{
                 .nft_id = nft_id,
             });
         }
@@ -106,19 +106,19 @@ pub const TokenRejectTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *TokenRejectTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Write common transaction fields
         try self.writeCommonFields(&writer);
         
         // tokenReject = 59 (oneof data)
         var reject_writer = ProtoWriter.init(self.base.allocator);
-        defer reject_writer.deinit();
+        defer reject_writer.deinit(self.allocator);
         
         // owner = 1
         if (self.owner) |owner| {
             var owner_writer = ProtoWriter.init(self.base.allocator);
-            defer owner_writer.deinit();
+            defer owner_writer.deinit(self.allocator);
             try owner_writer.writeInt64(1, @intCast(owner.shard));
             try owner_writer.writeInt64(2, @intCast(owner.realm));
             try owner_writer.writeInt64(3, @intCast(owner.account));
@@ -130,12 +130,12 @@ pub const TokenRejectTransaction = struct {
         // rejections = 2 (repeated)
         for (self.token_references.items) |reference| {
             var ref_writer = ProtoWriter.init(self.base.allocator);
-            defer ref_writer.deinit();
+            defer ref_writer.deinit(self.allocator);
             
             // fungibleToken = 1 (oneof)
             if (reference.token_id) |token_id| {
                 var token_writer = ProtoWriter.init(self.base.allocator);
-                defer token_writer.deinit();
+                defer token_writer.deinit(self.allocator);
                 try token_writer.writeInt64(1, @intCast(token_id.shard));
                 try token_writer.writeInt64(2, @intCast(token_id.realm));
                 try token_writer.writeInt64(3, @intCast(token_id.num));
@@ -147,11 +147,11 @@ pub const TokenRejectTransaction = struct {
             // nft = 2 (oneof)
             if (reference.nft_id) |nft_id| {
                 var nft_writer = ProtoWriter.init(self.base.allocator);
-                defer nft_writer.deinit();
+                defer nft_writer.deinit(self.allocator);
                 
                 // tokenId = 1
                 var token_writer = ProtoWriter.init(self.base.allocator);
-                defer token_writer.deinit();
+                defer token_writer.deinit(self.allocator);
                 try token_writer.writeInt64(1, @intCast(nft_id.token_id.shard));
                 try token_writer.writeInt64(2, @intCast(nft_id.token_id.realm));
                 try token_writer.writeInt64(3, @intCast(nft_id.token_id.num));

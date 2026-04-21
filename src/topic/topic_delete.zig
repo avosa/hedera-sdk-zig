@@ -24,7 +24,7 @@ pub const TopicDeleteTransaction = struct {
     }
     
     pub fn deinit(self: *TopicDeleteTransaction) void {
-        self.transaction.deinit();
+        self.transaction.deinit(self.allocator);
         self.allocator.destroy(self);
     }
     

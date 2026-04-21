@@ -34,7 +34,7 @@ pub const TransactionRecordQuery = struct {
     }
 
     pub fn deinit(self: *TransactionRecordQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
 
     // Set the transaction ID to query
@@ -95,11 +95,11 @@ pub const TransactionRecordQuery = struct {
     // Build the query
     fn buildQuery(self: *TransactionRecordQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         // Query header
         var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
+        defer header_writer.deinit(self.allocator);
 
         if (self.base.payment_transaction) |payment| {
             try header_writer.writeMessage(1, payment);
@@ -113,15 +113,15 @@ pub const TransactionRecordQuery = struct {
 
         // TransactionGetRecord query
         var record_query_writer = ProtoWriter.init(self.base.allocator);
-        defer record_query_writer.deinit();
+        defer record_query_writer.deinit(self.allocator);
 
         if (self.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
-            defer tx_id_writer.deinit();
+            defer tx_id_writer.deinit(self.allocator);
 
             // Write account ID
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
             try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
             try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
@@ -132,7 +132,7 @@ pub const TransactionRecordQuery = struct {
 
             // Write valid start timestamp
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
             try timestamp_writer.writeInt32(2, tx_id.valid_start.nanos);
 
@@ -233,7 +233,7 @@ pub const TransactionRecordQuery = struct {
                                 // Account amounts
                                 const account_amount_bytes = try transfer_reader.readBytes();
                                 const transfer = try Transfer.fromProtobuf(self.base.allocator, account_amount_bytes);
-                                try record.transfers.append(transfer);
+                                try record.transfers.append(self.allocator, transfer);
                             },
                             else => try transfer_reader.skipField(transfer_tag.wire_type),
                         }
@@ -255,7 +255,7 @@ pub const TransactionRecordQuery = struct {
                                 // Transfers
                                 const transfer_bytes = try list_reader.readBytes();
                                 const token_transfer = try TokenTransfer.fromProtobuf(self.base.allocator, transfer_bytes);
-                                try record.token_transfers.append(token_transfer);
+                                try record.token_transfers.append(self.allocator, token_transfer);
                             },
                             else => try list_reader.skipField(list_tag.wire_type),
                         }
@@ -280,7 +280,7 @@ pub const TransactionRecordQuery = struct {
                 11 => {
                     const fee_bytes = try reader.readBytes();
                     var fee_list = std.ArrayList(@import("../transaction/transaction_record.zig").AssessedCustomFee).init(self.base.allocator);
-                    defer fee_list.deinit();
+                    defer fee_list.deinit(self.allocator);
                     
                     var fee_reader = ProtoReader.init(fee_bytes);
                     var fee = @import("../transaction/transaction_record.zig").AssessedCustomFee{
@@ -306,14 +306,14 @@ pub const TransactionRecordQuery = struct {
                                 const payer_bytes = try fee_reader.readBytes();
                                 var payers = std.ArrayList(AccountId).init(self.base.allocator);
                                 const payer = try AccountId.fromProtobuf(self.base.allocator, payer_bytes);
-                                try payers.append(payer);
+                                try payers.append(self.allocator, payer);
                                 fee.payer_account_ids = try payers.toOwnedSlice();
                             },
                             else => try fee_reader.skipField(fee_tag.wire_type),
                         }
                     }
                     
-                    try fee_list.append(fee);
+                    try fee_list.append(self.allocator, fee);
                     record.assessed_custom_fees = try fee_list.toOwnedSlice();
                 },
                 12 => {
@@ -335,7 +335,7 @@ pub const TransactionRecordQuery = struct {
                                     .serial_number = @intCast(nft_transfer.nft_id.serial_number),
                                     .is_approval = nft_transfer.is_approved,
                                 };
-                                try record.nft_transfers.append(token_nft);
+                                try record.nft_transfers.append(self.allocator, token_nft);
                             },
                             else => try nft_list_reader.skipField(nft_tag.wire_type),
                         }
@@ -344,7 +344,7 @@ pub const TransactionRecordQuery = struct {
                 13 => {
                     const assoc_bytes = try reader.readBytes();
                     var assoc_list = std.ArrayList(@import("../transaction/transaction_record.zig").TokenAssociation).init(self.base.allocator);
-                    defer assoc_list.deinit();
+                    defer assoc_list.deinit(self.allocator);
                     
                     var assoc_reader = ProtoReader.init(assoc_bytes);
                     var assoc = @import("../transaction/transaction_record.zig").TokenAssociation{
@@ -367,7 +367,7 @@ pub const TransactionRecordQuery = struct {
                         }
                     }
                     
-                    try assoc_list.append(assoc);
+                    try assoc_list.append(self.allocator, assoc);
                     record.automatic_token_associations = try assoc_list.toOwnedSlice();
                 },
                 14 => {
@@ -420,9 +420,9 @@ pub const TransactionRecordQuery = struct {
                 20 => {
                     const child_bytes = try reader.readBytes();
                     var child_list = std.ArrayList(TransactionRecord).init(self.base.allocator);
-                    defer child_list.deinit();
+                    defer child_list.deinit(self.allocator);
                     const child_record = try parseChildRecord(self.base.allocator, child_bytes);
-                    try child_list.append(child_record);
+                    try child_list.append(self.allocator, child_record);
                     record.children = try child_list.toOwnedSlice();
                 },
                 else => try reader.skipField(tag.wire_type),

@@ -30,7 +30,9 @@ pub const RetryPolicy = struct {
         decorrelated,
         
         pub fn applyJitter(self: JitterType, delay_ms: u64, rng: std.rand.Random) u64 {
-            return switch (self) {
+            
+        
+        return switch (self) {
                 .none => delay_ms,
                 .full => rng.intRangeAtMost(u64, 0, delay_ms),
                 .equal => delay_ms / 2 + rng.intRangeAtMost(u64, 0, delay_ms / 2),
@@ -47,7 +49,9 @@ pub const RetryPolicy = struct {
         custom,
         
         pub fn calculateDelay(self: BackoffStrategy, attempt: u32, initial_delay: u64, multiplier: f64, max_delay: u64) u64 {
-            const delay = switch (self) {
+            
+        
+        const delay = switch (self) {
                 .fixed => initial_delay,
                 .linear => initial_delay + @as(u64, @intCast(attempt - 1)) * @as(u64, @intFromFloat(initial_delay * multiplier)),
                 .exponential => @min(max_delay, @as(u64, @intFromFloat(@as(f64, @floatFromInt(initial_delay)) * std.math.pow(f64, multiplier, @as(f64, @floatFromInt(attempt - 1)))))),
@@ -77,6 +81,8 @@ pub const RetryPolicy = struct {
     };
     
     pub fn init() RetryPolicy {
+        
+        
         const default_retryable_errors = [_]HederaError{
             HederaError.NetworkTimeout,
             HederaError.ConnectionFailed,
@@ -98,30 +104,40 @@ pub const RetryPolicy = struct {
     }
     
     pub fn withMaxAttempts(self: RetryPolicy, max_attempts: u32) RetryPolicy {
+        
+        
         var policy = self;
         policy.max_attempts = max_attempts;
         return policy;
     }
     
     pub fn withBackoffStrategy(self: RetryPolicy, strategy: BackoffStrategy) RetryPolicy {
+        
+        
         var policy = self;
         policy.backoff_strategy = strategy;
         return policy;
     }
     
     pub fn withJitter(self: RetryPolicy, jitter_type: JitterType) RetryPolicy {
+        
+        
         var policy = self;
         policy.jitter_type = jitter_type;
         return policy;
     }
     
     pub fn withDeadline(self: RetryPolicy, deadline_ms: u64) RetryPolicy {
+        
+        
         var policy = self;
         policy.deadline_ms = deadline_ms;
         return policy;
     }
     
     pub fn isRetryable(self: RetryPolicy, err: HederaError) bool {
+        
+        
         for (self.retryable_errors) |retryable_err| {
             if (err == retryable_err) return true;
         }
@@ -129,6 +145,8 @@ pub const RetryPolicy = struct {
     }
     
     pub fn calculateNextDelay(self: RetryPolicy, attempt: u32, rng: std.rand.Random) u64 {
+        
+        
         const base_delay = self.backoff_strategy.calculateDelay(attempt, self.initial_delay_ms, self.multiplier, self.max_delay_ms);
         return self.jitter_type.applyJitter(base_delay, rng);
     }
@@ -143,6 +161,8 @@ pub const RetryAttempt = struct {
     delay_before_ms: u64,
     
     pub fn init(attempt_number: u32, delay_before_ms: u64) RetryAttempt {
+        
+        
         return RetryAttempt{
             .attempt_number = attempt_number,
             .start_time = std.time.milliTimestamp(),
@@ -153,11 +173,15 @@ pub const RetryAttempt = struct {
     }
     
     pub fn complete(self: *RetryAttempt, error_value: ?HederaError) void {
+        
+        
         self.end_time = std.time.milliTimestamp();
         self.error_value = error_value;
     }
     
     pub fn getDuration(self: RetryAttempt) ?u64 {
+        
+        
         if (self.end_time) |end| {
             return @as(u64, @intCast(end - self.start_time));
         }
@@ -165,6 +189,8 @@ pub const RetryAttempt = struct {
     }
     
     pub fn wasSuccessful(self: RetryAttempt) bool {
+        
+        
         return self.error_value == null;
     }
 };
@@ -179,6 +205,8 @@ pub const RetryContext = struct {
     rng: std.rand.DefaultPrng,
     
     pub fn init(allocator: Allocator, policy: RetryPolicy) RetryContext {
+        
+        
         const rng = std.rand.DefaultPrng.init(@as(u64, @bitCast(std.time.milliTimestamp())));
         
         return RetryContext{
@@ -192,10 +220,14 @@ pub const RetryContext = struct {
     }
     
     pub fn deinit(self: *RetryContext) void {
-        self.attempts.deinit();
+        
+        
+        self.attempts.deinit(self.allocator);
     }
     
     pub fn shouldRetry(self: *RetryContext, err: HederaError) bool {
+        
+        
         self.last_error = err;
         
         // Check if we've exceeded max attempts
@@ -215,6 +247,8 @@ pub const RetryContext = struct {
     }
     
     pub fn recordAttempt(self: *RetryContext, err: ?HederaError) !void {
+        
+        
         if (self.attempts.items.len > 0) {
             // Complete the last attempt
             var last_attempt = &self.attempts.items[self.attempts.items.len - 1];
@@ -223,6 +257,8 @@ pub const RetryContext = struct {
     }
     
     pub fn prepareNextAttempt(self: *RetryContext) !?u64 {
+        
+        
         const next_attempt_number = @as(u32, @intCast(self.attempts.items.len + 1));
         
         if (next_attempt_number > self.policy.max_attempts) {
@@ -239,16 +275,20 @@ pub const RetryContext = struct {
         const delay_ms = if (next_attempt_number == 1) 0 else self.policy.calculateNextDelay(next_attempt_number - 1, self.rng.random());
         
         const attempt = RetryAttempt.init(next_attempt_number, delay_ms);
-        try self.attempts.append(attempt);
+        try self.attempts.append(self.allocator, attempt);
         
         return delay_ms;
     }
     
     pub fn getTotalDuration(self: RetryContext) u64 {
+        
+        
         return @as(u64, @intCast(std.time.milliTimestamp() - self.start_time));
     }
     
     pub fn getTotalDelayTime(self: RetryContext) u64 {
+        
+        
         var total: u64 = 0;
         for (self.attempts.items) |attempt| {
             total += attempt.delay_before_ms;
@@ -257,10 +297,14 @@ pub const RetryContext = struct {
     }
     
     pub fn getLastError(self: RetryContext) ?HederaError {
+        
+        
         return self.last_error;
     }
     
     pub fn getAttemptCount(self: RetryContext) u32 {
+        
+        
         return @as(u32, @intCast(self.attempts.items.len));
     }
 };
@@ -272,6 +316,8 @@ pub const CircuitBreakerState = enum {
     half_open,
     
     pub fn toString(self: CircuitBreakerState) []const u8 {
+        
+        
         return switch (self) {
             .closed => "CLOSED",
             .open => "OPEN",
@@ -290,6 +336,8 @@ pub const CircuitBreakerConfig = struct {
     failure_rate_threshold: f64,
     
     pub fn init() CircuitBreakerConfig {
+        
+        
         return CircuitBreakerConfig{
             .failure_threshold = 5,
             .success_threshold = 3,
@@ -311,6 +359,8 @@ pub const CircuitBreakerMetrics = struct {
     consecutive_successes: u32,
     
     pub fn init() CircuitBreakerMetrics {
+        
+        
         return CircuitBreakerMetrics{
             .request_count = 0,
             .success_count = 0,
@@ -322,6 +372,8 @@ pub const CircuitBreakerMetrics = struct {
     }
     
     pub fn recordSuccess(self: *CircuitBreakerMetrics) void {
+        
+        
         self.request_count += 1;
         self.success_count += 1;
         self.consecutive_successes += 1;
@@ -329,6 +381,8 @@ pub const CircuitBreakerMetrics = struct {
     }
     
     pub fn recordFailure(self: *CircuitBreakerMetrics) void {
+        
+        
         self.request_count += 1;
         self.failure_count += 1;
         self.consecutive_failures += 1;
@@ -336,16 +390,22 @@ pub const CircuitBreakerMetrics = struct {
     }
     
     pub fn getFailureRate(self: CircuitBreakerMetrics) f64 {
+        
+        
         if (self.request_count == 0) return 0.0;
         return @as(f64, @floatFromInt(self.failure_count)) / @as(f64, @floatFromInt(self.request_count));
     }
     
     pub fn shouldResetWindow(self: CircuitBreakerMetrics, window_size_ms: u64) bool {
+        
+        
         const now = std.time.milliTimestamp();
         return (now - self.window_start) > @as(i64, @intCast(window_size_ms));
     }
     
     pub fn resetWindow(self: *CircuitBreakerMetrics) void {
+        
+        
         self.request_count = 0;
         self.success_count = 0;
         self.failure_count = 0;
@@ -363,6 +423,8 @@ pub const CircuitBreaker = struct {
     mutex: Mutex,
     
     pub fn init(config: CircuitBreakerConfig) CircuitBreaker {
+        
+        
         return CircuitBreaker{
             .config = config,
             .state = .closed,
@@ -373,6 +435,8 @@ pub const CircuitBreaker = struct {
     }
     
     pub fn canExecute(self: *CircuitBreaker) bool {
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -396,6 +460,8 @@ pub const CircuitBreaker = struct {
     }
     
     pub fn recordSuccess(self: *CircuitBreaker) void {
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -414,6 +480,8 @@ pub const CircuitBreaker = struct {
     }
     
     pub fn recordFailure(self: *CircuitBreaker) void {
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -434,18 +502,24 @@ pub const CircuitBreaker = struct {
     }
     
     pub fn getState(self: *CircuitBreaker) CircuitBreakerState {
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         return self.state;
     }
     
     pub fn getMetrics(self: *CircuitBreaker) CircuitBreakerMetrics {
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         return self.metrics;
     }
     
     pub fn reset(self: *CircuitBreaker) void {
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -482,6 +556,8 @@ pub const RetryExecutor = struct {
     mutex: Mutex,
     
     pub fn init(allocator: Allocator) RetryExecutor {
+        
+        
         return RetryExecutor{
             .allocator = allocator,
             .circuit_breakers = HashMap([]const u8, *CircuitBreaker, std.hash_map.StringContext, std.hash_map.default_max_load_percentage).init(allocator),
@@ -491,6 +567,8 @@ pub const RetryExecutor = struct {
     }
     
     pub fn deinit(self: *RetryExecutor) void {
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -499,10 +577,12 @@ pub const RetryExecutor = struct {
             self.allocator.free(entry.key_ptr.*);
             self.allocator.destroy(entry.value_ptr.*);
         }
-        self.circuit_breakers.deinit();
+        self.circuit_breakers.deinit(self.allocator);
     }
     
     pub fn getCircuitBreaker(self: *RetryExecutor, key: []const u8) !*CircuitBreaker {
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -526,8 +606,10 @@ pub const RetryExecutor = struct {
         policy: RetryPolicy,
         circuit_breaker_key: ?[]const u8,
     ) !T {
+        
+        
         var context = RetryContext.init(self.allocator, policy);
-        defer context.deinit();
+        defer context.deinit(self.allocator);
         
         var circuit_breaker: ?*CircuitBreaker = null;
         if (circuit_breaker_key) |key| {
@@ -591,6 +673,8 @@ pub const RetryExecutor = struct {
         circuit_breaker_key: ?[]const u8,
         callback: *const fn (result: anyerror!T) void,
     ) !Thread {
+        
+        
         const ExecuteParams = struct {
             executor: *RetryExecutor,
             operation: *const fn () anyerror!T,
@@ -616,6 +700,8 @@ pub const RetryExecutor = struct {
     }
     
     pub fn getCircuitBreakerStats(self: *RetryExecutor, allocator: Allocator) ![]CircuitBreakerStats {
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -632,7 +718,7 @@ pub const RetryExecutor = struct {
                 .metrics = breaker.getMetrics(),
             };
             
-            try stats_list.append(stats);
+            try stats_list.append(allocator, stats);
         }
         
         return stats_list.toOwnedSlice();
@@ -646,6 +732,8 @@ pub const CircuitBreakerStats = struct {
     metrics: CircuitBreakerMetrics,
     
     pub fn deinit(self: CircuitBreakerStats, allocator: Allocator) void {
+        
+        
         allocator.free(self.key);
     }
 };
@@ -664,10 +752,14 @@ fn convertToHederaError(err: anyerror) HederaError {
 // Predefined retry policies
 pub const RetryPolicies = struct {
     pub fn defaultPolicy() RetryPolicy {
+        
+        
         return RetryPolicy.init();
     }
     
     pub fn aggressiveRetry() RetryPolicy {
+        
+        
         return RetryPolicy.init()
             .withMaxAttempts(5)
             .withBackoffStrategy(.exponential)
@@ -675,6 +767,8 @@ pub const RetryPolicies = struct {
     }
     
     pub fn conservativeRetry() RetryPolicy {
+        
+        
         return RetryPolicy.init()
             .withMaxAttempts(2)
             .withBackoffStrategy(.linear)
@@ -682,6 +776,8 @@ pub const RetryPolicies = struct {
     }
     
     pub fn fastRetry() RetryPolicy {
+        
+        
         var policy = RetryPolicy.init();
         policy.initial_delay_ms = 100;
         policy.max_delay_ms = 5000;
@@ -690,6 +786,8 @@ pub const RetryPolicies = struct {
     }
     
     pub fn networkOptimized() RetryPolicy {
+        
+        
         var policy = RetryPolicy.init();
         policy.initial_delay_ms = 500;
         policy.max_delay_ms = 15000;
@@ -732,7 +830,7 @@ test "RetryContext attempt tracking" {
     
     const policy = RetryPolicy.init().withMaxAttempts(3);
     var context = RetryContext.init(allocator, policy);
-    defer context.deinit();
+    defer context.deinit(allocator);
     
     // First attempt
     const delay1 = try context.prepareNextAttempt();

@@ -61,7 +61,7 @@ const ConnectionPool = struct {
                 self.allocator.destroy(entry.value_ptr.*);
             }
         }
-        self.connections.deinit();
+        self.connections.deinit(self.allocator);
     }
     
     pub fn getConnection(self: *ConnectionPool, node: *Node) !*GrpcConnection {
@@ -74,7 +74,7 @@ const ConnectionPool = struct {
                 return conn;
             }
             // Remove stale connection
-            conn.deinit();
+            conn.deinit(self.allocator);
             self.allocator.destroy(conn);
             _ = self.connections.remove(node_id);
         }
@@ -117,8 +117,8 @@ pub const Client = struct {
         var client = Client{
             .allocator = allocator,
             .config = config,
-            .nodes = std.ArrayList(Node).init(allocator),
-            .healthy_nodes = std.ArrayList(*Node).init(allocator),
+            .nodes = std.ArrayList(Node){},
+            .healthy_nodes = std.ArrayList(*Node){},
             .connection_pool = ConnectionPool.init(allocator),
             .operator = config.operator,
             .network = config.network,
@@ -136,25 +136,25 @@ pub const Client = struct {
     }
     
     pub fn deinit(self: *Client) void {
-        self.connection_pool.deinit();
+        self.connection_pool.deinit(self.allocator);
         
         for (self.nodes.items) |*node| {
             node.deinit(self.allocator);
         }
         
-        self.nodes.deinit();
-        self.healthy_nodes.deinit();
+        self.nodes.deinit(self.allocator);
+        self.healthy_nodes.deinit(self.allocator);
     }
     
     fn initializeNodes(self: *Client) !void {
         const node_addresses = try self.config.network.getDefaultNodes(self.allocator);
-        defer node_addresses.deinit();
+        defer node_addresses.deinit(self.allocator);
         
         for (node_addresses.items) |addr| {
             var node = Node.init(addr.account_id, try addr.toAddress());
             node.hostname = try self.allocator.dupe(u8, addr.ip);
-            try self.nodes.append(node);
-            try self.healthy_nodes.append(&self.nodes.items[self.nodes.items.len - 1]);
+            try self.nodes.append(self.allocator, node);
+            try self.healthy_nodes.append(self.allocator, &self.nodes.items[self.nodes.items.len - 1]);
         }
     }
     
@@ -213,7 +213,7 @@ pub const Client = struct {
         self.healthy_nodes.clearRetainingCapacity();
         for (self.nodes.items) |*node| {
             if (node.isHealthy()) {
-                try self.healthy_nodes.append(node);
+                try self.healthy_nodes.append(self.allocator, node);
             }
         }
         
@@ -221,7 +221,7 @@ pub const Client = struct {
             // Reset all nodes if none are healthy
             for (self.nodes.items) |*node| {
                 node.resetBackoff();
-                try self.healthy_nodes.append(node);
+                try self.healthy_nodes.append(self.allocator, node);
             }
         }
         

@@ -8,7 +8,8 @@ pub const Network = struct {
     current_node_index: usize,
     allocator: std.mem.Allocator,
     
-    pub fn init(allocator: std.mem.Allocator) Network {
+    pub fn init(allocator: std.mem.Allocator) Network {        
+        
         return Network{
             .nodes = std.AutoHashMap(AccountId, *Node).init(allocator),
             .current_node_index = 0,
@@ -17,16 +18,20 @@ pub const Network = struct {
     }
     
     pub fn deinit(self: *Network) void {
+        
+        
         var iter = self.nodes.iterator();
         while (iter.next()) |entry| {
             entry.value_ptr.*.deinit();
             self.allocator.destroy(entry.value_ptr.*);
         }
-        self.nodes.deinit();
+        self.nodes.deinit(self.allocator);
     }
     
     // Registers a node with the network
     pub fn addNode(self: *Network, address: []const u8, account_id: AccountId) !void {
+        
+        
         const node = try self.allocator.create(Node);
         node.* = try Node.init(self.allocator, address, account_id);
         try self.nodes.put(account_id, node);
@@ -34,18 +39,22 @@ pub const Network = struct {
     
     // Get a specific node by account ID
     pub fn getNode(self: *Network, account_id: AccountId) ?*Node {
+        
+        
         return self.nodes.get(account_id);
     }
     
     // Get all healthy nodes
-    pub fn getHealthyNodes(self: *Network, allocator: std.mem.Allocator) ![]Node {
-        var healthy_list = std.ArrayList(Node).init(allocator);
-        defer healthy_list.deinit();
+    pub fn getHealthyNodes(self: *Network, allocator: std.mem.Allocator) ![]Node {        
+        
+        _ = allocator;
+        var healthy_list = std.ArrayList(Node){};
+        defer healthy_list.deinit(self.allocator);
         
         var iter = self.nodes.iterator();
         while (iter.next()) |entry| {
             if (entry.value_ptr.*.isHealthy()) {
-                try healthy_list.append(entry.value_ptr.*.*);
+                try healthy_list.append(self.allocator, entry.value_ptr.*.*);
             }
         }
         
@@ -54,6 +63,8 @@ pub const Network = struct {
     
     // Select a node using round-robin
     pub fn selectNode(self: *Network) !*Node {
+        
+        
         const node_count = self.nodes.count();
         if (node_count == 0) {
             return error.NoNodesAvailable;
@@ -82,7 +93,8 @@ pub const Network = struct {
     }
     
     // Create network for testnet
-    pub fn forTestnet(allocator: std.mem.Allocator) !Network {
+    pub fn forTestnet(allocator: std.mem.Allocator) !Network {        
+        
         var network = Network.init(allocator);
         
         // Testnet nodes
@@ -98,7 +110,8 @@ pub const Network = struct {
     }
     
     // Create network for mainnet
-    pub fn forMainnet(allocator: std.mem.Allocator) !Network {
+    pub fn forMainnet(allocator: std.mem.Allocator) !Network {        
+        
         var network = Network.init(allocator);
         
         // Mainnet nodes
@@ -133,7 +146,8 @@ pub const Network = struct {
     }
     
     // Create network for previewnet
-    pub fn forPreviewnet(allocator: std.mem.Allocator) !Network {
+    pub fn forPreviewnet(allocator: std.mem.Allocator) !Network {        
+        
         var network = Network.init(allocator);
         
         // Previewnet nodes

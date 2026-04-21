@@ -22,7 +22,7 @@ pub const TokenBalance = struct {
     pub fn encode(self: TokenBalance, writer: *ProtoWriter) !void {
         // tokenId = 1
         var token_writer = ProtoWriter.init(writer.buffer.allocator);
-        defer token_writer.deinit();
+        defer token_writer.deinit(self.allocator);
         try token_writer.writeInt64(1, @intCast(self.token_id.shard));
         try token_writer.writeInt64(2, @intCast(self.token_id.realm));
         try token_writer.writeInt64(3, @intCast(self.token_id.num));
@@ -101,8 +101,8 @@ pub const AccountBalance = struct {
     }
     
     pub fn deinit(self: *AccountBalance) void {
-        self.tokens.deinit();
-        self.token_decimals.deinit();
+        self.tokens.deinit(self.allocator);
+        self.token_decimals.deinit(self.allocator);
     }
     
     pub fn getTokenBalance(self: AccountBalance, token_id: TokenId) u64 {
@@ -138,7 +138,7 @@ pub const AccountBalanceQuery = struct {
     }
     
     pub fn deinit(self: *AccountBalanceQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the account ID to query
@@ -230,15 +230,15 @@ pub const AccountBalanceQuery = struct {
     // Build the query
     pub fn buildQuery(self: *AccountBalanceQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // cryptogetAccountBalance = 9 (oneof query)
         var balance_query_writer = ProtoWriter.init(self.base.allocator);
-        defer balance_query_writer.deinit();
+        defer balance_query_writer.deinit(self.allocator);
         
         // header = 1 (inside the specific query)
         var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
+        defer header_writer.deinit(self.allocator);
         
         // payment = 1 (optional for free queries - AccountBalance queries are free)
         // responseType = 2 (must be present even if 0)
@@ -252,7 +252,7 @@ pub const AccountBalanceQuery = struct {
         if (self.account_id) |account| {
             // accountID = 2
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(account.shard));
             try account_writer.writeInt64(2, @intCast(account.realm));
             try account_writer.writeInt64(3, @intCast(account.account));
@@ -271,7 +271,7 @@ pub const AccountBalanceQuery = struct {
         } else if (self.contract_id) |contract| {
             // contractID = 3
             var contract_writer = ProtoWriter.init(self.base.allocator);
-            defer contract_writer.deinit();
+            defer contract_writer.deinit(self.allocator);
             try contract_writer.writeInt64(1, @intCast(contract.entity.shard));
             try contract_writer.writeInt64(2, @intCast(contract.entity.realm));
             try contract_writer.writeInt64(3, @intCast(contract.entity.num));

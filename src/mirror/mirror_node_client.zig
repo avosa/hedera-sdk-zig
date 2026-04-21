@@ -23,7 +23,7 @@ pub const MirrorNodeClient = struct {
     }
     
     pub fn deinit(self: *MirrorNodeClient) void {
-        self.http_client.deinit();
+        self.http_client.deinit(self.allocator);
     }
     
     // Get account info from mirror node
@@ -153,7 +153,7 @@ pub const MirrorNodeClient = struct {
         var request = try self.http_client.open(.GET, uri, .{
             .server_header_buffer = &server_header_buffer,
         });
-        defer request.deinit();
+        defer request.deinit(self.allocator);
         
         try request.send();
         try request.finish();
@@ -381,8 +381,8 @@ pub const MirrorNodeClient = struct {
         const first_balance = balances[0].getObject() orelse return error.InvalidField;
         
         // Parse token balances
-        var token_balances = std.ArrayList(TokenBalance).init(allocator);
-        errdefer token_balances.deinit();
+        var token_balances = std.ArrayList(TokenBalance){};
+        errdefer token_balances.deinit(allocator);
         
         if (first_balance.get("tokens")) |tokens_val| {
             const tokens = tokens_val.getArray() orelse return error.InvalidField;
@@ -410,8 +410,8 @@ pub const MirrorNodeClient = struct {
         const obj = root.getObject() orelse return error.InvalidJson;
         const transactions = obj.get("transactions").?.getArray() orelse return error.InvalidField;
         
-        var result = std.ArrayList(Transaction).init(allocator);
-        errdefer result.deinit();
+        var result = std.ArrayList(Transaction){};
+        errdefer result.deinit(allocator);
         
         for (transactions) |tx| {
             const tx_obj = tx.getObject() orelse continue;
@@ -432,8 +432,8 @@ pub const MirrorNodeClient = struct {
     
     fn parseTransactionObject(obj: std.StringHashMap(JsonParser.Value), allocator: std.mem.Allocator) !Transaction {
         // Parse transfers
-        var transfers = std.ArrayList(Transfer).init(allocator);
-        errdefer transfers.deinit();
+        var transfers = std.ArrayList(Transfer){};
+        errdefer transfers.deinit(allocator);
         
         if (obj.get("transfers")) |transfers_val| {
             const transfers_arr = transfers_val.getArray() orelse &[_]JsonParser.Value{};
@@ -448,8 +448,8 @@ pub const MirrorNodeClient = struct {
         }
         
         // Parse token transfers
-        var token_transfers = std.ArrayList(TokenTransfer).init(allocator);
-        errdefer token_transfers.deinit();
+        var token_transfers = std.ArrayList(TokenTransfer){};
+        errdefer token_transfers.deinit(allocator);
         
         if (obj.get("token_transfers")) |token_transfers_val| {
             const token_transfers_arr = token_transfers_val.getArray() orelse &[_]JsonParser.Value{};
@@ -465,8 +465,8 @@ pub const MirrorNodeClient = struct {
         }
         
         // Parse NFT transfers
-        var nft_transfers = std.ArrayList(NftTransfer).init(allocator);
-        errdefer nft_transfers.deinit();
+        var nft_transfers = std.ArrayList(NftTransfer){};
+        errdefer nft_transfers.deinit(allocator);
         
         if (obj.get("nft_transfers")) |nft_transfers_val| {
             const nft_transfers_arr = nft_transfers_val.getArray() orelse &[_]JsonParser.Value{};
@@ -483,8 +483,8 @@ pub const MirrorNodeClient = struct {
         }
         
         // Parse staking reward transfers
-        var staking_reward_transfers = std.ArrayList(StakingRewardTransfer).init(allocator);
-        errdefer staking_reward_transfers.deinit();
+        var staking_reward_transfers = std.ArrayList(StakingRewardTransfer){};
+        errdefer staking_reward_transfers.deinit(allocator);
         
         if (obj.get("staking_reward_transfers")) |staking_transfers_val| {
             const staking_transfers_arr = staking_transfers_val.getArray() orelse &[_]JsonParser.Value{};
@@ -529,8 +529,8 @@ pub const MirrorNodeClient = struct {
         const obj = root.getObject() orelse return error.InvalidJson;
         
         // Parse custom fees
-        var custom_fees = std.ArrayList(CustomFee).init(allocator);
-        errdefer custom_fees.deinit();
+        var custom_fees = std.ArrayList(CustomFee){};
+        errdefer custom_fees.deinit(allocator);
         
         if (obj.get("custom_fees")) |fees_val| {
             const fees = fees_val.getObject() orelse return error.InvalidField;
@@ -602,15 +602,15 @@ pub const MirrorNodeClient = struct {
         const obj = root.getObject() orelse return error.InvalidJson;
         const nodes = obj.get("nodes").?.getArray() orelse return error.InvalidField;
         
-        var result = std.ArrayList(NetworkNode).init(allocator);
-        errdefer result.deinit();
+        var result = std.ArrayList(NetworkNode){};
+        errdefer result.deinit(allocator);
         
         for (nodes) |node| {
             const node_obj = node.getObject() orelse continue;
             
             // Parse service endpoints
-            var service_endpoints = std.ArrayList(ServiceEndpoint).init(allocator);
-            errdefer service_endpoints.deinit();
+            var service_endpoints = std.ArrayList(ServiceEndpoint){};
+            errdefer service_endpoints.deinit(allocator);
             
             if (node_obj.get("service_endpoints")) |endpoints_val| {
                 const endpoints = endpoints_val.getArray() orelse &[_]JsonParser.Value{};
@@ -760,10 +760,10 @@ pub const MirrorNodeClient = struct {
         // Make REAL HTTP request to Mirror Node API
         const uri = try std.Uri.parse(url);
         var client = std.http.Client{ .allocator = self.allocator };
-        defer client.deinit();
+        defer client.deinit(self.allocator);
         
         var request = try client.open(.GET, uri, .{ .server_header_buffer = try self.allocator.alloc(u8, 16 * 1024) });
-        defer request.deinit();
+        defer request.deinit(self.allocator);
         
         try request.send();
         try request.finish();
@@ -813,10 +813,10 @@ pub const MirrorNodeClient = struct {
         // Make REAL HTTP request to Mirror Node API
         const uri = try std.Uri.parse(url);
         var client = std.http.Client{ .allocator = self.allocator };
-        defer client.deinit();
+        defer client.deinit(self.allocator);
         
         var request = try client.open(.GET, uri, .{ .server_header_buffer = try self.allocator.alloc(u8, 16 * 1024) });
-        defer request.deinit();
+        defer request.deinit(self.allocator);
         
         try request.send();
         try request.finish();

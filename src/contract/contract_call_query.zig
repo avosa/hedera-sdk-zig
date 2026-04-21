@@ -37,7 +37,7 @@ pub const ContractCallQuery = struct {
     }
     
     pub fn deinit(self: *ContractCallQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the contract to call
@@ -62,7 +62,7 @@ pub const ContractCallQuery = struct {
     // Set function with parameters using builder
     pub fn setFunction(self: *ContractCallQuery, name: []const u8, params: ?ContractFunctionParameters) !*ContractCallQuery {
         var full_params = std.ArrayList(u8).init(self.base.allocator);
-        defer full_params.deinit();
+        defer full_params.deinit(self.allocator);
         
         // Calculate function selector (first 4 bytes of Keccak256 hash)
         var hasher = std.crypto.hash.sha3.Keccak256.init(.{});
@@ -72,7 +72,7 @@ pub const ContractCallQuery = struct {
         if (params) |p| {
             // Build parameter type string
             var type_string = std.ArrayList(u8).init(self.base.allocator);
-            defer type_string.deinit();
+            defer type_string.deinit(self.allocator);
             
             for (p.arguments.items, 0..) |arg, i| {
                 if (i > 0) try errors.handleAppendError(&type_string, ',');
@@ -262,12 +262,12 @@ pub const ContractCallQuery = struct {
     // Build the query
     pub fn buildQuery(self: *ContractCallQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Query message structure
         // header = 1
         var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
+        defer header_writer.deinit(self.allocator);
         
         // payment = 1
         if (self.base.payment_transaction) |payment| {
@@ -283,16 +283,16 @@ pub const ContractCallQuery = struct {
         
         // contractCallLocal = 7 (oneof query)
         var call_query_writer = ProtoWriter.init(self.base.allocator);
-        defer call_query_writer.deinit();
+        defer call_query_writer.deinit(self.allocator);
         
         // header = 1 (ContractCallLocalQuery has its own header)
         var call_header_writer = ProtoWriter.init(self.base.allocator);
-        defer call_header_writer.deinit();
+        defer call_header_writer.deinit(self.allocator);
         
         // contractID = 2
         if (self.contract_id) |contract| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
-            defer contract_writer.deinit();
+            defer contract_writer.deinit(self.allocator);
             try contract_writer.writeInt64(1, @intCast(contract.shard));
             try contract_writer.writeInt64(2, @intCast(contract.realm));
             try contract_writer.writeInt64(3, @intCast(contract.num));
@@ -315,7 +315,7 @@ pub const ContractCallQuery = struct {
         // senderId = 6
         if (self.sender_id) |sender| {
             var sender_writer = ProtoWriter.init(self.base.allocator);
-            defer sender_writer.deinit();
+            defer sender_writer.deinit(self.allocator);
             try sender_writer.writeInt64(1, @intCast(sender.shard));
             try sender_writer.writeInt64(2, @intCast(sender.realm));
             try sender_writer.writeInt64(3, @intCast(sender.account));
@@ -433,7 +433,7 @@ pub const ContractCallQuery = struct {
                                     }
                                 }
                                 
-                                try result.logs.append(log_info);
+                                try result.logs.append(self.allocator, log_info);
                             },
                             7 => {
                                 // createdContractIDs (repeated)
@@ -500,7 +500,7 @@ pub const ContractCallQuery = struct {
                                     }
                                 }
                                 
-                                try result.contract_nonces.append(nonce_info);
+                                try result.contract_nonces.append(self.allocator, nonce_info);
                             },
                             11 => {
                                 // signerNonce

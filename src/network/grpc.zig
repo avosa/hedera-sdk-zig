@@ -187,14 +187,14 @@ pub const HpackEncoder = struct {
     pub fn init(allocator: std.mem.Allocator) HpackEncoder {
         return HpackEncoder{
             .allocator = allocator,
-            .dynamic_table = std.ArrayList(Header).init(allocator),
+            .dynamic_table = std.ArrayList(Header){},
             .max_dynamic_table_size = 4096,
             .current_table_size = 0,
         };
     }
     
     pub fn deinit(self: *HpackEncoder) void {
-        self.dynamic_table.deinit();
+        self.dynamic_table.deinit(self.allocator);
     }
     
     pub fn encode(self: *HpackEncoder, headers: []const Header, writer: anytype) !void {
@@ -345,9 +345,9 @@ pub const GrpcConnection = struct {
         
         // Create headers for HTTP/2 gRPC
         var headers = std.http.Headers{ .allocator = allocator };
-        defer headers.deinit();
-        try headers.append("connection", "Upgrade");
-        try headers.append("upgrade", "h2c"); // HTTP/2 cleartext
+        defer headers.deinit(self.allocator);
+        try headers.append(self.allocator, "connection", "Upgrade");
+        try headers.append(self.allocator, "upgrade", "h2c"); // HTTP/2 cleartext
         
         // Create the request to establish HTTP/2 connection
         var request = try http_client.request(.POST, uri, headers, .{});
@@ -384,8 +384,8 @@ pub const GrpcConnection = struct {
     
     pub fn deinit(self: *GrpcConnection) void {
         self.stream.close();
-        self.encoder.deinit();
-        self.decoder.deinit();
+        self.encoder.deinit(self.allocator);
+        self.decoder.deinit(self.allocator);
     }
     
     fn sendPreface(self: *GrpcConnection) !void {
@@ -394,7 +394,7 @@ pub const GrpcConnection = struct {
     
     fn sendSettings(self: *GrpcConnection) !void {
         var settings_payload = std.ArrayList(u8).init(self.allocator);
-        defer settings_payload.deinit();
+        defer settings_payload.deinit(self.allocator);
         
         // SETTINGS_INITIAL_WINDOW_SIZE
         try settings_payload.writer().writeInt(u16, Settings.INITIAL_WINDOW_SIZE, .big);
@@ -472,7 +472,7 @@ pub const GrpcConnection = struct {
     
     fn sendHeaders(self: *GrpcConnection, stream_id: u31, service: []const u8, method: []const u8) !void {
         var headers_data = std.ArrayList(u8).init(self.allocator);
-        defer headers_data.deinit();
+        defer headers_data.deinit(self.allocator);
         
         const path = try std.fmt.allocPrint(self.allocator, "/{s}/{s}", .{ service, method });
         defer self.allocator.free(path);
@@ -504,7 +504,7 @@ pub const GrpcConnection = struct {
     fn sendData(self: *GrpcConnection, stream_id: u31, data: []const u8, end_stream: bool) !void {
         // gRPC message format: [compression_flag(1)] [length(4)] [data]
         var message = std.ArrayList(u8).init(self.allocator);
-        defer message.deinit();
+        defer message.deinit(self.allocator);
         
         try message.writer().writeByte(0); // No compression
         try message.writer().writeInt(u32, @as(u32, @intCast(data.len)), .big);
@@ -622,7 +622,7 @@ pub const HpackDecoder = struct {
     
     pub fn init(allocator: std.mem.Allocator) HpackDecoder {
         return HpackDecoder{
-            .dynamic_table = std.ArrayList(Header).init(allocator),
+            .dynamic_table = std.ArrayList(Header){},
             .max_dynamic_table_size = 4096,
             .current_table_size = 0,
             .allocator = allocator,
@@ -630,7 +630,7 @@ pub const HpackDecoder = struct {
     }
     
     pub fn deinit(self: *HpackDecoder) void {
-        self.dynamic_table.deinit();
+        self.dynamic_table.deinit(self.allocator);
     }
     
     pub fn decode(self: *HpackDecoder, data: []const u8) ![]Header {
@@ -644,21 +644,21 @@ pub const HpackDecoder = struct {
                 // Indexed header field
                 const index = try self.decodeInteger(data, &i, 7);
                 const header = try self.getIndexedHeader(index);
-                try headers.append(header);
+                try headers.append(self.allocator, header);
             } else if (byte & 0x40 != 0) {
                 // Literal header field with incremental indexing
                 i += 1;
                 const name = try self.decodeString(data, &i);
                 const value = try self.decodeString(data, &i);
                 const header = Header{ .name = name, .value = value };
-                try headers.append(header);
+                try headers.append(self.allocator, header);
                 try self.addToDynamicTable(header);
             } else {
                 // Other representations
                 i += 1;
                 const name = try self.decodeString(data, &i);
                 const value = try self.decodeString(data, &i);
-                try headers.append(Header{ .name = name, .value = value });
+                try headers.append(self.allocator, Header{ .name = name, .value = value });
             }
         }
         

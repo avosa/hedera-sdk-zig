@@ -27,12 +27,12 @@ pub const ScheduleCreateTransaction = struct {
     }
     
     pub fn deinit(self: *ScheduleCreateTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
         if (self.memo) |memo| {
             self.base.allocator.free(memo);
         }
         if (self.schedulable_transaction) |tx| {
-            tx.deinit();
+            tx.deinit(self.allocator);
             self.base.allocator.destroy(tx);
         }
     }
@@ -56,7 +56,7 @@ pub const ScheduleCreateTransaction = struct {
         if (self.base.frozen) return error.TransactionFrozen;
         
         if (self.schedulable_transaction) |old_tx| {
-            old_tx.deinit();
+            old_tx.deinit(self.allocator);
             self.base.allocator.destroy(old_tx);
         }
         
@@ -111,14 +111,14 @@ pub const ScheduleCreateTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *ScheduleCreateTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Write common transaction fields
         try self.base.writeCommonFields(&writer);
         
         // scheduleCreate = 42 (oneof data)
         var schedule_writer = ProtoWriter.init(self.base.allocator);
-        defer schedule_writer.deinit();
+        defer schedule_writer.deinit(self.allocator);
         
         // scheduledTransactionBody = 1
         if (self.schedulable_transaction) |tx| {
@@ -143,7 +143,7 @@ pub const ScheduleCreateTransaction = struct {
         // payerAccountID = 4
         if (self.payer_account_id) |payer| {
             var payer_writer = ProtoWriter.init(self.base.allocator);
-            defer payer_writer.deinit();
+            defer payer_writer.deinit(self.allocator);
             try payer_writer.writeInt64(1, @intCast(payer.shard));
             try payer_writer.writeInt64(2, @intCast(payer.realm));
             try payer_writer.writeInt64(3, @intCast(payer.account));
@@ -155,7 +155,7 @@ pub const ScheduleCreateTransaction = struct {
         // expirationTime = 5
         if (self.expiration_time) |expiration| {
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, expiration.seconds);
             try timestamp_writer.writeInt32(2, expiration.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();

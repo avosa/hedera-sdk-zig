@@ -18,7 +18,7 @@ pub const ScheduleDeleteTransaction = struct {
     }
     
     pub fn deinit(self: *ScheduleDeleteTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the schedule ID to delete
@@ -36,19 +36,19 @@ pub const ScheduleDeleteTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *ScheduleDeleteTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Write common transaction fields
         try self.base.writeCommonFields(&writer);
         
         // scheduleDelete = 43 (oneof data)
         var schedule_writer = ProtoWriter.init(self.base.allocator);
-        defer schedule_writer.deinit();
+        defer schedule_writer.deinit(self.allocator);
         
         // scheduleID = 1
         if (self.schedule_id) |schedule_id| {
             var id_writer = ProtoWriter.init(self.base.allocator);
-            defer id_writer.deinit();
+            defer id_writer.deinit(self.allocator);
             try id_writer.writeInt64(1, @intCast(schedule_id.shard));
             try id_writer.writeInt64(2, @intCast(schedule_id.realm));
             try id_writer.writeInt64(3, @intCast(schedule_id.num));

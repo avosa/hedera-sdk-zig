@@ -67,7 +67,7 @@ pub const TransactionResponse = struct {
     pub fn getReceipt(self: *const Self, client: *Client) !TransactionReceipt {
         const query = try self.getReceiptQuery(client);
         defer {
-            query.deinit();
+            query.deinit(self.allocator);
             self.allocator.destroy(query);
         }
         // Always include child receipts for proper hollow account support
@@ -80,7 +80,7 @@ pub const TransactionResponse = struct {
     pub fn getReceiptAsync(self: *const Self, client: *Client) !TransactionReceipt {
         const query = try self.getReceiptQuery(client);
         defer {
-            query.deinit();
+            query.deinit(self.allocator);
             self.allocator.destroy(query);
         }
         _ = query.setValidateStatus(self.validate_status);
@@ -154,8 +154,8 @@ pub const TransactionResponse = struct {
     }
     
     pub fn toJson(self: *const Self, allocator: Allocator) ![]u8 {
-        var buffer = std.ArrayList(u8).init(allocator);
-        defer buffer.deinit();
+        var buffer = std.ArrayList(u8){};
+        defer buffer.deinit(allocator);
         
         try buffer.appendSlice("{");
         
@@ -198,7 +198,7 @@ pub const TransactionResponse = struct {
         const json = @import("std").json;
         
         const parsed = try json.parseFromSlice(json.Value, allocator, json_str, .{});
-        defer parsed.deinit();
+        defer parsed.deinit(allocator);
         
         const obj = parsed.value.object;
         

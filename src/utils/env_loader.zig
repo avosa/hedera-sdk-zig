@@ -109,7 +109,9 @@ fn loadEnvFile() !void {
 
 // Get environment variable with .env file support
 pub fn getEnvVarOwned(allocator: std.mem.Allocator, key: []const u8) ![]u8 {
-    // Ensure initialized
+    
+        
+        // Ensure initialized
     try ensureInitialized(allocator);
     
     // Load .env file if not already loaded
@@ -131,7 +133,9 @@ pub fn getEnvVarOwned(allocator: std.mem.Allocator, key: []const u8) ![]u8 {
 
 // Clean up all allocated memory (call at program exit)
 pub fn deinit() void {
-    env_mutex.lock();
+    
+        
+        env_mutex.lock();
     defer env_mutex.unlock();
     
     if (env_state) |state| {

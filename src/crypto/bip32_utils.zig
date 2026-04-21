@@ -73,7 +73,7 @@ pub const Bip32Utils = struct {
             } else {
                 // For private keys, we need to derive the public key first
                 const public_key = self.getPublicKey() catch return 0;
-                defer public_key.deinit();
+                defer public_key.deinit(self.allocator);
                 
                 var hasher = crypto.hash.sha2.Sha256.init(.{});
                 hasher.update(&public_key.key_data);
@@ -119,15 +119,15 @@ pub const Bip32Utils = struct {
         pub fn deriveChild(self: *const ExtendedKey, allocator: std.mem.Allocator, child_index: u32) !ExtendedKey {
             const is_hardened = child_index >= HARDENED_OFFSET;
             
-            var data = std.ArrayList(u8).init(allocator);
-            defer data.deinit();
+            var data = std.ArrayList(u8){};
+            defer data.deinit(self.allocator);
             
             if (is_hardened) {
                 if (!self.is_private) {
                     return error.HardenedDerivationFromPublicKey;
                 }
                 // Hardened derivation: 0x00 || private_key || child_index
-                try data.append(0x00);
+                try data.append(self.allocator, 0x00);
                 try data.appendSlice(self.key_data[1..33]);
             } else {
                 // Non-hardened derivation: public_key || child_index
@@ -246,8 +246,8 @@ pub const Bip32Utils = struct {
         }
         
         pub fn toBase58(self: *const ExtendedKey, allocator: std.mem.Allocator) ![]u8 {
-            var extended_key_bytes = std.ArrayList(u8).init(allocator);
-            defer extended_key_bytes.deinit();
+            var extended_key_bytes = std.ArrayList(u8){};
+            defer extended_key_bytes.deinit(self.allocator);
             
             // Version (4 bytes)
             var version_bytes: [4]u8 = undefined;
@@ -255,7 +255,7 @@ pub const Bip32Utils = struct {
             try extended_key_bytes.appendSlice(&version_bytes);
             
             // Depth (1 byte)
-            try extended_key_bytes.append(self.depth);
+            try extended_key_bytes.append(self.allocator, self.depth);
             
             // Parent fingerprint (4 bytes)
             var fingerprint_bytes: [4]u8 = undefined;
@@ -484,11 +484,11 @@ fn encodeBase58(allocator: std.mem.Allocator, data: []const u8) ![]u8 {
     }
     
     // Convert to base58
-    var digits = std.ArrayList(u8).init(allocator);
-    defer digits.deinit();
+    var digits = std.ArrayList(u8){};
+    defer digits.deinit(self.allocator);
     
-    var num = std.ArrayList(u8).init(allocator);
-    defer num.deinit();
+    var num = std.ArrayList(u8){};
+    defer num.deinit(self.allocator);
     try num.appendSlice(data);
     
     while (num.items.len > 0 and !isAllZeros(num.items)) {
@@ -533,8 +533,8 @@ fn decodeBase58(allocator: std.mem.Allocator, encoded: []const u8) ![]u8 {
     }
     
     // Convert from base58
-    var result = std.ArrayList(u8).init(allocator);
-    defer result.deinit();
+    var result = std.ArrayList(u8){};
+    defer result.deinit(self.allocator);
     
     for (encoded[leading_ones..]) |char| {
         const digit = std.mem.indexOfScalar(u8, alphabet, char) orelse return error.InvalidBase58Character;
@@ -554,7 +554,7 @@ fn decodeBase58(allocator: std.mem.Allocator, encoded: []const u8) ![]u8 {
     
     // Add leading zeros for leading '1's
     for (0..leading_ones) |_| {
-        try result.append(0);
+        try result.append(self.allocator, 0);
     }
     
     // Reverse the result

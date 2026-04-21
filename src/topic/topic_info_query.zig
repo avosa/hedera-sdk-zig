@@ -88,7 +88,7 @@ pub const TopicInfoQuery = struct {
     }
     
     pub fn deinit(self: *TopicInfoQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the topic ID to query
@@ -143,15 +143,15 @@ pub const TopicInfoQuery = struct {
     // Build the query
     pub fn buildQuery(self: *TopicInfoQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // consensusGetTopicInfo = 150 (oneof query)
         var info_query_writer = ProtoWriter.init(self.base.allocator);
-        defer info_query_writer.deinit();
+        defer info_query_writer.deinit(self.allocator);
         
         // header = 1 (inside the specific query)
         var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
+        defer header_writer.deinit(self.allocator);
         
         // payment = 1 (optional)
         // responseType = 2 (must be present even if 0)
@@ -165,7 +165,7 @@ pub const TopicInfoQuery = struct {
         // topicID = 2
         if (self.topic_id) |topic| {
             var topic_writer = ProtoWriter.init(self.base.allocator);
-            defer topic_writer.deinit();
+            defer topic_writer.deinit(self.allocator);
             try topic_writer.writeInt64(1, @intCast(topic.entity.shard));
             try topic_writer.writeInt64(2, @intCast(topic.entity.realm));
             try topic_writer.writeInt64(3, @intCast(topic.entity.num));

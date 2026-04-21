@@ -29,14 +29,14 @@ pub const AccountBalance = struct {
             .allocator = allocator,
             .token_balances = std.AutoHashMap(TokenId, u64).init(allocator),
             .token_decimal_balances = std.AutoHashMap(TokenId, DecimalBalance).init(allocator),
-            .pending_airdrops = std.ArrayList(PendingAirdrop).init(allocator),
+            .pending_airdrops = std.ArrayList(PendingAirdrop){},
         };
     }
     
     pub fn deinit(self: *AccountBalance) void {
-        self.token_balances.deinit();
-        self.token_decimal_balances.deinit();
-        self.pending_airdrops.deinit();
+        self.token_balances.deinit(self.allocator);
+        self.token_decimal_balances.deinit(self.allocator);
+        self.pending_airdrops.deinit(self.allocator);
     }
     
     pub fn setTokenBalance(self: *AccountBalance, token_id: TokenId, balance: u64) !*AccountBalance {
@@ -60,7 +60,7 @@ pub const AccountBalance = struct {
     }
     
     pub fn addPendingAirdrop(self: *AccountBalance, airdrop: PendingAirdrop) !void {
-        try self.pending_airdrops.append(airdrop);
+        try self.pending_airdrops.append(self.allocator, airdrop);
     }
     
     pub fn serialize(self: AccountBalance, writer: *ProtobufWriter) !void {
@@ -136,8 +136,8 @@ pub const AccountBalance = struct {
     }
     
     pub fn toString(self: AccountBalance, allocator: Allocator) ![]u8 {
-        var result = std.ArrayList(u8).init(allocator);
-        defer result.deinit();
+        var result = std.ArrayList(u8){};
+        defer result.deinit(self.allocator);
         
         if (self.account_id) |id| {
             const id_str = try id.toString(allocator);

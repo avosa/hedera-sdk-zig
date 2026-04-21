@@ -137,7 +137,7 @@ pub const NodeAddress = struct {
             .rsa_pub_key = "",
             .node_account_id = AccountId.init(0, 0, 0),
             .node_cert_hash = null,
-            .service_endpoints = std.ArrayList(ServiceEndpoint).init(allocator),
+            .service_endpoints = std.ArrayList(ServiceEndpoint){},
             .description = "",
             .owns_address = true,
             .owns_rsa_key = false,
@@ -155,7 +155,7 @@ pub const NodeAddress = struct {
             .rsa_pub_key = "",
             .node_account_id = AccountId.init(0, 0, 0),
             .node_cert_hash = null,
-            .service_endpoints = std.ArrayList(ServiceEndpoint).init(allocator),
+            .service_endpoints = std.ArrayList(ServiceEndpoint){},
             .description = "",
             .owns_address = true,
             .owns_rsa_key = false,
@@ -173,7 +173,7 @@ pub const NodeAddress = struct {
         if (self.owns_description and self.description.len > 0) {
             allocator.free(self.description);
         }
-        self.service_endpoints.deinit();
+        self.service_endpoints.deinit(self.allocator);
         if (self.node_cert_hash) |hash| {
             allocator.free(hash);
         }
@@ -243,7 +243,7 @@ pub const ManagedNode = struct {
     pub fn deinit(self: *ManagedNode) void {
         self.address.deinit(self.allocator);
         if (self.grpc_client) |*client| {
-            client.deinit();
+            client.deinit(self.allocator);
         }
     }
 
@@ -313,7 +313,7 @@ pub const ManagedNode = struct {
     // Disconnect from the node
     pub fn disconnect(self: *ManagedNode) void {
         if (self.grpc_client) |*client| {
-            client.deinit();
+            client.deinit(self.allocator);
             self.grpc_client = null;
         }
     }
@@ -376,10 +376,10 @@ pub const ManagedNode = struct {
         const ProtoWriter = @import("../protobuf/encoding.zig").ProtoWriter;
         
         var writer = ProtoWriter.init(self.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         var query_writer = ProtoWriter.init(self.allocator);
-        defer query_writer.deinit();
+        defer query_writer.deinit(self.allocator);
         
         const query_bytes = try query_writer.toOwnedSlice();
         defer self.allocator.free(query_bytes);

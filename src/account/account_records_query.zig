@@ -22,7 +22,7 @@ pub const AccountRecordsQuery = struct {
     }
     
     pub fn deinit(self: *AccountRecordsQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the account ID to query records for
@@ -72,12 +72,12 @@ pub const AccountRecordsQuery = struct {
     // Build the query
     pub fn buildQuery(self: *AccountRecordsQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Query message structure
         // header = 1
         var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
+        defer header_writer.deinit(self.allocator);
         
         // payment = 1
         if (self.base.payment_transaction) |payment| {
@@ -93,12 +93,12 @@ pub const AccountRecordsQuery = struct {
         
         // cryptoGetAccountRecords = 5 (oneof query)
         var records_query_writer = ProtoWriter.init(self.base.allocator);
-        defer records_query_writer.deinit();
+        defer records_query_writer.deinit(self.allocator);
         
         // accountID = 1
         if (self.account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(account.shard));
             try account_writer.writeInt64(2, @intCast(account.realm));
             try account_writer.writeInt64(3, @intCast(account.account));
@@ -225,7 +225,7 @@ pub const AccountRecordsQuery = struct {
                         }
                     }
                     
-                    try records.append(record);
+                    try records.append(self.allocator, record);
                 },
                 else => try reader.skipField(tag.wire_type),
             }

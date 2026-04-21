@@ -7,7 +7,7 @@ pub const AddressBook = struct {
     
     pub fn init(allocator: std.mem.Allocator) AddressBook {
         return AddressBook{
-            .node_addresses = std.ArrayList(NodeAddress).init(allocator),
+            .node_addresses = std.ArrayList(NodeAddress){},
             .allocator = allocator,
         };
     }
@@ -16,11 +16,11 @@ pub const AddressBook = struct {
         for (self.node_addresses.items) |*node| {
             node.deinit(self.allocator);
         }
-        self.node_addresses.deinit();
+        self.node_addresses.deinit(self.allocator);
     }
     
     pub fn addNode(self: *AddressBook, node: NodeAddress) !void {
-        try self.node_addresses.append(node);
+        try self.node_addresses.append(self.allocator, node);
     }
     
     pub fn getNodeCount(self: *const AddressBook) usize {

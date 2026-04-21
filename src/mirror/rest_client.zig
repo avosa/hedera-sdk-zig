@@ -23,7 +23,7 @@ pub const MirrorNodeRestClient = struct {
     
     pub fn deinit(self: *MirrorNodeRestClient) void {
         self.allocator.free(self.base_url);
-        self.http_client.deinit();
+        self.http_client.deinit(self.allocator);
     }
     
     // Get account information from mirror node
@@ -40,7 +40,7 @@ pub const MirrorNodeRestClient = struct {
     // Get account balances from mirror node
     pub fn getAccountBalances(self: *MirrorNodeRestClient, account_id: ?AccountId, limit: ?u32) ![]AccountBalance {
         var url_buffer = std.ArrayList(u8).init(self.allocator);
-        defer url_buffer.deinit();
+        defer url_buffer.deinit(self.allocator);
         
         try url_buffer.appendSlice(self.base_url);
         try url_buffer.appendSlice("/api/v1/balances");
@@ -66,7 +66,7 @@ pub const MirrorNodeRestClient = struct {
     // Get transactions from mirror node
     pub fn getTransactions(self: *MirrorNodeRestClient, account_id: ?AccountId, transaction_type: ?[]const u8, limit: ?u32) ![]TransactionRecord {
         var url_buffer = std.ArrayList(u8).init(self.allocator);
-        defer url_buffer.deinit();
+        defer url_buffer.deinit(self.allocator);
         
         try url_buffer.appendSlice(self.base_url);
         try url_buffer.appendSlice("/api/v1/transactions");
@@ -123,7 +123,7 @@ pub const MirrorNodeRestClient = struct {
     // Get topic messages
     pub fn getTopicMessages(self: *MirrorNodeRestClient, topic_id: TopicId, sequence_number: ?u64, limit: ?u32) ![]TopicMessage {
         var url_buffer = std.ArrayList(u8).init(self.allocator);
-        defer url_buffer.deinit();
+        defer url_buffer.deinit(self.allocator);
         
         try std.fmt.format(url_buffer.writer(), "{s}/api/v1/topics/{d}.{d}.{d}/messages", .{ self.base_url, topic_id.shard, topic_id.realm, topic_id.num });
         
@@ -159,7 +159,7 @@ pub const MirrorNodeRestClient = struct {
     // Get contract results
     pub fn getContractResults(self: *MirrorNodeRestClient, contract_id: ?ContractId, limit: ?u32) ![]ContractResult {
         var url_buffer = std.ArrayList(u8).init(self.allocator);
-        defer url_buffer.deinit();
+        defer url_buffer.deinit(self.allocator);
         
         try url_buffer.appendSlice(self.base_url);
         try url_buffer.appendSlice("/api/v1/contracts/results");
@@ -193,7 +193,7 @@ pub const MirrorNodeRestClient = struct {
                 .{ .name = "user-agent", .value = "hedera-sdk-zig/1.0.0" },
             },
         });
-        defer request.deinit();
+        defer request.deinit(self.allocator);
         
         try request.send();
         try request.finish();
@@ -210,10 +210,10 @@ pub const MirrorNodeRestClient = struct {
     // JSON parsing functions
     fn parseAccountInfo(self: *MirrorNodeRestClient, json_data: []const u8) !AccountInfo {
         var parser = std.json.Parser.init(self.allocator, .alloc_always);
-        defer parser.deinit();
+        defer parser.deinit(self.allocator);
         
         var tree = try parser.parse(json_data);
-        defer tree.deinit();
+        defer tree.deinit(self.allocator);
         
         const root = tree.root.object;
         
@@ -259,10 +259,10 @@ pub const MirrorNodeRestClient = struct {
     
     fn parseAccountBalances(self: *MirrorNodeRestClient, json_data: []const u8) ![]AccountBalance {
         var parser = std.json.Parser.init(self.allocator, .alloc_always);
-        defer parser.deinit();
+        defer parser.deinit(self.allocator);
         
         var tree = try parser.parse(json_data);
-        defer tree.deinit();
+        defer tree.deinit(self.allocator);
         
         const root = tree.root.object;
         const balances_array = root.get("balances").?.array;
@@ -290,7 +290,7 @@ pub const MirrorNodeRestClient = struct {
                 account_balance.balance = try Hbar.fromTinybars(balance_field.integer);
             }
             
-            try balances.append(account_balance);
+            try balances.append(self.allocator, account_balance);
         }
         
         return balances.toOwnedSlice();
@@ -298,10 +298,10 @@ pub const MirrorNodeRestClient = struct {
     
     fn parseTransactions(self: *MirrorNodeRestClient, json_data: []const u8) ![]TransactionRecord {
         var parser = std.json.Parser.init(self.allocator, .alloc_always);
-        defer parser.deinit();
+        defer parser.deinit(self.allocator);
         
         var tree = try parser.parse(json_data);
-        defer tree.deinit();
+        defer tree.deinit(self.allocator);
         
         const root = tree.root.object;
         const transactions_array = root.get("transactions").?.array;
@@ -310,7 +310,7 @@ pub const MirrorNodeRestClient = struct {
         
         for (transactions_array.items) |tx_item| {
             const tx_record = try self.parseTransactionItem(tx_item);
-            try transactions.append(tx_record);
+            try transactions.append(self.allocator, tx_record);
         }
         
         return transactions.toOwnedSlice();
@@ -318,10 +318,10 @@ pub const MirrorNodeRestClient = struct {
     
     fn parseTransaction(self: *MirrorNodeRestClient, json_data: []const u8) !TransactionRecord {
         var parser = std.json.Parser.init(self.allocator, .alloc_always);
-        defer parser.deinit();
+        defer parser.deinit(self.allocator);
         
         var tree = try parser.parse(json_data);
-        defer tree.deinit();
+        defer tree.deinit(self.allocator);
         
         const root = tree.root.object;
         const transactions_array = root.get("transactions").?.array;
@@ -389,7 +389,7 @@ pub const MirrorNodeRestClient = struct {
     
     fn parseTokenInfo(self: *MirrorNodeRestClient, json_data: []const u8) !TokenInfo {
         const parsed = try std.json.parseFromSlice(std.json.Value, self.allocator, json_data, .{});
-        defer parsed.deinit();
+        defer parsed.deinit(self.allocator);
         
         const root = parsed.value.object;
         
@@ -464,7 +464,7 @@ pub const MirrorNodeRestClient = struct {
     
     fn parseTopicMessages(self: *MirrorNodeRestClient, json_data: []const u8) ![]TopicMessage {
         const parsed = try std.json.parseFromSlice(std.json.Value, self.allocator, json_data, .{});
-        defer parsed.deinit();
+        defer parsed.deinit(self.allocator);
         
         const messages_array = parsed.value.object.get("messages").?.array;
         var messages = try self.allocator.alloc(TopicMessage, messages_array.items.len);
@@ -504,7 +504,7 @@ pub const MirrorNodeRestClient = struct {
     
     fn parseContractInfo(self: *MirrorNodeRestClient, json_data: []const u8) !ContractInfo {
         const parsed = try std.json.parseFromSlice(std.json.Value, self.allocator, json_data, .{});
-        defer parsed.deinit();
+        defer parsed.deinit(self.allocator);
         
         const root = parsed.value.object;
         
@@ -563,7 +563,7 @@ pub const MirrorNodeRestClient = struct {
     
     fn parseContractResults(self: *MirrorNodeRestClient, json_data: []const u8) ![]ContractResult {
         const parsed = try std.json.parseFromSlice(std.json.Value, self.allocator, json_data, .{});
-        defer parsed.deinit();
+        defer parsed.deinit(self.allocator);
         
         const results_array = parsed.value.object.get("results").?.array;
         var results = try self.allocator.alloc(ContractResult, results_array.items.len);
@@ -716,7 +716,7 @@ pub const ContractResult = struct {
     allocator: std.mem.Allocator,
     
     pub fn deinit(self: *ContractResult) void {
-        self.transaction_id.deinit();
+        self.transaction_id.deinit(self.allocator);
         if (self.function_result.len > 0) {
             self.allocator.free(self.function_result);
         }

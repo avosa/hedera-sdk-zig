@@ -83,8 +83,8 @@ pub const NetworkVersionInfo = struct {
     hedera_services_version: SemanticVersion,
     
     pub fn deinit(self: *NetworkVersionInfo) void {
-        self.hapi_proto_version.deinit();
-        self.hedera_services_version.deinit();
+        self.hapi_proto_version.deinit(self.allocator);
+        self.hedera_services_version.deinit(self.allocator);
     }
 };
 
@@ -103,7 +103,7 @@ pub const NetworkVersionInfoQuery = struct {
     }
     
     pub fn deinit(self: *NetworkVersionInfoQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Execute the query
@@ -122,12 +122,12 @@ pub const NetworkVersionInfoQuery = struct {
     // Build the query
     pub fn buildQuery(self: *NetworkVersionInfoQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Query message structure
         // header = 1
         var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
+        defer header_writer.deinit(self.allocator);
         
         // responseType = 2
         try header_writer.writeInt32(2, @intFromEnum(self.base.response_type));
@@ -138,7 +138,7 @@ pub const NetworkVersionInfoQuery = struct {
         
         // networkGetVersionInfo = 11 (oneof query)
         var version_query_writer = ProtoWriter.init(self.base.allocator);
-        defer version_query_writer.deinit();
+        defer version_query_writer.deinit(self.allocator);
         
         // Empty message for version info query
         const version_query_bytes = try version_query_writer.toOwnedSlice();

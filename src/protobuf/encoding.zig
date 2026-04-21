@@ -15,8 +15,9 @@ pub const ProtoWriter = struct {
     buffer: std.ArrayList(u8),
     
     pub fn init(allocator: std.mem.Allocator) ProtoWriter {
+        _ = allocator;
         // Pre-allocate buffer for better performance than Go's dynamic growth
-        var buffer = std.ArrayList(u8).init(allocator);
+        var buffer = std.ArrayList(u8){};
         buffer.ensureTotalCapacity(1024) catch {}; // Optimistic pre-allocation
         return ProtoWriter{
             .buffer = buffer,
@@ -24,7 +25,7 @@ pub const ProtoWriter = struct {
     }
     
     pub fn deinit(self: *ProtoWriter) void {
-        self.buffer.deinit();
+        self.buffer.deinit(self.allocator);
     }
     
     pub fn toOwnedSlice(self: *ProtoWriter) ![]u8 {
@@ -136,7 +137,7 @@ pub const ProtoWriter = struct {
             
             // Write to temporary buffer to get size
             var temp_writer = ProtoWriter.init(self.buffer.allocator);
-            defer temp_writer.deinit();
+            defer temp_writer.deinit(self.allocator);
             try write_fn(&temp_writer, value);
             
             const data = temp_writer.getWritten();
@@ -150,7 +151,7 @@ pub const ProtoWriter = struct {
         
         // Write to temporary buffer to get total size
         var temp_writer = ProtoWriter.init(self.buffer.allocator);
-        defer temp_writer.deinit();
+        defer temp_writer.deinit(self.allocator);
         
         for (values) |value| {
             try write_fn(&temp_writer, value);

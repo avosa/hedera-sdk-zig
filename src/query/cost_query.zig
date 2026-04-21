@@ -25,7 +25,7 @@ pub const CostQuery = struct {
     }
     
     pub fn deinit(self: *Self) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the query to get the cost for
@@ -48,7 +48,7 @@ pub const CostQuery = struct {
     fn buildQueryHeader(self: *Self, node: AccountId) ![]u8 {
         _ = node;
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // payment = 1
         if (self.base.payment) |payment| {
@@ -70,7 +70,7 @@ pub const CostQuery = struct {
         }
         
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Build the target query with COST_ANSWER response type
         const target_bytes = try self.target_query.?.buildQueryForNode(node);
@@ -79,7 +79,7 @@ pub const CostQuery = struct {
         // Parse the target query to modify its response type
         var reader = ProtoReader.init(target_bytes);
         var modified_writer = ProtoWriter.init(self.base.allocator);
-        defer modified_writer.deinit();
+        defer modified_writer.deinit(self.allocator);
         
         while (reader.hasMore()) {
             const tag = try reader.readTag();
@@ -122,7 +122,7 @@ pub const CostQuery = struct {
     fn modifyQueryHeader(self: *Self, header_bytes: []const u8) ![]u8 {
         var reader = ProtoReader.init(header_bytes);
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         while (reader.hasMore()) {
             const tag = try reader.readTag();

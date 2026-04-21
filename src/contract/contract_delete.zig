@@ -26,7 +26,7 @@ pub const ContractDeleteTransaction = struct {
     }
     
     pub fn deinit(self: *ContractDeleteTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the contract to delete
@@ -118,19 +118,19 @@ pub const ContractDeleteTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *ContractDeleteTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Common transaction fields
         try self.base.writeTransactionHeader(&writer);
         
         // contractDeleteInstance = 22 (oneof data)
         var delete_writer = ProtoWriter.init(self.base.allocator);
-        defer delete_writer.deinit();
+        defer delete_writer.deinit(self.allocator);
         
         // contractID = 1
         if (self.contract_id) |contract| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
-            defer contract_writer.deinit();
+            defer contract_writer.deinit(self.allocator);
             try contract_writer.writeInt64(1, @intCast(contract.shard));
             try contract_writer.writeInt64(2, @intCast(contract.realm));
             try contract_writer.writeInt64(3, @intCast(contract.num));
@@ -142,7 +142,7 @@ pub const ContractDeleteTransaction = struct {
         // obtainers = 2 (oneof)
         if (self.transfer_account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(account.shard));
             try account_writer.writeInt64(2, @intCast(account.realm));
             try account_writer.writeInt64(3, @intCast(account.account));
@@ -151,7 +151,7 @@ pub const ContractDeleteTransaction = struct {
             try delete_writer.writeMessage(2, account_bytes);
         } else if (self.transfer_contract_id) |contract| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
-            defer contract_writer.deinit();
+            defer contract_writer.deinit(self.allocator);
             try contract_writer.writeInt64(1, @intCast(contract.shard));
             try contract_writer.writeInt64(2, @intCast(contract.realm));
             try contract_writer.writeInt64(3, @intCast(contract.num));

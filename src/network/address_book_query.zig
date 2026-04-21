@@ -19,7 +19,7 @@ pub const AddressBookQuery = struct {
     }
     
     pub fn deinit(self: *AddressBookQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the file ID of the address book to query
@@ -43,16 +43,16 @@ pub const AddressBookQuery = struct {
     // Build query body
     pub fn buildQuery(self: *AddressBookQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // nodeGetInfo = 59 (oneof query)
         var query_writer = ProtoWriter.init(self.base.allocator);
-        defer query_writer.deinit();
+        defer query_writer.deinit(self.allocator);
         
         // fileID = 1
         if (self.file_id) |file_id| {
             var file_writer = ProtoWriter.init(self.base.allocator);
-            defer file_writer.deinit();
+            defer file_writer.deinit(self.allocator);
             try file_writer.writeInt64(1, @intCast(file_id.shard));
             try file_writer.writeInt64(2, @intCast(file_id.realm));
             try file_writer.writeInt64(3, @intCast(file_id.num));
@@ -86,7 +86,7 @@ pub const AddressBookQuery = struct {
                 1 => {
                     // nodeAddress (repeated)
                     const node_address = try parseNodeAddress(field.data, self.base.allocator);
-                    try result.node_addresses.append(node_address);
+                    try result.node_addresses.append(self.allocator, node_address);
                 },
                 else => {},
             }
@@ -105,7 +105,7 @@ pub const AddressBookQuery = struct {
             .node_id = 0,
             .node_account_id = null,
             .node_cert_hash = &[_]u8{},
-            .service_endpoints = std.ArrayList(ServiceEndpoint).init(allocator),
+            .service_endpoints = std.ArrayList(ServiceEndpoint){},
             .description = &[_]u8{},
             .stake = 0,
         };
@@ -125,7 +125,7 @@ pub const AddressBookQuery = struct {
                 8 => {
                     // serviceEndpoint (repeated)
                     const endpoint = try parseServiceEndpoint(field.data, allocator);
-                    try address.service_endpoints.append(endpoint);
+                    try address.service_endpoints.append(allocator, endpoint);
                 },
                 9 => address.description = field.data,
                 10 => address.stake = try reader.readInt64(field.data),
@@ -190,9 +190,9 @@ pub const NodeAddressBook = struct {
     
     pub fn deinit(self: *NodeAddressBook) void {
         for (self.node_addresses.items) |*address| {
-            address.service_endpoints.deinit();
+            address.service_endpoints.deinit(self.allocator);
         }
-        self.node_addresses.deinit();
+        self.node_addresses.deinit(self.allocator);
     }
 };
 

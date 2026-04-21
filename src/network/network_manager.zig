@@ -30,9 +30,9 @@ pub const NetworkManager = struct {
     }
     
     pub fn deinit(self: *NetworkManager) void {
-        self.node_health.deinit();
+        self.node_health.deinit(self.allocator);
         if (self.mirror_client) |client| {
-            client.deinit();
+            client.deinit(self.allocator);
         }
     }
     
@@ -64,10 +64,10 @@ pub const NetworkManager = struct {
     // Discover network nodes from address book
     pub fn discoverNodes(self: *NetworkManager, client: *Client) !void {
         var address_book_query = AddressBookQuery.init(self.allocator);
-        defer address_book_query.deinit();
+        defer address_book_query.deinit(self.allocator);
         
         const address_book = try address_book_query.execute(client);
-        defer address_book.deinit();
+        defer address_book.deinit(self.allocator);
         
         // Update network with discovered nodes
         if (self.network) |network| {
@@ -154,7 +154,7 @@ pub const NetworkManager = struct {
             }
             
             // Add to results
-            try results.details.append(NodeHealthDetail{
+            try results.details.append(self.allocator, NodeHealthDetail{
                 .account_id = account_id,
                 .is_healthy = health.is_healthy,
                 .response_time_ms = health.response_time_ms,
@@ -183,11 +183,11 @@ pub const NetworkManager = struct {
         
         // Try a simple version info query as health check
         var version_query = NetworkGetVersionInfoQuery.init(self.allocator);
-        defer version_query.deinit();
+        defer version_query.deinit(self.allocator);
         
         // Create a client instance for the specific node
         const node_client = try self.createNodeSpecificClient(client, node_account_id);
-        defer node_client.deinit();
+        defer node_client.deinit(self.allocator);
         
         const version_info = version_query.execute(&node_client) catch |err| {
             return NodeCheckResult{
@@ -232,7 +232,7 @@ pub const NetworkManager = struct {
     // Get nodes by health status
     pub fn getHealthyNodes(self: *NetworkManager) ![]AccountId {
         var healthy_nodes = std.ArrayList(AccountId).init(self.allocator);
-        errdefer healthy_nodes.deinit();
+        errdefer healthy_nodes.deinit(self.allocator);
         
         var iterator = self.node_health.iterator();
         while (iterator.next()) |entry| {
@@ -240,7 +240,7 @@ pub const NetworkManager = struct {
             const health = entry.value_ptr;
             
             if (health.is_healthy) {
-                try healthy_nodes.append(account_id);
+                try healthy_nodes.append(self.allocator, account_id);
             }
         }
         
@@ -250,7 +250,7 @@ pub const NetworkManager = struct {
     // Get unhealthy nodes
     pub fn getUnhealthyNodes(self: *NetworkManager) ![]AccountId {
         var unhealthy_nodes = std.ArrayList(AccountId).init(self.allocator);
-        errdefer unhealthy_nodes.deinit();
+        errdefer unhealthy_nodes.deinit(self.allocator);
         
         var iterator = self.node_health.iterator();
         while (iterator.next()) |entry| {
@@ -258,7 +258,7 @@ pub const NetworkManager = struct {
             const health = entry.value_ptr;
             
             if (!health.is_healthy) {
-                try unhealthy_nodes.append(account_id);
+                try unhealthy_nodes.append(self.allocator, account_id);
             }
         }
         
@@ -269,10 +269,10 @@ pub const NetworkManager = struct {
     pub fn getNetworkStats(self: *NetworkManager, client: *Client) !NetworkStats {
         // Get execution times
         var exec_query = NetworkGetExecutionTimeQuery.init(self.allocator);
-        defer exec_query.deinit();
+        defer exec_query.deinit(self.allocator);
         
         const execution_times = try exec_query.execute(client);
-        defer execution_times.deinit();
+        defer execution_times.deinit(self.allocator);
         
         // Calculate average execution time
         var total_time: i64 = 0;
@@ -287,7 +287,7 @@ pub const NetworkManager = struct {
         
         // Get health check results
         const health_results = try self.performHealthChecks(client);
-        defer health_results.deinit();
+        defer health_results.deinit(self.allocator);
         
         return NetworkStats{
             .total_nodes = health_results.total_nodes,
@@ -404,7 +404,7 @@ pub const HealthCheckResults = struct {
     details: std.ArrayList(NodeHealthDetail),
     
     pub fn deinit(self: *HealthCheckResults) void {
-        self.details.deinit();
+        self.details.deinit(self.allocator);
     }
 };
 

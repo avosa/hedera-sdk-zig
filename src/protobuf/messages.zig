@@ -301,14 +301,14 @@ pub const TransactionIDProto = struct {
     pub fn encode(self: TransactionIDProto, writer: *ProtoWriter) !void {
         if (self.transaction_valid_start) |ts| {
             var ts_writer = ProtoWriter.init(writer.buffer.allocator);
-            defer ts_writer.deinit();
+            defer ts_writer.deinit(self.allocator);
             try ts.encode(&ts_writer);
             try writer.writeMessage(1, ts_writer.getWritten());
         }
         
         if (self.account_id) |acc| {
             var acc_writer = ProtoWriter.init(writer.buffer.allocator);
-            defer acc_writer.deinit();
+            defer acc_writer.deinit(self.allocator);
             try acc.encode(&acc_writer);
             try writer.writeMessage(2, acc_writer.getWritten());
         }
@@ -379,7 +379,7 @@ pub const KeyProto = struct {
         switch (self.key) {
             .contract_id => |cid| {
                 var cid_writer = ProtoWriter.init(writer.buffer.allocator);
-                defer cid_writer.deinit();
+                defer cid_writer.deinit(self.allocator);
                 try cid.encode(&cid_writer);
                 try writer.writeMessage(1, cid_writer.getWritten());
             },
@@ -388,20 +388,20 @@ pub const KeyProto = struct {
             .ecdsa_384 => |key| try writer.writeString(4, key),
             .threshold_key => |tk| {
                 var tk_writer = ProtoWriter.init(writer.buffer.allocator);
-                defer tk_writer.deinit();
+                defer tk_writer.deinit(self.allocator);
                 try tk.encode(&tk_writer);
                 try writer.writeMessage(5, tk_writer.getWritten());
             },
             .key_list => |kl| {
                 var kl_writer = ProtoWriter.init(writer.buffer.allocator);
-                defer kl_writer.deinit();
+                defer kl_writer.deinit(self.allocator);
                 try kl.encode(&kl_writer);
                 try writer.writeMessage(6, kl_writer.getWritten());
             },
             .ecdsa_secp256k1 => |key| try writer.writeString(7, key),
             .delegatable_contract_id => |cid| {
                 var cid_writer = ProtoWriter.init(writer.buffer.allocator);
-                defer cid_writer.deinit();
+                defer cid_writer.deinit(self.allocator);
                 try cid.encode(&cid_writer);
                 try writer.writeMessage(8, cid_writer.getWritten());
             },
@@ -454,7 +454,7 @@ pub const KeyListProto = struct {
     pub fn encode(self: KeyListProto, writer: *ProtoWriter) !void {
         for (self.keys) |key| {
             var key_writer = ProtoWriter.init(writer.buffer.allocator);
-            defer key_writer.deinit();
+            defer key_writer.deinit(self.allocator);
             try key.encode(&key_writer);
             try writer.writeMessage(1, key_writer.getWritten());
         }
@@ -490,7 +490,7 @@ pub const ThresholdKeyProto = struct {
         
         if (self.keys) |kl| {
             var kl_writer = ProtoWriter.init(writer.buffer.allocator);
-            defer kl_writer.deinit();
+            defer kl_writer.deinit(self.allocator);
             try kl.encode(&kl_writer);
             try writer.writeMessage(2, kl_writer.getWritten());
         }

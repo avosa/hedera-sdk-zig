@@ -65,7 +65,7 @@ pub const TokenUpdateTransaction = struct {
     }
     
     pub fn deinit(self: *TokenUpdateTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set token to update
@@ -292,19 +292,19 @@ pub const TokenUpdateTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *TokenUpdateTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Common transaction fields
         try self.writeCommonFields(&writer);
         
         // tokenUpdate = 37 (oneof data)
         var update_writer = ProtoWriter.init(self.base.allocator);
-        defer update_writer.deinit();
+        defer update_writer.deinit(self.allocator);
         
         // token = 1
         if (self.token_id) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
-            defer token_writer.deinit();
+            defer token_writer.deinit(self.allocator);
             try token_writer.writeInt64(1, @intCast(token.shard));
             try token_writer.writeInt64(2, @intCast(token.realm));
             try token_writer.writeInt64(3, @intCast(token.num));
@@ -326,7 +326,7 @@ pub const TokenUpdateTransaction = struct {
         // treasury = 4
         if (self.treasury_account_id) |treasury| {
             var treasury_writer = ProtoWriter.init(self.base.allocator);
-            defer treasury_writer.deinit();
+            defer treasury_writer.deinit(self.allocator);
             try treasury_writer.writeInt64(1, @intCast(treasury.shard));
             try treasury_writer.writeInt64(2, @intCast(treasury.realm));
             try treasury_writer.writeInt64(3, @intCast(treasury.account));
@@ -373,7 +373,7 @@ pub const TokenUpdateTransaction = struct {
         // autoRenewAccount = 10
         if (self.auto_renew_account) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(account.shard));
             try account_writer.writeInt64(2, @intCast(account.realm));
             try account_writer.writeInt64(3, @intCast(account.account));
@@ -385,7 +385,7 @@ pub const TokenUpdateTransaction = struct {
         // autoRenewPeriod = 11
         if (self.auto_renew_period) |period| {
             var duration_writer = ProtoWriter.init(self.base.allocator);
-            defer duration_writer.deinit();
+            defer duration_writer.deinit(self.allocator);
             try duration_writer.writeInt64(1, period.seconds);
             const duration_bytes = try duration_writer.toOwnedSlice();
             defer self.base.allocator.free(duration_bytes);
@@ -395,7 +395,7 @@ pub const TokenUpdateTransaction = struct {
         // expiry = 12
         if (self.expiration_time) |time| {
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, time.seconds);
             try timestamp_writer.writeInt32(2, time.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -406,7 +406,7 @@ pub const TokenUpdateTransaction = struct {
         // memo = 13
         if (self.memo) |memo| {
             var memo_writer = ProtoWriter.init(self.base.allocator);
-            defer memo_writer.deinit();
+            defer memo_writer.deinit(self.allocator);
             try memo_writer.writeString(1, memo);
             const memo_bytes = try memo_writer.toOwnedSlice();
             defer self.base.allocator.free(memo_bytes);
@@ -453,10 +453,10 @@ pub const TokenUpdateTransaction = struct {
         // transactionID = 1
         if (self.base.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
-            defer tx_id_writer.deinit();
+            defer tx_id_writer.deinit(self.allocator);
             
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
             try timestamp_writer.writeInt32(2, tx_id.valid_start.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -464,7 +464,7 @@ pub const TokenUpdateTransaction = struct {
             try tx_id_writer.writeMessage(1, timestamp_bytes);
             
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
             try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
             try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
@@ -484,7 +484,7 @@ pub const TokenUpdateTransaction = struct {
         // nodeAccountID = 2
         if (self.base.node_account_ids.items.len > 0) {
             var node_writer = ProtoWriter.init(self.base.allocator);
-            defer node_writer.deinit();
+            defer node_writer.deinit(self.allocator);
             const node = self.base.node_account_ids.items[0];
             try node_writer.writeInt64(1, @intCast(node.shard));
             try node_writer.writeInt64(2, @intCast(node.realm));
@@ -501,7 +501,7 @@ pub const TokenUpdateTransaction = struct {
         
         // transactionValidDuration = 4
         var duration_writer = ProtoWriter.init(self.base.allocator);
-        defer duration_writer.deinit();
+        defer duration_writer.deinit(self.allocator);
         try duration_writer.writeInt64(1, self.base.transaction_valid_duration.seconds);
         const duration_bytes = try duration_writer.toOwnedSlice();
         defer self.base.allocator.free(duration_bytes);

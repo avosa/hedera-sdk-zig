@@ -44,7 +44,7 @@ pub fn SubscriptionHandle(comptime T: type) type {
                 .reconnect_delay_ms = 1000,
                 .timeout_ms = 30000,
                 .buffer_size = 1000,
-                .message_buffer = std.ArrayList(T).init(allocator),
+                .message_buffer = std.ArrayList(T){},
                 .mutex = std.Thread.Mutex{},
             };
         }
@@ -61,7 +61,7 @@ pub fn SubscriptionHandle(comptime T: type) type {
                     item.deinit(self.allocator);
                 }
             }
-            self.message_buffer.deinit();
+            self.message_buffer.deinit(self.allocator);
         }
         
         pub fn setErrorCallback(self: *Self, error_callback: ErrorCallbackFn) !*Self {
@@ -347,7 +347,7 @@ pub const SubscriptionManager = struct {
         self.mutex.lock();
         defer self.mutex.unlock();
         
-        self.subscriptions.deinit();
+        self.subscriptions.deinit(self.allocator);
     }
     
     pub fn addSubscription(self: *SubscriptionManager, comptime T: type, handle: *SubscriptionHandle(T)) !void {

@@ -264,7 +264,7 @@ pub const Hbar = struct {
     // Serialize Hbar to protobuf bytes (as signed int64)
     pub fn toProtobuf(self: Hbar, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         try writer.writeInt64(1, self.tinybars);
         

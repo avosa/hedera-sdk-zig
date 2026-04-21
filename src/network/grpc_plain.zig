@@ -302,7 +302,7 @@ pub const GrpcPlainConnection = struct {
         
         // Read response frames with timeout
         var response_data = std.ArrayList(u8).init(self.allocator);
-        errdefer response_data.deinit();
+        errdefer response_data.deinit(self.allocator);
         
         const start_time = std.time.milliTimestamp();
         const timeout_ms: i64 = 10000; // 10 second timeout;
@@ -510,7 +510,7 @@ pub const GrpcPlainPool = struct {
             entry.value_ptr.*.deinit();
             self.allocator.destroy(entry.value_ptr.*);
         }
-        self.connections.deinit();
+        self.connections.deinit(self.allocator);
     }
     
     pub fn getConnection(self: *GrpcPlainPool, node: *Node) !*GrpcPlainConnection {

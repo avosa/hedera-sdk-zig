@@ -63,7 +63,7 @@ pub const SimpleClient = struct {
     
     fn sendSimpleClientHello(self: *SimpleClient, hostname: []const u8) !void {
         var buffer = std.ArrayList(u8).init(self.allocator);
-        defer buffer.deinit();
+        defer buffer.deinit(self.allocator);
         
         var writer = buffer.writer();
         

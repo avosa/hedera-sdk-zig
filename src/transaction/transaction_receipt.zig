@@ -166,7 +166,7 @@ pub const TransactionReceipt = struct {
     pub fn setDuplicates(self: *Self, allocator: Allocator, duplicates: []const TransactionReceipt) !*Self {
         if (self.duplicates.len > 0) {
             for (self.duplicates) |*duplicate| {
-                duplicate.deinit();
+                duplicate.deinit(self.allocator);
             }
             allocator.free(self.duplicates);
         }
@@ -182,7 +182,7 @@ pub const TransactionReceipt = struct {
     pub fn setChildren(self: *Self, allocator: Allocator, children: []const TransactionReceipt) !*Self {
         if (self.children.len > 0) {
             for (self.children) |*child| {
-                child.deinit();
+                child.deinit(self.allocator);
             }
             allocator.free(self.children);
         }
@@ -218,8 +218,8 @@ pub const TransactionReceipt = struct {
     }
     
     pub fn toString(self: *const Self, allocator: Allocator) ![]u8 {
-        var buffer = std.ArrayList(u8).init(allocator);
-        defer buffer.deinit();
+        var buffer = std.ArrayList(u8){};
+        defer buffer.deinit(self.allocator);
         
         try buffer.writer().print("TransactionReceipt{{status={s}", .{@tagName(self.status)});
         
@@ -286,8 +286,8 @@ pub const TransactionReceipt = struct {
     }
     
     pub fn toJson(self: *const Self, allocator: Allocator) ![]u8 {
-        var buffer = std.ArrayList(u8).init(allocator);
-        defer buffer.deinit();
+        var buffer = std.ArrayList(u8){};
+        defer buffer.deinit(self.allocator);
         
         try buffer.appendSlice("{");
         
@@ -475,8 +475,8 @@ pub const TransactionReceipt = struct {
     }
     
     pub fn toProtobufBytes(self: *const Self, allocator: Allocator) ![]u8 {
-        var buffer = std.ArrayList(u8).init(allocator);
-        defer buffer.deinit();
+        var buffer = std.ArrayList(u8){};
+        defer buffer.deinit(self.allocator);
         
         // Status
         try writeProtobufVarint(&buffer, 1, @intFromEnum(self.status));

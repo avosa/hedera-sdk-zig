@@ -13,15 +13,16 @@ pub fn build(b: *std.Build) void {
     });
 
     // Create static library
-    const lib = b.addStaticLibrary(.{
+    const lib = b.addLibrary(.{
         .name = "hedera-sdk-zig",
-        .root_source_file = b.path("src/hedera.zig"),
-        .target = target,
-        .optimize = optimize,
+        .linkage = .static,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/hedera.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }),
     });
-
-    // Link required system libraries for cryptography and networking
-    lib.linkLibC();
     
     // Install the library
     b.installArtifact(lib);
@@ -31,23 +32,27 @@ pub fn build(b: *std.Build) void {
     
     // Unit tests
     const unit_tests = b.addTest(.{
-        .root_source_file = b.path("tests/unit/main_test.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/main_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }),
     });
     unit_tests.root_module.addImport("hedera", hedera_sdk);
-    unit_tests.linkLibC();
     const run_unit_tests = b.addRunArtifact(unit_tests);
     test_step.dependOn(&run_unit_tests.step);
     
-    // Integration tests  
+    // Integration tests
     const integration_tests = b.addTest(.{
-        .root_source_file = b.path("tests/integration/integration_test.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/integration_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }),
     });
     integration_tests.root_module.addImport("hedera", hedera_sdk);
-    integration_tests.linkLibC();
     const run_integration_tests = b.addRunArtifact(integration_tests);
     test_step.dependOn(&run_integration_tests.step);
     
@@ -68,12 +73,14 @@ pub fn build(b: *std.Build) void {
     
     for (test_modules) |test_file| {
         const test_module = b.addTest(.{
-            .root_source_file = b.path(test_file),
-            .target = target,
-            .optimize = optimize,
+            .root_module = b.createModule(.{
+                .root_source_file = b.path(test_file),
+                .target = target,
+                .optimize = optimize,
+                .link_libc = true,
+            }),
         });
         test_module.root_module.addImport("hedera", hedera_sdk);
-        test_module.linkLibC();
         const run_test = b.addRunArtifact(test_module);
         test_step.dependOn(&run_test.step);
     }
@@ -81,12 +88,14 @@ pub fn build(b: *std.Build) void {
     // TCK Server
     const tck_exe = b.addExecutable(.{
         .name = "tck-server",
-        .root_source_file = b.path("tck/server.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tck/server.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }),
     });
     tck_exe.root_module.addImport("hedera", hedera_sdk);
-    tck_exe.linkLibC();
     
     const install_tck = b.addInstallArtifact(tck_exe, .{});
     const run_tck = b.addRunArtifact(tck_exe);
@@ -95,13 +104,16 @@ pub fn build(b: *std.Build) void {
     run_tck_step.dependOn(&run_tck.step);
     
     // Documentation generation step
-    const docs = b.addStaticLibrary(.{
+    const docs = b.addLibrary(.{
         .name = "hedera-sdk-docs",
-        .root_source_file = b.path("src/hedera.zig"),
-        .target = target,
-        .optimize = .Debug,
+        .linkage = .static,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/hedera.zig"),
+            .target = target,
+            .optimize = .Debug,
+            .link_libc = true,
+        }),
     });
-    docs.linkLibC();
     
     const docs_step = b.step("docs", "Generate documentation");
     const install_docs = b.addInstallDirectory(.{

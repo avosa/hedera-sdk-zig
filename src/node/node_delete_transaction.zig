@@ -17,7 +17,7 @@ pub const NodeDeleteTransaction = struct {
     }
     
     pub fn deinit(self: *NodeDeleteTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the node ID to delete
@@ -35,14 +35,14 @@ pub const NodeDeleteTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *NodeDeleteTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Write common transaction fields
         try self.writeCommonFields(&writer);
         
         // nodeDelete = 64 (oneof data)
         var node_writer = ProtoWriter.init(self.base.allocator);
-        defer node_writer.deinit();
+        defer node_writer.deinit(self.allocator);
         
         // nodeId = 1
         if (self.node_id) |node_id| {

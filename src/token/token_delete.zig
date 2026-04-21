@@ -21,7 +21,7 @@ pub const TokenDeleteTransaction = struct {
     }
 
     pub fn deinit(self: *TokenDeleteTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
 
     // Set the token to delete
@@ -48,19 +48,19 @@ pub const TokenDeleteTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *TokenDeleteTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         // Common transaction fields
         try self.writeCommonFields(&writer);
 
         // tokenDeletion = 38 (oneof data)
         var delete_writer = ProtoWriter.init(self.base.allocator);
-        defer delete_writer.deinit();
+        defer delete_writer.deinit(self.allocator);
 
         // token = 1
         if (self.token_id) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
-            defer token_writer.deinit();
+            defer token_writer.deinit(self.allocator);
             try token_writer.writeInt64(1, @intCast(token.shard));
             try token_writer.writeInt64(2, @intCast(token.realm));
             try token_writer.writeInt64(3, @intCast(token.num));
@@ -80,10 +80,10 @@ pub const TokenDeleteTransaction = struct {
         // transactionID = 1
         if (self.base.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
-            defer tx_id_writer.deinit();
+            defer tx_id_writer.deinit(self.allocator);
 
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
             try timestamp_writer.writeInt32(2, tx_id.valid_start.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -91,7 +91,7 @@ pub const TokenDeleteTransaction = struct {
             try tx_id_writer.writeMessage(1, timestamp_bytes);
 
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
             try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
             try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
@@ -111,7 +111,7 @@ pub const TokenDeleteTransaction = struct {
         // nodeAccountID = 2
         if (self.base.node_account_ids.items.len > 0) {
             var node_writer = ProtoWriter.init(self.base.allocator);
-            defer node_writer.deinit();
+            defer node_writer.deinit(self.allocator);
             const node = self.base.node_account_ids.items[0];
             try node_writer.writeInt64(1, @intCast(node.shard));
             try node_writer.writeInt64(2, @intCast(node.realm));
@@ -128,7 +128,7 @@ pub const TokenDeleteTransaction = struct {
 
         // transactionValidDuration = 4
         var duration_writer = ProtoWriter.init(self.base.allocator);
-        defer duration_writer.deinit();
+        defer duration_writer.deinit(self.allocator);
         try duration_writer.writeInt64(1, self.base.transaction_valid_duration.seconds);
         const duration_bytes = try duration_writer.toOwnedSlice();
         defer self.base.allocator.free(duration_bytes);

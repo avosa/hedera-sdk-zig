@@ -27,7 +27,7 @@ pub const NodeUpdateTransaction = struct {
     }
     
     pub fn deinit(self: *NodeUpdateTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
         if (self.description) |desc| {
             self.base.allocator.free(desc);
         }
@@ -36,14 +36,14 @@ pub const NodeUpdateTransaction = struct {
                 self.base.allocator.free(endpoint.ip_address);
                 self.base.allocator.free(endpoint.domain_name);
             }
-            endpoints.deinit();
+            endpoints.deinit(self.allocator);
         }
         if (self.service_endpoints) |*endpoints| {
             for (endpoints.items) |endpoint| {
                 self.base.allocator.free(endpoint.ip_address);
                 self.base.allocator.free(endpoint.domain_name);
             }
-            endpoints.deinit();
+            endpoints.deinit(self.allocator);
         }
         if (self.gossip_ca_certificate) |cert| {
             self.base.allocator.free(cert);
@@ -86,7 +86,7 @@ pub const NodeUpdateTransaction = struct {
                 self.base.allocator.free(endpoint.ip_address);
                 self.base.allocator.free(endpoint.domain_name);
             }
-            old.deinit();
+            old.deinit(self.allocator);
         }
         
         var new_endpoints = std.ArrayList(ServiceEndpoint).init(self.base.allocator);
@@ -112,7 +112,7 @@ pub const NodeUpdateTransaction = struct {
                 self.base.allocator.free(endpoint.ip_address);
                 self.base.allocator.free(endpoint.domain_name);
             }
-            old.deinit();
+            old.deinit(self.allocator);
         }
         
         var new_endpoints = std.ArrayList(ServiceEndpoint).init(self.base.allocator);
@@ -164,14 +164,14 @@ pub const NodeUpdateTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *NodeUpdateTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Write common transaction fields
         try self.writeCommonFields(&writer);
         
         // nodeUpdate = 63 (oneof data)
         var node_writer = ProtoWriter.init(self.base.allocator);
-        defer node_writer.deinit();
+        defer node_writer.deinit(self.allocator);
         
         // nodeId = 1
         if (self.node_id) |node_id| {
@@ -181,7 +181,7 @@ pub const NodeUpdateTransaction = struct {
         // accountId = 2
         if (self.account_id) |account_id| {
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(account_id.shard));
             try account_writer.writeInt64(2, @intCast(account_id.realm));
             try account_writer.writeInt64(3, @intCast(account_id.account));
@@ -194,7 +194,7 @@ pub const NodeUpdateTransaction = struct {
         if (self.description) |description| {
             // Wrap in StringValue
             var desc_writer = ProtoWriter.init(self.base.allocator);
-            defer desc_writer.deinit();
+            defer desc_writer.deinit(self.allocator);
             try desc_writer.writeString(1, description);
             const desc_bytes = try desc_writer.toOwnedSlice();
             defer self.base.allocator.free(desc_bytes);
@@ -205,7 +205,7 @@ pub const NodeUpdateTransaction = struct {
         if (self.gossip_endpoints) |endpoints| {
             for (endpoints.items) |endpoint| {
                 var endpoint_writer = ProtoWriter.init(self.base.allocator);
-                defer endpoint_writer.deinit();
+                defer endpoint_writer.deinit(self.allocator);
                 
                 if (endpoint.ip_address.len > 0) {
                     try endpoint_writer.writeString(1, endpoint.ip_address);
@@ -225,7 +225,7 @@ pub const NodeUpdateTransaction = struct {
         if (self.service_endpoints) |endpoints| {
             for (endpoints.items) |endpoint| {
                 var endpoint_writer = ProtoWriter.init(self.base.allocator);
-                defer endpoint_writer.deinit();
+                defer endpoint_writer.deinit(self.allocator);
                 
                 if (endpoint.ip_address.len > 0) {
                     try endpoint_writer.writeString(1, endpoint.ip_address);
@@ -245,7 +245,7 @@ pub const NodeUpdateTransaction = struct {
         if (self.gossip_ca_certificate) |cert| {
             // Wrap in BytesValue
             var cert_writer = ProtoWriter.init(self.base.allocator);
-            defer cert_writer.deinit();
+            defer cert_writer.deinit(self.allocator);
             try cert_writer.writeBytes(1, cert);
             const cert_bytes = try cert_writer.toOwnedSlice();
             defer self.base.allocator.free(cert_bytes);
@@ -256,7 +256,7 @@ pub const NodeUpdateTransaction = struct {
         if (self.grpc_certificate_hash) |hash| {
             // Wrap in BytesValue
             var hash_writer = ProtoWriter.init(self.base.allocator);
-            defer hash_writer.deinit();
+            defer hash_writer.deinit(self.allocator);
             try hash_writer.writeBytes(1, hash);
             const hash_bytes = try hash_writer.toOwnedSlice();
             defer self.base.allocator.free(hash_bytes);

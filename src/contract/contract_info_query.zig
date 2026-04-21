@@ -281,11 +281,11 @@ pub const ContractInfo = struct {
     // Convert ContractInfo to protobuf bytes
     pub fn toProtobuf(self: *const ContractInfo, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // ContractId (field 1)
         var contract_writer = ProtoWriter.init(allocator);
-        defer contract_writer.deinit();
+        defer contract_writer.deinit(self.allocator);
         try contract_writer.writeInt64(1, @intCast(self.contract_id.shard));
         try contract_writer.writeInt64(2, @intCast(self.contract_id.realm));
         try contract_writer.writeInt64(3, @intCast(self.contract_id.num));
@@ -295,7 +295,7 @@ pub const ContractInfo = struct {
         
         // AccountId (field 2)
         var account_writer = ProtoWriter.init(allocator);
-        defer account_writer.deinit();
+        defer account_writer.deinit(self.allocator);
         try account_writer.writeInt64(1, @intCast(self.account_id.shard));
         try account_writer.writeInt64(2, @intCast(self.account_id.realm));
         try account_writer.writeInt64(3, @intCast(self.account_id.account));
@@ -317,7 +317,7 @@ pub const ContractInfo = struct {
         
         // ExpirationTime (field 5)
         var expiry_writer = ProtoWriter.init(allocator);
-        defer expiry_writer.deinit();
+        defer expiry_writer.deinit(self.allocator);
         try expiry_writer.writeInt64(1, self.expiration_time.seconds);
         try expiry_writer.writeInt32(2, self.expiration_time.nanos);
         const expiry_bytes = try expiry_writer.toOwnedSlice();
@@ -326,7 +326,7 @@ pub const ContractInfo = struct {
         
         // AutoRenewPeriod (field 6)
         var period_writer = ProtoWriter.init(allocator);
-        defer period_writer.deinit();
+        defer period_writer.deinit(self.allocator);
         try period_writer.writeInt64(1, self.auto_renew_period.seconds);
         try period_writer.writeInt32(2, self.auto_renew_period.nanos);
         const period_bytes = try period_writer.toOwnedSlice();
@@ -361,7 +361,7 @@ pub const ContractInfo = struct {
         // AutoRenewAccountId (field 12)
         if (self.auto_renew_account_id) |renew_account| {
             var renew_writer = ProtoWriter.init(allocator);
-            defer renew_writer.deinit();
+            defer renew_writer.deinit(self.allocator);
             try renew_writer.writeInt64(1, @intCast(renew_account.shard));
             try renew_writer.writeInt64(2, @intCast(renew_account.realm));
             try renew_writer.writeInt64(3, @intCast(renew_account.account));
@@ -383,7 +383,7 @@ pub const ContractInfo = struct {
         // StakingInfo (field 15)
         if (self.staking_info) |staking_info| {
             var staking_writer = ProtoWriter.init(allocator);
-            defer staking_writer.deinit();
+            defer staking_writer.deinit(self.allocator);
             
             // DeclineReward (field 1)
             if (staking_info.decline_reward) {
@@ -393,7 +393,7 @@ pub const ContractInfo = struct {
             // StakePeriodStart (field 2)
             if (staking_info.stake_period_start) |timestamp| {
                 var timestamp_writer = ProtoWriter.init(allocator);
-                defer timestamp_writer.deinit();
+                defer timestamp_writer.deinit(self.allocator);
                 try timestamp_writer.writeInt64(1, timestamp.seconds);
                 try timestamp_writer.writeInt32(2, timestamp.nanos);
                 const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -414,7 +414,7 @@ pub const ContractInfo = struct {
             // StakedAccountId (field 5)
             if (staking_info.staked_account_id) |staked_account| {
                 var staked_writer = ProtoWriter.init(allocator);
-                defer staked_writer.deinit();
+                defer staked_writer.deinit(self.allocator);
                 try staked_writer.writeInt64(1, @intCast(staked_account.shard));
                 try staked_writer.writeInt64(2, @intCast(staked_account.realm));
                 try staked_writer.writeInt64(3, @intCast(staked_account.account));
@@ -463,7 +463,7 @@ pub const ContractInfoQuery = struct {
     }
 
     pub fn deinit(self: *ContractInfoQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
 
     // Set the contract ID to query
@@ -513,12 +513,12 @@ pub const ContractInfoQuery = struct {
     // Build the query
     pub fn buildQuery(self: *ContractInfoQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         // Query message structure
         // header = 1
         var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
+        defer header_writer.deinit(self.allocator);
 
         // payment = 1
         if (self.base.payment_transaction) |payment| {
@@ -534,12 +534,12 @@ pub const ContractInfoQuery = struct {
 
         // contractGetInfo = 9 (oneof query)
         var info_query_writer = ProtoWriter.init(self.base.allocator);
-        defer info_query_writer.deinit();
+        defer info_query_writer.deinit(self.allocator);
 
         // contractID = 1
         if (self.contract_id) |contract| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
-            defer contract_writer.deinit();
+            defer contract_writer.deinit(self.allocator);
             try contract_writer.writeInt64(1, @intCast(contract.shard));
             try contract_writer.writeInt64(2, @intCast(contract.realm));
             try contract_writer.writeInt64(3, @intCast(contract.num));

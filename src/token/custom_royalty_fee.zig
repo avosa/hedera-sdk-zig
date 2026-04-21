@@ -113,10 +113,10 @@ pub const CustomRoyaltyFee = struct {
 
     pub fn toProtobuf(self: *const CustomRoyaltyFee, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         var exchange_writer = ProtoWriter.init(allocator);
-        defer exchange_writer.deinit();
+        defer exchange_writer.deinit(self.allocator);
         try exchange_writer.writeUInt64(1, self.numerator);
         try exchange_writer.writeUInt64(2, self.denominator);
         const exchange_bytes = try exchange_writer.toOwnedSlice();
@@ -131,7 +131,7 @@ pub const CustomRoyaltyFee = struct {
 
         if (self.fee_collector_account_id) |collector_id| {
             var collector_writer = ProtoWriter.init(allocator);
-            defer collector_writer.deinit();
+            defer collector_writer.deinit(self.allocator);
             
             try collector_writer.writeInt64(1, @intCast(collector_id.shard));
             try collector_writer.writeInt64(2, @intCast(collector_id.realm));

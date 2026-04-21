@@ -28,7 +28,7 @@ pub const GrpcTlsConnection = struct {
     
     pub fn deinit(self: *GrpcTlsConnection) void {
         if (self.http2_conn) |*conn| {
-            conn.deinit();
+            conn.deinit(self.allocator);
         }
         self.connected = false;
     }
@@ -81,13 +81,13 @@ pub const GrpcTlsConnection = struct {
         
         // Build gRPC headers
         var headers = std.ArrayList(http2.Header).init(self.allocator);
-        defer headers.deinit();
+        defer headers.deinit(self.allocator);
         
         try headers.append(http2.Header.init(":method", "POST"));
         
         // Construct gRPC path
         var path_buffer = std.ArrayList(u8).init(self.allocator);
-        defer path_buffer.deinit();
+        defer path_buffer.deinit(self.allocator);
         try path_buffer.writer().print("/{s}/{s}", .{ service, method });
         const path = try self.allocator.dupe(u8, path_buffer.items);
         defer self.allocator.free(path);
@@ -105,7 +105,7 @@ pub const GrpcTlsConnection = struct {
         
         // Send gRPC message with length prefix
         var message_buffer = std.ArrayList(u8).init(self.allocator);
-        defer message_buffer.deinit();
+        defer message_buffer.deinit(self.allocator);
         
         var writer = message_buffer.writer();
         try writer.writeByte(0); // Compression flag (uncompressed)
@@ -246,7 +246,7 @@ pub const GrpcTlsConnection = struct {
             // Send GOAWAY frame
             conn.sendGoaway(0, .NO_ERROR, "Connection closing") catch {};
         }
-        self.deinit();
+        self.deinit(self.allocator);
     }
     
     /// Check if the connection is still alive

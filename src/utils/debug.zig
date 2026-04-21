@@ -19,6 +19,10 @@ pub const DebugLevel = enum(u8) {
     verbose = 5,
     
     pub fn toString(self: DebugLevel) []const u8 {
+        
+        
+        
+        
         return switch (self) {
             .off => "OFF",
             .critical => "CRITICAL",
@@ -44,6 +48,10 @@ pub const DebugCategory = enum {
     general,
     
     pub fn toString(self: DebugCategory) []const u8 {
+        
+        
+        
+        
         return switch (self) {
             .network => "NETWORK",
             .crypto => "CRYPTO",
@@ -76,7 +84,11 @@ pub const DebugEvent = struct {
         line: u32,
         
         pub fn init(file: []const u8, function: []const u8, line: u32) SourceInfo {
-            return SourceInfo{
+            
+        
+        
+        
+        return SourceInfo{
                 .file = file,
                 .function = function,
                 .line = line,
@@ -92,6 +104,10 @@ pub const DebugEvent = struct {
         message: []const u8,
         data: ?[]const u8,
     ) !DebugEvent {
+        
+        
+        
+        
         return DebugEvent{
             .timestamp = std.time.milliTimestamp(),
             .level = level,
@@ -105,6 +121,10 @@ pub const DebugEvent = struct {
     }
     
     pub fn deinit(self: DebugEvent, allocator: Allocator) void {
+        
+        
+        
+        
         allocator.free(self.message);
         if (self.data) |data| {
             allocator.free(data);
@@ -115,10 +135,14 @@ pub const DebugEvent = struct {
             allocator.free(entry.key_ptr.*);
             allocator.free(entry.value_ptr.*);
         }
-        self.context.deinit();
+        self.context.deinit(allocator);
     }
     
     pub fn addContext(self: *DebugEvent, allocator: Allocator, key: []const u8, value: []const u8) !void {
+        
+        
+        
+        
         const key_copy = try allocator.dupe(u8, key);
         const value_copy = try allocator.dupe(u8, value);
         try self.context.put(key_copy, value_copy);
@@ -144,6 +168,10 @@ pub const MemoryTracker = struct {
     };
     
     pub fn init(allocator: Allocator) MemoryTracker {
+        
+        
+        
+        
         return MemoryTracker{
             .allocator = allocator,
             .allocations = HashMap(usize, AllocationInfo, std.hash_map.AutoContext(usize), std.hash_map.default_max_load_percentage).init(allocator),
@@ -158,12 +186,20 @@ pub const MemoryTracker = struct {
     }
     
     pub fn deinit(self: *MemoryTracker) void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
-        self.allocations.deinit();
+        self.allocations.deinit(self.allocator);
     }
     
     pub fn trackAllocation(self: *MemoryTracker, ptr: usize, size: usize, source_info: DebugEvent.SourceInfo) void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -184,6 +220,10 @@ pub const MemoryTracker = struct {
     }
     
     pub fn trackFree(self: *MemoryTracker, ptr: usize) void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -195,6 +235,10 @@ pub const MemoryTracker = struct {
     }
     
     pub fn getStats(self: *MemoryTracker) MemoryStats {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -210,6 +254,10 @@ pub const MemoryTracker = struct {
     }
     
     pub fn detectLeaks(self: *MemoryTracker, allocator: Allocator) ![]LeakInfo {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -223,7 +271,7 @@ pub const MemoryTracker = struct {
                 .timestamp = entry.value_ptr.timestamp,
                 .source_info = entry.value_ptr.source_info,
             };
-            try leaks.append(leak);
+            try leaks.append(allocator, leak);
         }
         
         return leaks.toOwnedSlice();
@@ -265,6 +313,10 @@ pub const CallStackTracer = struct {
     };
     
     pub fn init(allocator: Allocator, max_depth: usize) CallStackTracer {
+        
+        
+        
+        
         return CallStackTracer{
             .allocator = allocator,
             .stack = ArrayList(CallInfo).init(allocator),
@@ -274,6 +326,10 @@ pub const CallStackTracer = struct {
     }
     
     pub fn deinit(self: *CallStackTracer) void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -281,10 +337,14 @@ pub const CallStackTracer = struct {
             self.allocator.free(call.function_name);
             self.allocator.free(call.file);
         }
-        self.stack.deinit();
+        self.stack.deinit(self.allocator);
     }
     
     pub fn enterFunction(self: *CallStackTracer, function_name: []const u8, file: []const u8, line: u32) !void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -303,10 +363,14 @@ pub const CallStackTracer = struct {
             .thread_id = @intCast(Thread.getCurrentId()),
         };
         
-        try self.stack.append(call);
+        try self.stack.append(self.allocator, call);
     }
     
     pub fn exitFunction(self: *CallStackTracer) void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -318,6 +382,10 @@ pub const CallStackTracer = struct {
     }
     
     pub fn getCallStack(self: *CallStackTracer, allocator: Allocator) ![]CallInfo {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -331,13 +399,17 @@ pub const CallStackTracer = struct {
                 .timestamp = call.timestamp,
                 .thread_id = call.thread_id,
             };
-            try stack_copy.append(call_copy);
+            try stack_copy.append(allocator, call_copy);
         }
         
         return stack_copy.toOwnedSlice();
     }
     
     pub fn printCallStack(self: *CallStackTracer, writer: anytype) !void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -373,6 +445,10 @@ pub const PerformanceProfiler = struct {
     };
     
     pub fn init(allocator: Allocator) PerformanceProfiler {
+        
+        
+        
+        
         return PerformanceProfiler{
             .allocator = allocator,
             .profiles = HashMap([]const u8, ProfileData, std.hash_map.StringContext, std.hash_map.default_max_load_percentage).init(allocator),
@@ -382,6 +458,10 @@ pub const PerformanceProfiler = struct {
     }
     
     pub fn deinit(self: *PerformanceProfiler) void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -389,16 +469,20 @@ pub const PerformanceProfiler = struct {
         while (profile_iter.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
         }
-        self.profiles.deinit();
+        self.profiles.deinit(self.allocator);
         
         var active_iter = self.active_profiles.iterator();
         while (active_iter.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
         }
-        self.active_profiles.deinit();
+        self.active_profiles.deinit(self.allocator);
     }
     
     pub fn startProfile(self: *PerformanceProfiler, name: []const u8) !void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -408,6 +492,10 @@ pub const PerformanceProfiler = struct {
     }
     
     pub fn endProfile(self: *PerformanceProfiler, name: []const u8) !void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -444,12 +532,20 @@ pub const PerformanceProfiler = struct {
     }
     
     pub fn getProfileData(self: *PerformanceProfiler, name: []const u8) ?ProfileData {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         return self.profiles.get(name);
     }
     
     pub fn printProfiles(self: *PerformanceProfiler, writer: anytype) !void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -485,6 +581,10 @@ pub const DebugManager = struct {
     mutex: Mutex,
     
     pub fn init(allocator: Allocator, level: DebugLevel, max_events: usize) DebugManager {
+        
+        
+        
+        
         var manager = DebugManager{
             .allocator = allocator,
             .level = level,
@@ -511,59 +611,87 @@ pub const DebugManager = struct {
     }
     
     pub fn deinit(self: *DebugManager) void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
         for (self.events.items) |event| {
             event.deinit(self.allocator);
         }
-        self.events.deinit();
-        self.enabled_categories.deinit();
+        self.events.deinit(self.allocator);
+        self.enabled_categories.deinit(self.allocator);
         
         if (self.memory_tracker) |*tracker| {
-            tracker.deinit();
+            tracker.deinit(self.allocator);
         }
         
         if (self.call_stack_tracer) |*tracer| {
-            tracer.deinit();
+            tracer.deinit(self.allocator);
         }
         
         if (self.performance_profiler) |*profiler| {
-            profiler.deinit();
+            profiler.deinit(self.allocator);
         }
     }
     
     pub fn setLevel(self: *DebugManager, level: DebugLevel) void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         self.level = level;
     }
     
     pub fn setCategoryEnabled(self: *DebugManager, category: DebugCategory, enabled: bool) !void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         try self.enabled_categories.put(category, enabled);
     }
     
     pub fn enableMemoryTracking(self: *DebugManager) void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         self.memory_tracker = MemoryTracker.init(self.allocator);
     }
     
     pub fn enableCallStackTracing(self: *DebugManager, max_depth: usize) void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         self.call_stack_tracer = CallStackTracer.init(self.allocator, max_depth);
     }
     
     pub fn enablePerformanceProfiling(self: *DebugManager) void {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         self.performance_profiler = PerformanceProfiler.init(self.allocator);
     }
     
     pub fn isEnabled(self: *DebugManager, level: DebugLevel, category: DebugCategory) bool {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -579,6 +707,10 @@ pub const DebugManager = struct {
         message: []const u8,
         data: ?[]const u8,
     ) !void {
+        
+        
+        
+        
         if (!self.isEnabled(level, category)) return;
         
         self.mutex.lock();
@@ -586,7 +718,7 @@ pub const DebugManager = struct {
         
         const event = try DebugEvent.init(self.allocator, level, category, source_info, message, data);
         
-        try self.events.append(event);
+        try self.events.append(self.allocator, event);
         
         // Trim events if needed
         if (self.events.items.len > self.max_events) {
@@ -596,18 +728,34 @@ pub const DebugManager = struct {
     }
     
     pub fn getMemoryTracker(self: *DebugManager) ?*MemoryTracker {
+        
+        
+        
+        
         return if (self.memory_tracker) |*tracker| tracker else null;
     }
     
     pub fn getCallStackTracer(self: *DebugManager) ?*CallStackTracer {
+        
+        
+        
+        
         return if (self.call_stack_tracer) |*tracer| tracer else null;
     }
     
     pub fn getPerformanceProfiler(self: *DebugManager) ?*PerformanceProfiler {
+        
+        
+        
+        
         return if (self.performance_profiler) |*profiler| profiler else null;
     }
     
     pub fn generateReport(self: *DebugManager, allocator: Allocator) ![]u8 {
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -662,7 +810,11 @@ var global_debug_mutex: Mutex = Mutex{};
 
 // Initialize global debug manager
 pub fn initGlobalDebugManager(allocator: Allocator, level: DebugLevel, max_events: usize) !void {
-    global_debug_mutex.lock();
+    
+        
+        
+        
+        global_debug_mutex.lock();
     defer global_debug_mutex.unlock();
     
     if (global_debug_manager != null) return;
@@ -673,18 +825,26 @@ pub fn initGlobalDebugManager(allocator: Allocator, level: DebugLevel, max_event
 
 // Get global debug manager
 pub fn getGlobalDebugManager() ?*DebugManager {
-    global_debug_mutex.lock();
+    
+        
+        
+        
+        global_debug_mutex.lock();
     defer global_debug_mutex.unlock();
     return global_debug_manager;
 }
 
 // Cleanup global debug manager
 pub fn deinitGlobalDebugManager(allocator: Allocator) void {
-    global_debug_mutex.lock();
+    
+        
+        
+        
+        global_debug_mutex.lock();
     defer global_debug_mutex.unlock();
     
     if (global_debug_manager) |manager| {
-        manager.deinit();
+        manager.deinit(allocator);
         allocator.destroy(manager);
         global_debug_manager = null;
     }

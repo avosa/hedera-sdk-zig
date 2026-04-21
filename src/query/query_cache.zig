@@ -20,6 +20,12 @@ pub const CacheEntryMetadata = struct {
     tags: []const []const u8,
     
     pub fn init(allocator: Allocator, ttl_ms: u64, tags: []const []const u8) !CacheEntryMetadata {
+        
+        
+        
+        
+        
+        
         const now = std.time.milliTimestamp();
         var tags_copy = ArrayList([]const u8).init(allocator);
         
@@ -38,6 +44,12 @@ pub const CacheEntryMetadata = struct {
     }
     
     pub fn deinit(self: CacheEntryMetadata, allocator: Allocator) void {
+        
+        
+        
+        
+        
+        
         for (self.tags) |tag| {
             allocator.free(tag);
         }
@@ -45,16 +57,34 @@ pub const CacheEntryMetadata = struct {
     }
     
     pub fn isExpired(self: CacheEntryMetadata) bool {
+        
+        
+        
+        
+        
+        
         const now = std.time.milliTimestamp();
         return (now - self.created_at) > @as(i64, @intCast(self.ttl_ms));
     }
     
     pub fn updateAccess(self: *CacheEntryMetadata) void {
+        
+        
+        
+        
+        
+        
         self.last_accessed = std.time.milliTimestamp();
         self.access_count += 1;
     }
     
     pub fn hasTag(self: CacheEntryMetadata, tag: []const u8) bool {
+        
+        
+        
+        
+        
+        
         for (self.tags) |existing_tag| {
             if (std.mem.eql(u8, existing_tag, tag)) return true;
         }
@@ -69,6 +99,12 @@ pub const CacheEntry = struct {
     metadata: CacheEntryMetadata,
     
     pub fn init(allocator: Allocator, key: []const u8, value: []const u8, metadata: CacheEntryMetadata) !CacheEntry {
+        
+        
+        
+        
+        
+        
         var entry_metadata = metadata;
         entry_metadata.size_bytes = key.len + value.len;
         
@@ -80,12 +116,24 @@ pub const CacheEntry = struct {
     }
     
     pub fn deinit(self: CacheEntry, allocator: Allocator) void {
+        
+        
+        
+        
+        
+        
         allocator.free(self.key);
         allocator.free(self.value);
         self.metadata.deinit(allocator);
     }
     
     pub fn clone(self: CacheEntry, allocator: Allocator) !CacheEntry {
+        
+        
+        
+        
+        
+        
         var cloned_tags = ArrayList([]const u8).init(allocator);
         for (self.metadata.tags) |tag| {
             try cloned_tags.append(try allocator.dupe(u8, tag));
@@ -110,6 +158,12 @@ pub const EvictionStrategy = enum {
     size, // Size-based
     
     pub fn shouldEvict(self: EvictionStrategy, entry: *const CacheEntry, context: EvictionContext) bool {
+        
+        
+        
+        
+        
+        
         return switch (self) {
             .lru => shouldEvictLRU(entry, context),
             .lfu => shouldEvictLFU(entry, context),
@@ -156,6 +210,12 @@ pub const CacheStats = struct {
     expired_count: u64,
     
     pub fn init() CacheStats {
+        
+        
+        
+        
+        
+        
         return CacheStats{
             .total_entries = 0,
             .total_size_bytes = 0,
@@ -167,12 +227,24 @@ pub const CacheStats = struct {
     }
     
     pub fn getHitRatio(self: CacheStats) f64 {
+        
+        
+        
+        
+        
+        
         const total_requests = self.hit_count + self.miss_count;
         if (total_requests == 0) return 0.0;
         return @as(f64, @floatFromInt(self.hit_count)) / @as(f64, @floatFromInt(total_requests));
     }
     
     pub fn getAverageEntrySize(self: CacheStats) f64 {
+        
+        
+        
+        
+        
+        
         if (self.total_entries == 0) return 0.0;
         return @as(f64, @floatFromInt(self.total_size_bytes)) / @as(f64, @floatFromInt(self.total_entries));
     }
@@ -191,6 +263,12 @@ pub const QueryCacheConfig = struct {
     enable_statistics: bool,
     
     pub fn init() QueryCacheConfig {
+        
+        
+        
+        
+        
+        
         return QueryCacheConfig{
             .max_entries = 10000,
             .max_size_bytes = 100 * 1024 * 1024, // 100MB
@@ -218,6 +296,12 @@ pub const QueryCache = struct {
     shutdown: AtomicBool,
     
     pub fn init(allocator: Allocator, config: QueryCacheConfig) !QueryCache {
+        
+        
+        
+        
+        
+        
         var cache = QueryCache{
             .allocator = allocator,
             .config = config,
@@ -237,6 +321,12 @@ pub const QueryCache = struct {
     }
     
     pub fn deinit(self: *QueryCache) void {
+        
+        
+        
+        
+        
+        
         // Signal shutdown
         self.shutdown.store(true, .Release);
         
@@ -255,18 +345,24 @@ pub const QueryCache = struct {
             entry.value_ptr.*.deinit(self.allocator);
             self.allocator.destroy(entry.value_ptr.*);
         }
-        self.entries.deinit();
+        self.entries.deinit(self.allocator);
         
         // Clean up tag index
         var tag_iter = self.tag_index.iterator();
         while (tag_iter.next()) |tag_entry| {
             self.allocator.free(tag_entry.key_ptr.*);
-            tag_entry.value_ptr.deinit();
+            tag_entry.value_ptr.deinit(self.allocator);
         }
-        self.tag_index.deinit();
+        self.tag_index.deinit(self.allocator);
     }
     
     pub fn get(self: *QueryCache, key: []const u8) ?[]const u8 {
+        
+        
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -297,6 +393,12 @@ pub const QueryCache = struct {
     }
     
     pub fn put(self: *QueryCache, key: []const u8, value: []const u8, ttl_ms: ?u64, tags: ?[]const []const u8) !void {
+        
+        
+        
+        
+        
+        
         if (key.len > self.config.max_key_size or value.len > self.config.max_value_size) {
             return error.EntrySizeExceeded;
         }
@@ -333,7 +435,7 @@ pub const QueryCache = struct {
                 break :blk self.tag_index.get(tag).?;
             };
             
-            try tag_entries.append(entry);
+            try tag_entries.append(self.allocator, entry);
         }
         
         // Update stats
@@ -345,6 +447,12 @@ pub const QueryCache = struct {
     }
     
     pub fn remove(self: *QueryCache, key: []const u8) bool {
+        
+        
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -352,6 +460,12 @@ pub const QueryCache = struct {
     }
     
     pub fn clear(self: *QueryCache) void {
+        
+        
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -378,6 +492,12 @@ pub const QueryCache = struct {
     }
     
     pub fn invalidateByTag(self: *QueryCache, tag: []const u8) u32 {
+        
+        
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -385,7 +505,7 @@ pub const QueryCache = struct {
         
         if (self.tag_index.get(tag)) |tag_entries| {
             var entries_to_remove = ArrayList([]const u8).init(self.allocator);
-            defer entries_to_remove.deinit();
+            defer entries_to_remove.deinit(self.allocator);
             
             for (tag_entries.items) |entry| {
                 entries_to_remove.append(entry.key) catch continue;
@@ -402,6 +522,12 @@ pub const QueryCache = struct {
     }
     
     pub fn getStats(self: *QueryCache) CacheStats {
+        
+        
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -413,6 +539,12 @@ pub const QueryCache = struct {
     }
     
     pub fn getKeys(self: *QueryCache, allocator: Allocator) ![][]const u8 {
+        
+        
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -427,6 +559,12 @@ pub const QueryCache = struct {
     }
     
     pub fn exportEntries(self: *QueryCache, allocator: Allocator) ![]CacheEntry {
+        
+        
+        
+        
+        
+        
         self.mutex.lock();
         defer self.mutex.unlock();
         
@@ -435,13 +573,19 @@ pub const QueryCache = struct {
         var iter = self.entries.iterator();
         while (iter.next()) |entry| {
             const cloned_entry = try entry.value_ptr.*.clone(allocator);
-            try entries.append(cloned_entry);
+            try entries.append(allocator, cloned_entry);
         }
         
         return entries.toOwnedSlice();
     }
     
     pub fn importEntries(self: *QueryCache, entries: []const CacheEntry) !void {
+        
+        
+        
+        
+        
+        
         for (entries) |entry| {
             try self.put(entry.key, entry.value, entry.metadata.ttl_ms, entry.metadata.tags);
         }
@@ -546,7 +690,7 @@ pub const QueryCache = struct {
         defer self.mutex.unlock();
         
         var expired_keys = ArrayList([]const u8).init(self.allocator);
-        defer expired_keys.deinit();
+        defer expired_keys.deinit(self.allocator);
         
         // Find expired entries
         var iter = self.entries.iterator();
@@ -581,6 +725,12 @@ pub const QueryCacheKeyBuilder = struct {
     components: ArrayList([]const u8),
     
     pub fn init(allocator: Allocator) QueryCacheKeyBuilder {
+        
+        
+        
+        
+        
+        
         return QueryCacheKeyBuilder{
             .allocator = allocator,
             .components = ArrayList([]const u8).init(allocator),
@@ -588,28 +738,58 @@ pub const QueryCacheKeyBuilder = struct {
     }
     
     pub fn deinit(self: *QueryCacheKeyBuilder) void {
+        
+        
+        
+        
+        
+        
         for (self.components.items) |component| {
             self.allocator.free(component);
         }
-        self.components.deinit();
+        self.components.deinit(self.allocator);
     }
     
     pub fn addComponent(self: *QueryCacheKeyBuilder, component: []const u8) !void {
+        
+        
+        
+        
+        
+        
         const component_copy = try self.allocator.dupe(u8, component);
-        try self.components.append(component_copy);
+        try self.components.append(self.allocator, component_copy);
     }
     
     pub fn addU64(self: *QueryCacheKeyBuilder, value: u64) !void {
+        
+        
+        
+        
+        
+        
         const component = try std.fmt.allocPrint(self.allocator, "{}", .{value});
-        try self.components.append(component);
+        try self.components.append(self.allocator, component);
     }
     
     pub fn addBool(self: *QueryCacheKeyBuilder, value: bool) !void {
+        
+        
+        
+        
+        
+        
         const component = try self.allocator.dupe(u8, if (value) "true" else "false");
-        try self.components.append(component);
+        try self.components.append(self.allocator, component);
     }
     
     pub fn build(self: *QueryCacheKeyBuilder) ![]u8 {
+        
+        
+        
+        
+        
+        
         var total_length: usize = 0;
         for (self.components.items) |component| {
             total_length += component.len + 1; // +1 for separator
@@ -662,7 +842,7 @@ test "QueryCache basic operations" {
     config.default_ttl_ms = 60000;
     
     var cache = try QueryCache.init(allocator, config);
-    defer cache.deinit();
+    defer cache.deinit(allocator);
     
     // Test put and get
     try cache.put("key1", "value1", null, null);
@@ -687,7 +867,7 @@ test "QueryCache with tags and invalidation" {
     
     const config = QueryCacheConfig.init();
     var cache = try QueryCache.init(allocator, config);
-    defer cache.deinit();
+    defer cache.deinit(allocator);
     
     const tags = [_][]const u8{"account", "0.0.123"};
     try cache.put("account_balance", "1000", null, &tags);
@@ -705,7 +885,7 @@ test "QueryCacheKeyBuilder operations" {
     const allocator = testing.allocator;
     
     var builder = QueryCacheKeyBuilder.init(allocator);
-    defer builder.deinit();
+    defer builder.deinit(allocator);
     
     try builder.addComponent("AccountBalanceQuery");
     try builder.addU64(123);

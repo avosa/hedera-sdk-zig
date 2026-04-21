@@ -22,7 +22,7 @@ pub const SystemDeleteTransaction = struct {
     }
     
     pub fn deinit(self: *SystemDeleteTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the contract ID to delete
@@ -56,19 +56,19 @@ pub const SystemDeleteTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *SystemDeleteTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Write common transaction fields
         try self.base.writeCommonFields(&writer);
         
         // systemDelete = 35 (oneof data)
         var delete_writer = ProtoWriter.init(self.base.allocator);
-        defer delete_writer.deinit();
+        defer delete_writer.deinit(self.allocator);
         
         // expirationTime = 2
         if (self.expiration_time) |expiration| {
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, expiration.seconds);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
             defer self.base.allocator.free(timestamp_bytes);
@@ -79,7 +79,7 @@ pub const SystemDeleteTransaction = struct {
         // Either contractID = 1 or fileID = 3 (oneof id)
         if (self.contract_id) |contract_id| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
-            defer contract_writer.deinit();
+            defer contract_writer.deinit(self.allocator);
             try contract_writer.writeInt64(1, @intCast(contract_id.shard));
             try contract_writer.writeInt64(2, @intCast(contract_id.realm));
             try contract_writer.writeInt64(3, @intCast(contract_id.num));
@@ -88,7 +88,7 @@ pub const SystemDeleteTransaction = struct {
             try delete_writer.writeMessage(1, contract_bytes);
         } else if (self.file_id) |file_id| {
             var file_writer = ProtoWriter.init(self.base.allocator);
-            defer file_writer.deinit();
+            defer file_writer.deinit(self.allocator);
             try file_writer.writeInt64(1, @intCast(file_id.shard));
             try file_writer.writeInt64(2, @intCast(file_id.realm));
             try file_writer.writeInt64(3, @intCast(file_id.num));

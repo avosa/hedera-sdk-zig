@@ -81,7 +81,7 @@ pub const TokenInfo = struct {
             .supply_type = .infinite,
             .max_supply = 0,
             .fee_schedule_key = null,
-            .custom_fees = std.ArrayList(CustomFee).init(allocator),
+            .custom_fees = std.ArrayList(CustomFee){},
             .pause_key = null,
             .pause_status = .unpaused,
             .ledger_id = "",
@@ -108,7 +108,7 @@ pub const TokenInfo = struct {
         if (self.metadata.len > 0) {
             self.allocator.free(self.metadata);
         }
-        self.custom_fees.deinit();
+        self.custom_fees.deinit(self.allocator);
     }
     
     // Parse TokenInfo from protobuf bytes
@@ -322,11 +322,11 @@ pub const TokenInfo = struct {
     // Convert TokenInfo to protobuf bytes
     pub fn toProtobuf(self: *const TokenInfo, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // TokenId (field 1)
         var token_writer = ProtoWriter.init(allocator);
-        defer token_writer.deinit();
+        defer token_writer.deinit(self.allocator);
         try token_writer.writeInt64(1, @intCast(self.token_id.shard));
         try token_writer.writeInt64(2, @intCast(self.token_id.realm));
         try token_writer.writeInt64(3, @intCast(self.token_id.num));
@@ -356,7 +356,7 @@ pub const TokenInfo = struct {
         
         // Treasury (field 6)
         var treasury_writer = ProtoWriter.init(allocator);
-        defer treasury_writer.deinit();
+        defer treasury_writer.deinit(self.allocator);
         try treasury_writer.writeInt64(1, @intCast(self.treasury.shard));
         try treasury_writer.writeInt64(2, @intCast(self.treasury.realm));
         try treasury_writer.writeInt64(3, @intCast(self.treasury.account));
@@ -406,7 +406,7 @@ pub const TokenInfo = struct {
         
         // ExpirationTime (field 13)
         var expiry_writer = ProtoWriter.init(allocator);
-        defer expiry_writer.deinit();
+        defer expiry_writer.deinit(self.allocator);
         try expiry_writer.writeInt64(1, self.expiration_time.seconds);
         try expiry_writer.writeInt32(2, self.expiration_time.nanos);
         const expiry_bytes = try expiry_writer.toOwnedSlice();
@@ -416,7 +416,7 @@ pub const TokenInfo = struct {
         // AutoRenewAccount (field 14)
         if (self.auto_renew_account) |renew_account| {
             var renew_writer = ProtoWriter.init(allocator);
-            defer renew_writer.deinit();
+            defer renew_writer.deinit(self.allocator);
             try renew_writer.writeInt64(1, @intCast(renew_account.shard));
             try renew_writer.writeInt64(2, @intCast(renew_account.realm));
             try renew_writer.writeInt64(3, @intCast(renew_account.account));
@@ -427,7 +427,7 @@ pub const TokenInfo = struct {
         
         // AutoRenewPeriod (field 15)
         var period_writer = ProtoWriter.init(allocator);
-        defer period_writer.deinit();
+        defer period_writer.deinit(self.allocator);
         try period_writer.writeInt64(1, self.auto_renew_period.seconds);
         try period_writer.writeInt32(2, self.auto_renew_period.nanos);
         const period_bytes = try period_writer.toOwnedSlice();
@@ -501,7 +501,7 @@ pub const TokenInfoQuery = struct {
     }
 
     pub fn deinit(self: *TokenInfoQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
 
     // Set the token ID to query
@@ -551,12 +551,12 @@ pub const TokenInfoQuery = struct {
     // Build the query
     pub fn buildQuery(self: *TokenInfoQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
 
         // Query message structure
         // header = 1
         var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
+        defer header_writer.deinit(self.allocator);
 
         // payment = 1
         if (self.base.payment_transaction) |payment| {
@@ -572,12 +572,12 @@ pub const TokenInfoQuery = struct {
 
         // tokenGetInfo = 13 (oneof query)
         var info_query_writer = ProtoWriter.init(self.base.allocator);
-        defer info_query_writer.deinit();
+        defer info_query_writer.deinit(self.allocator);
 
         // token = 1
         if (self.token_id) |token| {
             var token_writer = ProtoWriter.init(self.base.allocator);
-            defer token_writer.deinit();
+            defer token_writer.deinit(self.allocator);
             try token_writer.writeInt64(1, @intCast(token.shard));
             try token_writer.writeInt64(2, @intCast(token.realm));
             try token_writer.writeInt64(3, @intCast(token.num));
@@ -786,7 +786,7 @@ pub const TokenInfoQuery = struct {
                                 // customFees (repeated)
                                 const fee_bytes = try token_reader.readMessage();
                                 const custom_fee = try CustomFee.fromProtobuf(fee_bytes, self.base.allocator);
-                                try info.custom_fees.append(custom_fee);
+                                try info.custom_fees.append(self.allocator, custom_fee);
                             },
                             22 => {
                                 // pauseKey

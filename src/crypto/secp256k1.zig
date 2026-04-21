@@ -698,12 +698,12 @@ pub const Signature = struct {
         return Signature{ .r = r, .s = s };
     }
     
-    pub fn toDER(self: Signature, allocator: std.mem.Allocator) ![]u8 {
-        var der = std.ArrayList(u8).init(allocator);
-        defer der.deinit();
+    pub fn toDER(self: Signature, allocator: std.mem.Allocator) ![]u8 {        _ = allocator;
+        var der = std.ArrayList(u8){};
+        defer der.deinit(self.allocator);
         
         // SEQUENCE tag
-        try der.append(0x30);
+        try der.append(self.allocator, 0x30);
         
         // Calculate r length
         var r_len: u8 = 32;
@@ -732,25 +732,25 @@ pub const Signature = struct {
         try der.append(@intCast(total_len));
         
         // r value
-        try der.append(0x02); // INTEGER tag
-        try der.append(r_len);
+        try der.append(self.allocator, 0x02); // INTEGER tag
+        try der.append(self.allocator, r_len);
         if (r_offset < 32 and self.r[r_offset] & 0x80 != 0) {
-            try der.append(0x00);
+            try der.append(self.allocator, 0x00);
         }
         if (r_offset == 32) {
-            try der.append(0x00);
+            try der.append(self.allocator, 0x00);
         } else {
             try der.appendSlice(self.r[r_offset..]);
         }
         
         // s value
-        try der.append(0x02); // INTEGER tag
-        try der.append(s_len);
+        try der.append(self.allocator, 0x02); // INTEGER tag
+        try der.append(self.allocator, s_len);
         if (s_offset < 32 and self.s[s_offset] & 0x80 != 0) {
-            try der.append(0x00);
+            try der.append(self.allocator, 0x00);
         }
         if (s_offset == 32) {
-            try der.append(0x00);
+            try der.append(self.allocator, 0x00);
         } else {
             try der.appendSlice(self.s[s_offset..]);
         }
@@ -791,8 +791,7 @@ pub fn generatePublicKey(private_key_bytes: []const u8) ![33]u8 {
 }
 
 // Convenience function for signing with private key bytes
-pub fn sign(allocator: std.mem.Allocator, private_key_bytes: []const u8, message: []const u8) ![]u8 {
-    if (private_key_bytes.len != 32) {
+pub fn sign(allocator: std.mem.Allocator, private_key_bytes: []const u8, message: []const u8) ![]u8 {    if (private_key_bytes.len != 32) {
         return error.InvalidPrivateKey;
     }
     

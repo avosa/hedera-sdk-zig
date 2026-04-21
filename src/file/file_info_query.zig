@@ -27,7 +27,7 @@ pub const FileInfo = struct {
             .size = 0,
             .expiration_time = Timestamp{ .seconds = 0, .nanos = 0 },
             .deleted = false,
-            .keys = std.ArrayList(Key).init(allocator),
+            .keys = std.ArrayList(Key){},
             .memo = "",
             .ledger_id = "",
             .allocator = allocator,
@@ -36,7 +36,7 @@ pub const FileInfo = struct {
     
     pub fn deinit(self: *FileInfo) void {
         // Keys don't need individual deinit
-        self.keys.deinit();
+        self.keys.deinit(self.allocator);
         if (self.memo.len > 0) {
             self.allocator.free(self.memo);
         }
@@ -63,7 +63,7 @@ pub const FileInfoQuery = struct {
     }
     
     pub fn deinit(self: *FileInfoQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the file ID to query
@@ -118,15 +118,15 @@ pub const FileInfoQuery = struct {
     // Build the query
     pub fn buildQuery(self: *FileInfoQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // fileGetInfo = 8 (oneof query)
         var info_query_writer = ProtoWriter.init(self.base.allocator);
-        defer info_query_writer.deinit();
+        defer info_query_writer.deinit(self.allocator);
         
         // header = 1 (inside the specific query)
         var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
+        defer header_writer.deinit(self.allocator);
         
         // payment = 1 (optional)
         // Payment handling will be added when needed
@@ -142,7 +142,7 @@ pub const FileInfoQuery = struct {
         // fileID = 2
         if (self.file_id) |file| {
             var file_writer = ProtoWriter.init(self.base.allocator);
-            defer file_writer.deinit();
+            defer file_writer.deinit(self.allocator);
             try file_writer.writeInt64(1, @intCast(file.entity.shard));
             try file_writer.writeInt64(2, @intCast(file.entity.realm));
             try file_writer.writeInt64(3, @intCast(file.entity.num));
@@ -243,7 +243,7 @@ pub const FileInfoQuery = struct {
                                             // keys (repeated)
                                             const key_bytes = try keys_reader.readMessage();
                                             const key = try Key.fromProtobuf(self.base.allocator, key_bytes);
-                                            try info.keys.append(key);
+                                            try info.keys.append(self.allocator, key);
                                         },
                                         else => try keys_reader.skipField(k_tag.wire_type),
                                     }

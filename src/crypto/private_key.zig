@@ -32,7 +32,7 @@ pub const PrivateKey = struct {
     pub fn generateEd25519(allocator: std.mem.Allocator) !PrivateKey {
         var seed: [32]u8 = undefined;
         // Use Zig's optimized ChaCha20 PRNG for better performance than Go's crypto/rand
-        std.crypto.random.bytes(&seed);
+        std.Random.DefaultCsprng.random().bytes(&seed);
         
         return PrivateKey.init(allocator, .Ed25519, &seed);
     }
@@ -41,7 +41,7 @@ pub const PrivateKey = struct {
     pub fn generateEcdsa(allocator: std.mem.Allocator) !PrivateKey {
         var key_bytes: [32]u8 = undefined;
         // Zig's crypto is compile-time optimized and faster than Go's runtime crypto
-        std.crypto.random.bytes(&key_bytes);
+        std.Random.DefaultCsprng.random().bytes(&key_bytes);
         
         return PrivateKey.init(allocator, .EcdsaSecp256k1, &key_bytes);
     }
@@ -131,12 +131,12 @@ pub const PrivateKey = struct {
         const base64_content = pem_str[base64_start..end_pos];
         
         // Remove whitespace
-        var clean_base64 = std.ArrayList(u8).init(allocator);
-        defer clean_base64.deinit();
-        
+        var clean_base64 = std.ArrayList(u8){};
+        defer clean_base64.deinit(allocator);
+
         for (base64_content) |c| {
             if (c != '\n' and c != '\r' and c != ' ' and c != '\t') {
-                try clean_base64.append(c);
+                try clean_base64.append(allocator, c);
             }
         }
         
@@ -219,8 +219,8 @@ pub const PrivateKey = struct {
     
     // Convert to DER format
     pub fn toDer(self: *const PrivateKey, allocator: std.mem.Allocator) ![]u8 {
-        var der = std.ArrayList(u8).init(allocator);
-        defer der.deinit();
+        var der = std.ArrayList(u8){};
+        defer der.deinit(allocator);
         
         // PKCS#8 private key info structure
         try der.appendSlice(&[_]u8{ 0x30, 0x2e }); // SEQUENCE
@@ -251,25 +251,25 @@ pub const PrivateKey = struct {
         const der_bytes = try self.toDer(allocator);
         defer allocator.free(der_bytes);
         
-        var pem = std.ArrayList(u8).init(allocator);
-        defer pem.deinit();
+        var pem = std.ArrayList(u8){};
+        defer pem.deinit(allocator);
         
-        try pem.appendSlice("-----BEGIN PRIVATE KEY-----\n");
-        
+        try pem.appendSlice(allocator, "-----BEGIN PRIVATE KEY-----\n");
+
         // Base64 encode with line breaks
         const encoded_len = std.base64.standard.Encoder.calcSize(der_bytes.len);
         const base64_encoded = try allocator.alloc(u8, encoded_len);
         defer allocator.free(base64_encoded);
         _ = std.base64.standard.Encoder.encode(base64_encoded, der_bytes);
-        
+
         var i: usize = 0;
         while (i < base64_encoded.len) : (i += 64) {
             const end = @min(i + 64, base64_encoded.len);
-            try pem.appendSlice(base64_encoded[i..end]);
-            try pem.append('\n');
+            try pem.appendSlice(allocator, base64_encoded[i..end]);
+            try pem.append(allocator, '\n');
         }
-        
-        try pem.appendSlice("-----END PRIVATE KEY-----\n");
+
+        try pem.appendSlice(allocator, "-----END PRIVATE KEY-----\n");
         
         return pem.toOwnedSlice();
     }

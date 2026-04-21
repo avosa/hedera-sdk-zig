@@ -41,7 +41,7 @@ pub const TransactionReceiptQuery = struct {
     }
     
     pub fn deinit(self: *Self) void {
-        self.query.deinit();
+        self.query.deinit(self.allocator);
     }
     
     pub fn setTransactionId(self: *Self, transaction_id: TransactionId) !*Self {
@@ -156,11 +156,11 @@ pub const TransactionReceiptQuery = struct {
     
     fn buildQuery(self: *const Self) ![]u8 {
         var writer = protobuf.ProtoWriter.init(self.query.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Build inner TransactionGetReceiptQuery message
         var inner_writer = protobuf.ProtoWriter.init(self.query.allocator);
-        defer inner_writer.deinit();
+        defer inner_writer.deinit(self.allocator);
         
         const transaction_id = self.transaction_id.?;
         
@@ -195,9 +195,9 @@ pub const TransactionReceiptQuery = struct {
         
         var receipt: ?TransactionReceipt = null;
         var child_receipts = std.ArrayList(TransactionReceipt).init(self.query.allocator);
-        defer child_receipts.deinit();
+        defer child_receipts.deinit(self.allocator);
         var duplicate_receipts = std.ArrayList(TransactionReceipt).init(self.query.allocator);
-        defer duplicate_receipts.deinit();
+        defer duplicate_receipts.deinit(self.allocator);
         
         while (reader.hasMore()) {
             const tag = try reader.readTag();
@@ -217,14 +217,14 @@ pub const TransactionReceiptQuery = struct {
                     const duplicate_bytes = try reader.readBytes();
                     
                     const duplicate_receipt = try TransactionReceipt.fromProtobufBytes(self.query.allocator, duplicate_bytes);
-                    try duplicate_receipts.append(duplicate_receipt);
+                    try duplicate_receipts.append(self.allocator, duplicate_receipt);
                 },
                 4 => {
                     // childTransactionReceipts = 4 (repeated TransactionReceipt)  
                     const child_bytes = try reader.readBytes();
                     
                     const child_receipt = try TransactionReceipt.fromProtobufBytes(self.query.allocator, child_bytes);
-                    try child_receipts.append(child_receipt);
+                    try child_receipts.append(self.allocator, child_receipt);
                 },
                 else => try reader.skipField(tag.wire_type),
             }

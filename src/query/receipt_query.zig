@@ -77,7 +77,7 @@ pub const TransactionReceiptQuery = struct {
     }
     
     pub fn deinit(self: *TransactionReceiptQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the transaction ID
@@ -118,21 +118,21 @@ pub const TransactionReceiptQuery = struct {
     // Build the query
     pub fn buildQuery(self: *TransactionReceiptQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Query message structure
         // transactionGetReceipt = 4 (oneof query)
         var receipt_query_writer = ProtoWriter.init(self.base.allocator);
-        defer receipt_query_writer.deinit();
+        defer receipt_query_writer.deinit(self.allocator);
         
         // transactionID = 2
         if (self.transaction_id) |tx_id| {
             var tx_id_writer = ProtoWriter.init(self.base.allocator);
-            defer tx_id_writer.deinit();
+            defer tx_id_writer.deinit(self.allocator);
             
             // transactionValidStart = 1
             var timestamp_writer = ProtoWriter.init(self.base.allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, tx_id.valid_start.seconds);
             try timestamp_writer.writeInt32(2, tx_id.valid_start.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -141,7 +141,7 @@ pub const TransactionReceiptQuery = struct {
             
             // accountID = 2
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(tx_id.account_id.shard));
             try account_writer.writeInt64(2, @intCast(tx_id.account_id.realm));
             try account_writer.writeInt64(3, @intCast(tx_id.account_id.account));
@@ -181,7 +181,7 @@ pub const TransactionReceiptQuery = struct {
         var reader = ProtoReader.init(response.response_bytes);
         var receipt = TransactionReceipt.init(self.base.allocator, Status.OK);
         var serial_numbers = std.ArrayList(i64).init(self.base.allocator);
-        defer serial_numbers.deinit();
+        defer serial_numbers.deinit(self.allocator);
         
         // Parse TransactionGetReceiptResponse
         while (reader.hasMore()) {

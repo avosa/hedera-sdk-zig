@@ -96,7 +96,7 @@ pub const StakingInfo = struct {
     // Convert StakingInfo to protobuf bytes
     pub fn toProtobuf(self: *const StakingInfo, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // DeclineReward (field 1)
         if (self.decline_reward) {
@@ -106,7 +106,7 @@ pub const StakingInfo = struct {
         // StakePeriodStart (field 2)
         if (self.stake_period_start) |timestamp| {
             var timestamp_writer = ProtoWriter.init(allocator);
-            defer timestamp_writer.deinit();
+            defer timestamp_writer.deinit(self.allocator);
             try timestamp_writer.writeInt64(1, timestamp.seconds);
             try timestamp_writer.writeInt32(2, timestamp.nanos);
             const timestamp_bytes = try timestamp_writer.toOwnedSlice();
@@ -127,7 +127,7 @@ pub const StakingInfo = struct {
         // StakedAccountId (field 5)
         if (self.staked_account_id) |account_id| {
             var account_writer = ProtoWriter.init(allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(account_id.shard));
             try account_writer.writeInt64(2, @intCast(account_id.realm));
             try account_writer.writeInt64(3, @intCast(account_id.account));
@@ -193,7 +193,7 @@ pub const AccountInfo = struct {
             .ledger_id = "",
             .ethereum_nonce = 0,
             .staking_info = null,
-            .token_relationships = std.ArrayList(TokenRelationship).init(allocator),
+            .token_relationships = std.ArrayList(TokenRelationship){},
             ._contract_account_id_allocated = false,
             ._memo_allocated = false,
             ._alias_allocated = false,
@@ -215,7 +215,7 @@ pub const AccountInfo = struct {
         if (self._ledger_id_allocated) {
             self.allocator.free(self.ledger_id);
         }
-        self.token_relationships.deinit();
+        self.token_relationships.deinit(self.allocator);
     }
     
     // Parse AccountInfo from protobuf bytes
@@ -373,11 +373,11 @@ pub const AccountInfo = struct {
     // Convert AccountInfo to protobuf bytes
     pub fn toProtobuf(self: *const AccountInfo, allocator: std.mem.Allocator) ![]u8 {
         var writer = ProtoWriter.init(allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // AccountID (field 1)
         var account_writer = ProtoWriter.init(allocator);
-        defer account_writer.deinit();
+        defer account_writer.deinit(self.allocator);
         try account_writer.writeInt64(1, @intCast(self.account_id.shard));
         try account_writer.writeInt64(2, @intCast(self.account_id.realm));
         try account_writer.writeInt64(3, @intCast(self.account_id.account));
@@ -398,7 +398,7 @@ pub const AccountInfo = struct {
         // ProxyAccountID (field 4)
         if (self.proxy_account_id) |proxy_id| {
             var proxy_writer = ProtoWriter.init(allocator);
-            defer proxy_writer.deinit();
+            defer proxy_writer.deinit(self.allocator);
             try proxy_writer.writeInt64(1, @intCast(proxy_id.shard));
             try proxy_writer.writeInt64(2, @intCast(proxy_id.realm));
             try proxy_writer.writeInt64(3, @intCast(proxy_id.account));
@@ -427,7 +427,7 @@ pub const AccountInfo = struct {
         
         // ExpirationTime (field 11)
         var expiration_writer = ProtoWriter.init(allocator);
-        defer expiration_writer.deinit();
+        defer expiration_writer.deinit(self.allocator);
         try expiration_writer.writeInt64(1, self.expiration_time.seconds);
         try expiration_writer.writeInt32(2, self.expiration_time.nanos);
         const expiration_bytes = try expiration_writer.toOwnedSlice();
@@ -436,7 +436,7 @@ pub const AccountInfo = struct {
         
         // AutoRenewPeriod (field 12)
         var duration_writer = ProtoWriter.init(allocator);
-        defer duration_writer.deinit();
+        defer duration_writer.deinit(self.allocator);
         try duration_writer.writeInt64(1, self.auto_renew_period.seconds);
         try duration_writer.writeInt32(2, self.auto_renew_period.nanos);
         const duration_bytes = try duration_writer.toOwnedSlice();
@@ -502,7 +502,7 @@ pub const AccountInfoQuery = struct {
             .max_retry = 3,
             .max_backoff = Duration.fromSeconds(8),
             .min_backoff = Duration.fromMillis(250),
-            .node_account_ids = std.ArrayList(AccountId).init(allocator),
+            .node_account_ids = std.ArrayList(AccountId){},
         };
         query.base.grpc_service_name = "proto.CryptoService";
         query.base.grpc_method_name = "getAccountInfo";
@@ -511,8 +511,8 @@ pub const AccountInfoQuery = struct {
     }
     
     pub fn deinit(self: *AccountInfoQuery) void {
-        self.base.deinit();
-        self.node_account_ids.deinit();
+        self.base.deinit(self.allocator);
+        self.node_account_ids.deinit(self.allocator);
     }
     
     // Set the account ID to query
@@ -552,7 +552,7 @@ pub const AccountInfoQuery = struct {
         _ = try self.base.setNodeAccountIds(node_ids);
         self.node_account_ids.clearRetainingCapacity();
         for (node_ids) |node_id| {
-            try self.node_account_ids.append(node_id);
+            try self.node_account_ids.append(self.allocator, node_id);
         }
         return self;
     }
@@ -599,15 +599,15 @@ pub const AccountInfoQuery = struct {
     // Build the query
     pub fn buildQuery(self: *AccountInfoQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // cryptoGetInfo = 11 (oneof query)
         var info_query_writer = ProtoWriter.init(self.base.allocator);
-        defer info_query_writer.deinit();
+        defer info_query_writer.deinit(self.allocator);
         
         // header = 1 (inside the specific query)
         var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
+        defer header_writer.deinit(self.allocator);
         
         // payment = 1 (optional)
         // Payment handling will be added when needed
@@ -623,7 +623,7 @@ pub const AccountInfoQuery = struct {
         // accountID = 2
         if (self.account_id) |account| {
             var account_writer = ProtoWriter.init(self.base.allocator);
-            defer account_writer.deinit();
+            defer account_writer.deinit(self.allocator);
             try account_writer.writeInt64(1, @intCast(account.shard));
             try account_writer.writeInt64(2, @intCast(account.realm));
             try account_writer.writeInt64(3, @intCast(account.account));

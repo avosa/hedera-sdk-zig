@@ -20,7 +20,7 @@ pub const SystemUndeleteTransaction = struct {
     }
     
     pub fn deinit(self: *SystemUndeleteTransaction) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the contract ID to undelete
@@ -47,19 +47,19 @@ pub const SystemUndeleteTransaction = struct {
     // Build transaction body
     pub fn buildTransactionBody(self: *SystemUndeleteTransaction) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Write common transaction fields
         try self.base.writeCommonFields(&writer);
         
         // systemUndelete = 36 (oneof data)
         var undelete_writer = ProtoWriter.init(self.base.allocator);
-        defer undelete_writer.deinit();
+        defer undelete_writer.deinit(self.allocator);
         
         // Either contractID = 1 or fileID = 2 (oneof id)
         if (self.contract_id) |contract_id| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
-            defer contract_writer.deinit();
+            defer contract_writer.deinit(self.allocator);
             try contract_writer.writeInt64(1, @intCast(contract_id.shard));
             try contract_writer.writeInt64(2, @intCast(contract_id.realm));
             try contract_writer.writeInt64(3, @intCast(contract_id.num));
@@ -68,7 +68,7 @@ pub const SystemUndeleteTransaction = struct {
             try undelete_writer.writeMessage(1, contract_bytes);
         } else if (self.file_id) |file_id| {
             var file_writer = ProtoWriter.init(self.base.allocator);
-            defer file_writer.deinit();
+            defer file_writer.deinit(self.allocator);
             try file_writer.writeInt64(1, @intCast(file_id.shard));
             try file_writer.writeInt64(2, @intCast(file_id.realm));
             try file_writer.writeInt64(3, @intCast(file_id.num));

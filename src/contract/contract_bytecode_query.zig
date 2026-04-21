@@ -34,7 +34,7 @@ pub const ContractBytecodeQuery = struct {
     }
     
     pub fn deinit(self: *ContractBytecodeQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Set the contract ID to query bytecode for
@@ -84,12 +84,12 @@ pub const ContractBytecodeQuery = struct {
     // Build the query
     pub fn buildQuery(self: *ContractBytecodeQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // Query message structure
         // header = 1
         var header_writer = ProtoWriter.init(self.base.allocator);
-        defer header_writer.deinit();
+        defer header_writer.deinit(self.allocator);
         
         // payment = 1
         if (self.base.payment_transaction) |payment| {
@@ -105,12 +105,12 @@ pub const ContractBytecodeQuery = struct {
         
         // contractGetBytecode = 8 (oneof query)
         var bytecode_query_writer = ProtoWriter.init(self.base.allocator);
-        defer bytecode_query_writer.deinit();
+        defer bytecode_query_writer.deinit(self.allocator);
         
         // contractID = 1
         if (self.contract_id) |contract| {
             var contract_writer = ProtoWriter.init(self.base.allocator);
-            defer contract_writer.deinit();
+            defer contract_writer.deinit(self.allocator);
             try contract_writer.writeInt64(1, @intCast(contract.shard));
             try contract_writer.writeInt64(2, @intCast(contract.realm));
             try contract_writer.writeInt64(3, @intCast(contract.num));

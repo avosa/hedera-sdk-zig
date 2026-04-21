@@ -16,7 +16,7 @@ pub const NetworkGetExecutionTimeQuery = struct {
     }
     
     pub fn deinit(self: *NetworkGetExecutionTimeQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Execute the query
@@ -30,11 +30,11 @@ pub const NetworkGetExecutionTimeQuery = struct {
     // Build query body
     pub fn buildQuery(self: *NetworkGetExecutionTimeQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // networkGetExecutionTime = 81 (oneof query)
         var query_writer = ProtoWriter.init(self.base.allocator);
-        defer query_writer.deinit();
+        defer query_writer.deinit(self.allocator);
         
         // Empty message for this query
         const query_bytes = try query_writer.toOwnedSlice();
@@ -56,7 +56,7 @@ pub const NetworkGetExecutionTimeQuery = struct {
                 1 => {
                     // executionTimes (repeated)
                     const exec_time = try parseExecutionTime(field.data);
-                    try execution_times.execution_times.append(exec_time);
+                    try execution_times.execution_times.append(self.allocator, exec_time);
                 },
                 else => {},
             }
@@ -96,7 +96,7 @@ pub const NetworkExecutionTimes = struct {
     execution_times: std.ArrayList(TransactionExecutionTime),
     
     pub fn deinit(self: *NetworkExecutionTimes) void {
-        self.execution_times.deinit();
+        self.execution_times.deinit(self.allocator);
     }
 };
 
@@ -196,7 +196,7 @@ pub const NetworkGetVersionInfoQuery = struct {
     }
     
     pub fn deinit(self: *NetworkGetVersionInfoQuery) void {
-        self.base.deinit();
+        self.base.deinit(self.allocator);
     }
     
     // Execute the query
@@ -210,11 +210,11 @@ pub const NetworkGetVersionInfoQuery = struct {
     // Build query body
     pub fn buildQuery(self: *NetworkGetVersionInfoQuery) ![]u8 {
         var writer = ProtoWriter.init(self.base.allocator);
-        defer writer.deinit();
+        defer writer.deinit(self.allocator);
         
         // networkGetVersionInfo = 80 (oneof query)
         var query_writer = ProtoWriter.init(self.base.allocator);
-        defer query_writer.deinit();
+        defer query_writer.deinit(self.allocator);
         
         // Empty message for this query
         const query_bytes = try query_writer.toOwnedSlice();
